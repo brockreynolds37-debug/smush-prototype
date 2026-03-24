@@ -103,6 +103,17 @@ func _connect_hero() -> void:
 		hero.spell_cooldown_updated.connect(_on_cooldown_updated)
 		hero.spell_unlocked.connect(_on_spell_unlocked)
 		_refresh_spell_locks()
+		_refresh_ability_labels()
+
+func _refresh_ability_labels() -> void:
+	var spell_set = CharacterData.get_selected_spell_set()
+	var names: Array = spell_set.get("names", ["Strike", "Fireball", "Heal", "Ground Slam"])
+	var keys := ["Q", "W", "E", "R"]
+	var buttons := [ability_q, ability_w, ability_e, ability_r]
+	for i in range(4):
+		if i < buttons.size() and buttons[i]:
+			var n := names[i] if i < names.size() else "?"
+			buttons[i].text = "%s\n%s" % [keys[i], n]
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	health_bar.max_value = maximum
@@ -137,14 +148,15 @@ func _refresh_spell_locks() -> void:
 
 func _on_spell_unlocked(spell_index: int) -> void:
 	var lock_node: ColorRect = null
-	var spell_name: String = ""
 	match spell_index:
 		2:
 			lock_node = lock_e
-			spell_name = "Heal"
 		3:
 			lock_node = lock_r
-			spell_name = "Ground Slam"
+	# Get the actual spell name from the selected set
+	var spell_set = CharacterData.get_selected_spell_set()
+	var names: Array = spell_set.get("names", ["Strike", "Fireball", "Heal", "Ground Slam"])
+	var spell_name: String = names[spell_index] if spell_index < names.size() else "Spell %d" % (spell_index + 1)
 
 	if lock_node and lock_node.visible:
 		# Animate lock removal: flash gold then hide

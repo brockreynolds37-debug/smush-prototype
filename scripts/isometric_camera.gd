@@ -116,12 +116,14 @@ func _update_camera_transform() -> void:
 	camera.position = Vector3(0, 0, current_zoom)
 
 func _on_screen_shake(intensity: float, duration: float) -> void:
-	shake_intensity = intensity
+	var scale := AccessibilitySettings.get_shake_multiplier()
+	shake_intensity = intensity * scale
 	shake_duration = duration
 	shake_timer = 0.0
 
 func _on_camera_punch(direction: Vector3, strength: float) -> void:
-	punch_offset = Vector2(direction.x, direction.z) * strength * 0.015
+	var scale := AccessibilitySettings.get_shake_multiplier()
+	punch_offset = Vector2(direction.x, direction.z) * strength * 0.015 * scale
 
 func _process_screen_shake(delta: float) -> void:
 	var offset_x := 0.0
@@ -149,13 +151,13 @@ func _process_screen_shake(delta: float) -> void:
 	camera.v_offset = offset_y
 
 func _on_smusher_warning() -> void:
-	_smusher_shake = 0.5
+	_smusher_shake = 0.5 * AccessibilitySettings.get_shake_multiplier()
 
 func _on_smusher_critical() -> void:
-	_smusher_shake = 1.5
+	_smusher_shake = 1.5 * AccessibilitySettings.get_shake_multiplier()
 
 func _on_smusher_overtime() -> void:
-	_smusher_shake = 3.0
+	_smusher_shake = 3.0 * AccessibilitySettings.get_shake_multiplier()
 
 func _on_room_collapsed(_room_index: int, _room_name: String) -> void:
 	_on_screen_shake(12.0, 0.5)

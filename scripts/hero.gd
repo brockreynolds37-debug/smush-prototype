@@ -40,6 +40,7 @@ var spell_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var spell_max_cooldowns: Array[float] = [1.5, 5.0, 8.0, 15.0]
 var spell_mana_costs: Array[int] = [0, 30, 40, 60]
 var spell_names: Array[String] = ["Strike", "Fireball", "Heal", "Ground Slam"]
+var _spell_set_index: int = 0  # 0 = default, 1 = alternate
 
 # Spell unlock levels: spells 0-1 at start, spell 2 at level 5, spell 3 at level 10
 var spell_unlock_levels: Array[int] = [1, 1, 5, 10]
@@ -106,6 +107,26 @@ func _ready() -> void:
 	current_mana = max_mana
 	_char_primary_color = char_data["color_primary"]
 	_char_secondary_color = char_data["color_secondary"]
+
+	# Load spell set from character selection
+	_spell_set_index = CharacterData.selected_spell_set
+	var spell_set = CharacterData.get_selected_spell_set()
+	if spell_set.size() > 0:
+		var names_arr = spell_set.get("names", [])
+		spell_names = [names_arr[0] if names_arr.size() > 0 else "Strike",
+					   names_arr[1] if names_arr.size() > 1 else "Fireball",
+					   names_arr[2] if names_arr.size() > 2 else "Heal",
+					   names_arr[3] if names_arr.size() > 3 else "Ground Slam"]
+		var cd_arr = spell_set.get("cooldowns", [])
+		spell_max_cooldowns = [cd_arr[0] if cd_arr.size() > 0 else 1.5,
+							   cd_arr[1] if cd_arr.size() > 1 else 5.0,
+							   cd_arr[2] if cd_arr.size() > 2 else 8.0,
+							   cd_arr[3] if cd_arr.size() > 3 else 15.0]
+		var mc_arr = spell_set.get("mana_costs", [])
+		spell_mana_costs = [mc_arr[0] if mc_arr.size() > 0 else 0,
+							mc_arr[1] if mc_arr.size() > 1 else 30,
+							mc_arr[2] if mc_arr.size() > 2 else 40,
+							mc_arr[3] if mc_arr.size() > 3 else 60]
 
 	# Build animation scene map from selected character
 	var base_model = load(char_data["model_path"])
@@ -420,11 +441,14 @@ func cast_spell(index: int) -> void:
 		return
 
 	TutorialManager.notify_event("spell_cast")
-	match index:
-		0: _cast_strike()
-		1: _start_fireball_targeting()
-		2: _cast_heal()
-		3: _cast_ground_slam()
+	if _spell_set_index == 0:
+		match index:
+			0: _cast_strike()
+			1: _start_fireball_targeting()
+			2: _cast_heal()
+			3: _cast_ground_slam()
+	else:
+		_cast_alt_spell(index)
 
 func _cast_strike() -> void:
 	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
@@ -847,3 +871,912 @@ func _refresh_spell_unlocks() -> void:
 
 func _on_level_up_spell_check(_new_level: int) -> void:
 	_refresh_spell_unlocks()
+
+# ========== ALTERNATE SPELL SYSTEM ==========
+# Each character has a unique alt spell set. Dispatches by character ID + spell index.
+
+var _alt_targeted_index: int = -1  # Which alt spell is awaiting ground target
+var _buff_war_cry: bool = false
+var _buff_blood_frenzy: bool = false
+var _buff_holy_shield: bool = false
+var _buff_smoke_bomb: bool = false
+
+func _start_alt_targeting(spell_index: int) -> void:
+	_alt_targeted_index = spell_index
+	GameManager.is_targeting_spell = true
+	GameManager.targeting_spell_id = 100  # Generic alt targeted
+
+func cast_alt_targeted_at(target_pos: Vector3) -> void:
+	var idx = _alt_targeted_index
+	_alt_targeted_index = -1
+	if idx < 0:
+		return
+	var char_id = CharacterData.get_selected()["id"]
+	match char_id:
+		"fat_nate":
+			if idx == 3:
+				_alt_earthquake_at(target_pos)
+		"knight":
+			if idx == 2:
+				_alt_consecrate_at(target_pos)
+			elif idx == 3:
+				_alt_divine_judgment_at(target_pos)
+		"barbarian":
+			pass  # No targeted alt spells
+		"mage":
+			if idx == 0:
+				_alt_arcane_bolt_at(target_pos)
+			elif idx == 2:
+				_alt_chain_lightning_at(target_pos)
+			elif idx == 3:
+				_alt_meteor_at(target_pos)
+		"ranger":
+			if idx == 0:
+				_alt_aimed_shot_at(target_pos)
+			elif idx == 1:
+				_alt_trap_at(target_pos)
+			elif idx == 2:
+				_alt_volley_at(target_pos)
+			elif idx == 3:
+				_alt_snipe_at(target_pos)
+		"rogue":
+			if idx == 3:
+				_alt_shadow_strike_at(target_pos)
+
+func _cast_alt_spell(index: int) -> void:
+	var char_id = CharacterData.get_selected()["id"]
+	match char_id:
+		"fat_nate":
+			_cast_alt_fat_nate(index)
+		"knight":
+			_cast_alt_knight(index)
+		"barbarian":
+			_cast_alt_barbarian(index)
+		"mage":
+			_cast_alt_mage(index)
+		"ranger":
+			_cast_alt_ranger(index)
+		"rogue":
+			_cast_alt_rogue(index)
+
+# ---- Shared alt spell helpers ----
+
+func _consume_spell(index: int) -> void:
+	current_mana -= spell_mana_costs[index]
+	mana_changed.emit(current_mana, max_mana)
+	spell_cooldowns[index] = spell_max_cooldowns[index]
+	spell_cast.emit(index)
+	AudienceManager.on_spell_cast(index)
+	RunStats.record_spell_cast(index)
+
+func _begin_cast() -> void:
+	is_casting = true
+	is_moving = false
+	current_speed = 0.0
+	velocity = Vector3.ZERO
+	anim_state = AnimState.CAST
+
+func _end_cast() -> void:
+	is_casting = false
+	_restore_model_materials()
+
+# ---- FAT NATE: Warlord (Charge, War Cry, Shield Bash, Earthquake) ----
+
+func _cast_alt_fat_nate(index: int) -> void:
+	match index:
+		0: _alt_charge()
+		1: _alt_war_cry()
+		2: _alt_shield_bash()
+		3: _start_alt_targeting(3)  # Earthquake needs ground target
+
+func _alt_charge() -> void:
+	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
+	var target = GameManager.get_nearest_enemy(global_position, 12.0 * range_mult)
+	if target == null:
+		return
+	_consume_spell(0)
+	_begin_cast()
+	AudioManager.play_sfx("ground_slam", 0.8)
+	_flash_color(Color(0.9, 0.6, 0.2), 0.15)
+
+	var dir = (target.global_position - global_position).normalized()
+	var charge_dest = target.global_position - dir * 1.5
+	var tween = create_tween()
+	tween.tween_property(self, "global_position", charge_dest, 0.25).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func():
+		_face_position(target.global_position, 1.0)
+		var dmg = int(_get_melee_damage() * 1.5)
+		if target and is_instance_valid(target) and target.has_method("take_damage"):
+			target.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+			StatusEffectManager.apply_stun(target, 0.8)
+		GameManager.request_screen_shake(5.0, 0.2)
+		VFXManager.spawn_impact_sparks(global_position + Vector3.UP, Color(0.9, 0.6, 0.2))
+	)
+	tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.8, 1.2), 0.1)
+	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(_end_cast)
+
+func _alt_war_cry() -> void:
+	_consume_spell(1)
+	_begin_cast()
+	AudioManager.play_sfx("boss_roar", 0.7)
+	_set_model_color(Color(1.0, 0.5, 0.1))
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * 1.3, 0.2)
+	tween.tween_callback(func():
+		# Stun nearby enemies
+		var enemies = GameManager.get_enemies_in_range(global_position, 5.0)
+		for e in enemies:
+			StatusEffectManager.apply_stun(e, 1.0)
+		VFXManager.spawn_spell_impact(global_position, Color(1.0, 0.6, 0.2), 5.0)
+		GameManager.request_screen_shake(4.0, 0.2)
+		# Damage buff for 8s
+		_buff_war_cry = true
+		get_tree().create_timer(8.0).timeout.connect(func(): _buff_war_cry = false)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.2)
+	tween.tween_callback(_end_cast)
+
+func _alt_shield_bash() -> void:
+	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
+	var target = GameManager.get_nearest_enemy(global_position, 3.5 * range_mult)
+	if target == null:
+		return
+	_consume_spell(2)
+	_begin_cast()
+	_face_position(target.global_position, 1.0)
+	AudioManager.on_hero_attack()
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(1.3, 0.85, 1.3), 0.12)
+	tween.tween_callback(func():
+		var dmg = int(_get_melee_damage() * 1.2)
+		if target and is_instance_valid(target) and target.has_method("take_damage"):
+			target.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+			StatusEffectManager.apply_stun(target, 1.5)
+			# Knockback
+			var kb_dir = (target.global_position - global_position).normalized()
+			if target.has_method("set"):
+				target.global_position += kb_dir * 2.0
+		GameManager.request_screen_shake(4.0, 0.15)
+		VFXManager.spawn_impact_sparks(target.global_position if target and is_instance_valid(target) else global_position, Color(0.7, 0.7, 0.8))
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(_end_cast)
+
+func _alt_earthquake_at(target_pos: Vector3) -> void:
+	_consume_spell(3)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.on_hero_cast_ground_slam()
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.7, 1.4, 0.7), 0.35)
+	_set_model_color(Color(0.8, 0.5, 0.1))
+	tween.tween_property(model, "scale", original_scale * Vector3(1.5, 0.5, 1.5), 0.1)
+	tween.tween_callback(func():
+		GameManager.request_screen_shake(12.0, 0.6)
+		var quake_dmg = int(100 * _get_spell_power())
+		var enemies = GameManager.get_enemies_in_range(target_pos, 8.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(quake_dmg)
+				RunStats.record_damage_dealt(quake_dmg)
+			StatusEffectManager.apply_slow(e, 4.0, 0.6)
+		AudienceManager.on_aoe_hit(enemies.size())
+		_damage_nearby_interactables(quake_dmg, 8.0)
+		VFXManager.spawn_spell_impact(target_pos, Color(0.8, 0.5, 0.1), 8.0)
+		ScreenEffects.screen_flash(Color(0.8, 0.5, 0.1, 0.25), 0.2)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.3)
+	tween.tween_callback(_end_cast)
+
+# ---- SIR GALLAN: Crusader (Smite, Holy Shield, Consecrate, Divine Judgment) ----
+
+func _cast_alt_knight(index: int) -> void:
+	match index:
+		0: _alt_smite()
+		1: _alt_holy_shield()
+		2: _start_alt_targeting(2)  # Consecrate targeted
+		3: _start_alt_targeting(3)  # Divine Judgment targeted
+
+func _alt_smite() -> void:
+	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
+	var target = GameManager.get_nearest_enemy(global_position, 10.0 * range_mult)
+	if target == null:
+		return
+	_consume_spell(0)
+	_begin_cast()
+	_face_position(target.global_position, 1.0)
+	AudioManager.play_sfx("lightning", 0.6)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.15)
+	tween.tween_callback(func():
+		var dmg = int(50 * _get_spell_power())
+		if target and is_instance_valid(target) and target.has_method("take_damage"):
+			target.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+			GameManager.request_damage_number(target.global_position + Vector3.UP * 2.5, dmg, false)
+		VFXManager.spawn_spell_impact(target.global_position if target and is_instance_valid(target) else global_position, Color(1.0, 0.9, 0.5), 1.5)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(_end_cast)
+
+func _alt_holy_shield() -> void:
+	_consume_spell(1)
+	_begin_cast()
+	AudioManager.play_sfx("heal", 0.8)
+	_set_model_color(Color(1.0, 0.95, 0.5))
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * 1.15, 0.2)
+	tween.tween_callback(func():
+		_buff_holy_shield = true
+		VFXManager.spawn_heal_glow(self)
+		# Shield lasts 3 seconds
+		get_tree().create_timer(3.0).timeout.connect(func():
+			_buff_holy_shield = false
+			_restore_model_materials()
+		)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(func(): is_casting = false)
+
+func _alt_consecrate_at(target_pos: Vector3) -> void:
+	_consume_spell(2)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("heal", 0.6)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.85, 1.2, 0.85), 0.2)
+	tween.tween_callback(func():
+		# Spawn a golden DoT zone at target_pos for 5 seconds
+		_spawn_consecrate_zone(target_pos)
+		VFXManager.spawn_spell_impact(target_pos, Color(1.0, 0.9, 0.4), 4.0)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(_end_cast)
+
+func _spawn_consecrate_zone(pos: Vector3) -> void:
+	var zone = MeshInstance3D.new()
+	var disc = CylinderMesh.new()
+	disc.top_radius = 4.0
+	disc.bottom_radius = 4.0
+	disc.height = 0.05
+	disc.radial_segments = 24
+	zone.mesh = disc
+	zone.position = pos + Vector3.UP * 0.05
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.85, 0.3, 0.3)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.85, 0.3)
+	mat.emission_energy_multiplier = 1.5
+	zone.set_surface_override_material(0, mat)
+	get_tree().root.add_child(zone)
+
+	var tick_count := 0
+	var timer = Timer.new()
+	timer.wait_time = 1.0
+	timer.autostart = true
+	zone.add_child(timer)
+	timer.timeout.connect(func():
+		tick_count += 1
+		var dmg = int(30 * _get_spell_power())
+		var enemies = GameManager.get_enemies_in_range(pos, 4.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(dmg)
+				RunStats.record_damage_dealt(dmg)
+		if tick_count >= 5:
+			timer.stop()
+			var fade = zone.create_tween()
+			fade.tween_property(mat, "albedo_color:a", 0.0, 0.5)
+			fade.tween_callback(zone.queue_free)
+	)
+
+func _alt_divine_judgment_at(target_pos: Vector3) -> void:
+	_consume_spell(3)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("lightning", 0.9)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.8, 1.3, 0.8), 0.3)
+	_set_model_color(Color(1.0, 0.9, 0.4))
+	tween.tween_callback(func():
+		# Gold pillar of light at target
+		var dmg = int(180 * _get_spell_power())
+		var enemies = GameManager.get_enemies_in_range(target_pos, 3.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(dmg)
+				RunStats.record_damage_dealt(dmg)
+		AudienceManager.on_aoe_hit(enemies.size())
+		_spawn_judgment_pillar(target_pos)
+		GameManager.request_screen_shake(8.0, 0.35)
+		ScreenEffects.screen_flash(Color(1.0, 0.9, 0.5, 0.35), 0.2)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.25)
+	tween.tween_callback(_end_cast)
+
+func _spawn_judgment_pillar(pos: Vector3) -> void:
+	var pillar = MeshInstance3D.new()
+	var cyl = CylinderMesh.new()
+	cyl.top_radius = 1.5
+	cyl.bottom_radius = 2.0
+	cyl.height = 15.0
+	pillar.mesh = cyl
+	pillar.position = pos + Vector3.UP * 7.5
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.9, 0.4, 0.6)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.9, 0.4)
+	mat.emission_energy_multiplier = 3.0
+	mat.no_depth_test = true
+	pillar.set_surface_override_material(0, mat)
+	get_tree().root.add_child(pillar)
+	var tw = pillar.create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.8)
+	tw.tween_callback(pillar.queue_free)
+
+# ---- GROKK: Bloodletter (Cleave, Blood Frenzy, Whirlwind, Execute) ----
+
+func _cast_alt_barbarian(index: int) -> void:
+	match index:
+		0: _alt_cleave()
+		1: _alt_blood_frenzy()
+		2: _alt_whirlwind()
+		3: _alt_execute()
+
+func _alt_cleave() -> void:
+	_consume_spell(0)
+	_begin_cast()
+	_swap_model(AnimState.ATTACK, true)
+	AudioManager.on_hero_attack()
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(1.4, 0.8, 1.4), 0.15)
+	tween.tween_callback(func():
+		var cleave_dmg = int(_get_melee_damage() * 0.9)
+		if _buff_war_cry:
+			cleave_dmg = int(cleave_dmg * 1.3)
+		var enemies = GameManager.get_enemies_in_range(global_position, 4.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(cleave_dmg)
+				RunStats.record_damage_dealt(cleave_dmg)
+		AudienceManager.on_aoe_hit(enemies.size())
+		GameManager.request_screen_shake(4.0, 0.15)
+		VFXManager.spawn_impact_sparks(global_position + Vector3.FORWARD * 1.5 + Vector3.UP, Color(0.8, 0.3, 0.2))
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(_end_cast)
+
+func _alt_blood_frenzy() -> void:
+	_consume_spell(1)
+	_begin_cast()
+	AudioManager.play_sfx("boss_roar", 0.6)
+	_set_model_color(Color(0.9, 0.15, 0.1))
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * 1.2, 0.2)
+	tween.tween_callback(func():
+		_buff_blood_frenzy = true
+		VFXManager.spawn_spell_impact(global_position, Color(0.9, 0.15, 0.1), 2.0)
+		get_tree().create_timer(8.0).timeout.connect(func():
+			_buff_blood_frenzy = false
+			_restore_model_materials()
+		)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(func(): is_casting = false)
+
+func _alt_whirlwind() -> void:
+	_consume_spell(2)
+	_begin_cast()
+	AudioManager.play_sfx("sword_swing", 1.0)
+	_set_model_color(Color(0.7, 0.2, 0.15))
+
+	var tween = create_tween()
+	# 3 spin hits over 1.2s
+	for hit_i in range(3):
+		tween.tween_callback(func():
+			model.rotation.y += TAU / 3.0
+			var spin_dmg = int(_get_melee_damage() * 0.6)
+			if _buff_blood_frenzy:
+				spin_dmg = int(spin_dmg * 1.4)
+				# Lifesteal
+				var heal = int(spin_dmg * 0.15)
+				current_health = mini(current_health + heal, max_health)
+				health_changed.emit(current_health, max_health)
+			var enemies = GameManager.get_enemies_in_range(global_position, 3.5)
+			for e in enemies:
+				if e.has_method("take_damage"):
+					e.take_damage(spin_dmg)
+					RunStats.record_damage_dealt(spin_dmg)
+			AudienceManager.on_aoe_hit(enemies.size())
+			AudioManager.play_sfx("sword_swing", 0.7)
+		)
+		tween.tween_interval(0.4)
+	tween.tween_callback(func():
+		GameManager.request_screen_shake(3.0, 0.1)
+		_end_cast()
+	)
+
+func _alt_execute() -> void:
+	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
+	var target = GameManager.get_nearest_enemy(global_position, 3.5 * range_mult)
+	if target == null:
+		return
+	_consume_spell(3)
+	_begin_cast()
+	_face_position(target.global_position, 1.0)
+	_swap_model(AnimState.ATTACK, true)
+	AudioManager.on_hero_attack()
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.8, 1.4, 0.8), 0.25)
+	_set_model_color(Color(0.9, 0.1, 0.05))
+	tween.tween_property(model, "scale", original_scale * Vector3(1.4, 0.7, 1.4), 0.1)
+	tween.tween_callback(func():
+		var base_dmg = int(_get_melee_damage() * 2.0)
+		# 3x damage if target below 30% HP
+		if target and is_instance_valid(target) and target.has_method("get") and target.get("current_health") != null:
+			var hp_ratio: float = float(target.current_health) / float(target.max_health) if target.max_health > 0 else 1.0
+			if hp_ratio < 0.3:
+				base_dmg = int(base_dmg * 1.5)
+		if target and is_instance_valid(target) and target.has_method("take_damage"):
+			target.take_damage(base_dmg)
+			RunStats.record_damage_dealt(base_dmg)
+		GameManager.request_screen_shake(7.0, 0.3)
+		ScreenEffects.screen_flash(Color(0.9, 0.1, 0.05, 0.3), 0.15)
+		VFXManager.spawn_impact_sparks(target.global_position + Vector3.UP if target and is_instance_valid(target) else global_position, Color(0.9, 0.1, 0.05), 20)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.2)
+	tween.tween_callback(_end_cast)
+
+# ---- ELARA: Arcanist (Arcane Bolt, Ice Wall, Chain Lightning, Meteor) ----
+
+func _cast_alt_mage(index: int) -> void:
+	match index:
+		0: _start_alt_targeting(0)  # Arcane Bolt targeted
+		1: _alt_ice_wall()
+		2: _start_alt_targeting(2)  # Chain Lightning targeted
+		3: _start_alt_targeting(3)  # Meteor targeted
+
+func _alt_arcane_bolt_at(target_pos: Vector3) -> void:
+	_consume_spell(0)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("fireball_cast", 0.7)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.1, 0.9), 0.1)
+	tween.tween_callback(func():
+		# Spawn a fast purple projectile (reuse fireball scene)
+		var fireball_scene = preload("res://scenes/fireball.tscn")
+		var bolt = fireball_scene.instantiate()
+		get_tree().root.add_child(bolt)
+		bolt.global_position = global_position + Vector3.UP * 1.5
+		bolt.launch(target_pos)
+		_flash_color(Color(0.6, 0.3, 1.0), 0.15)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(_end_cast)
+
+func _alt_ice_wall() -> void:
+	_consume_spell(1)
+	_begin_cast()
+	AudioManager.play_sfx("ice_shard", 0.8)
+	_set_model_color(Color(0.4, 0.7, 1.0))
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * 1.15, 0.2)
+	tween.tween_callback(func():
+		# Spawn ice wall 4 units in front of hero
+		var forward = -global_transform.basis.z.normalized()
+		var wall_pos = global_position + forward * 4.0
+		_spawn_ice_wall(wall_pos, forward)
+		VFXManager.spawn_spell_impact(wall_pos, Color(0.4, 0.7, 1.0), 3.0)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(_end_cast)
+
+func _spawn_ice_wall(pos: Vector3, _facing: Vector3) -> void:
+	# 3 ice blocks in a line perpendicular to facing
+	var right = Vector3(_facing.z, 0, -_facing.x).normalized()
+	for i in range(-1, 2):
+		var block = MeshInstance3D.new()
+		var box = BoxMesh.new()
+		box.size = Vector3(1.2, 2.5, 0.6)
+		block.mesh = box
+		block.position = pos + right * float(i) * 1.3 + Vector3.UP * 1.25
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(0.5, 0.8, 1.0, 0.7)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.emission_enabled = true
+		mat.emission = Color(0.4, 0.7, 1.0)
+		mat.emission_energy_multiplier = 1.0
+		block.set_surface_override_material(0, mat)
+		get_tree().root.add_child(block)
+
+		# Slow enemies that pass near
+		var block_pos = block.position
+		var tick := 0
+		var slow_timer = Timer.new()
+		slow_timer.wait_time = 0.5
+		slow_timer.autostart = true
+		block.add_child(slow_timer)
+		slow_timer.timeout.connect(func():
+			tick += 1
+			var enemies = GameManager.get_enemies_in_range(block_pos, 2.0)
+			for e in enemies:
+				StatusEffectManager.apply_slow(e, 1.0, 0.5)
+			if tick >= 14:  # 7 seconds
+				slow_timer.stop()
+				var fade = block.create_tween()
+				fade.tween_property(mat, "albedo_color:a", 0.0, 0.5)
+				fade.tween_callback(block.queue_free)
+		)
+
+func _alt_chain_lightning_at(target_pos: Vector3) -> void:
+	_consume_spell(2)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.on_hero_cast_lightning()
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.85, 1.2, 0.85), 0.2)
+	_set_model_color(Color(0.4, 0.6, 1.0))
+	tween.tween_callback(func():
+		# Spawn lightning bolt (reuse existing scene)
+		var bolt_scene = preload("res://scenes/lightning_bolt.tscn")
+		var bolt = bolt_scene.instantiate()
+		get_tree().root.add_child(bolt)
+		bolt.global_position = global_position + Vector3.UP * 1.5
+		if bolt.has_method("launch"):
+			bolt.launch(target_pos)
+		VFXManager.spawn_spell_impact(target_pos, Color(0.4, 0.6, 1.0), 3.0)
+		ScreenEffects.screen_flash(Color(0.6, 0.7, 1.0, 0.2), 0.1)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(_end_cast)
+
+func _alt_meteor_at(target_pos: Vector3) -> void:
+	_consume_spell(3)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("fireball_cast", 1.0)
+	_set_model_color(Color(1.0, 0.4, 0.1))
+
+	# Show telegraph circle
+	var telegraph = MeshInstance3D.new()
+	var disc = CylinderMesh.new()
+	disc.top_radius = 5.0
+	disc.bottom_radius = 5.0
+	disc.height = 0.03
+	telegraph.mesh = disc
+	telegraph.position = target_pos + Vector3.UP * 0.05
+	var tel_mat = StandardMaterial3D.new()
+	tel_mat.albedo_color = Color(1.0, 0.3, 0.1, 0.3)
+	tel_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tel_mat.emission_enabled = true
+	tel_mat.emission = Color(1.0, 0.3, 0.1)
+	tel_mat.emission_energy_multiplier = 1.5
+	telegraph.set_surface_override_material(0, tel_mat)
+	get_tree().root.add_child(telegraph)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.8, 1.3, 0.8), 0.3)
+	tween.tween_interval(1.2)  # Delay before impact
+	tween.tween_callback(func():
+		# IMPACT
+		var meteor_dmg = int(200 * _get_spell_power())
+		var enemies = GameManager.get_enemies_in_range(target_pos, 5.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(meteor_dmg)
+				RunStats.record_damage_dealt(meteor_dmg)
+		AudienceManager.on_aoe_hit(enemies.size())
+		_damage_nearby_interactables(meteor_dmg, 5.0)
+		GameManager.request_screen_shake(14.0, 0.5)
+		ScreenEffects.screen_flash(Color(1.0, 0.4, 0.1, 0.4), 0.25)
+		AudioManager.play_sfx("fireball_explode", 1.2)
+		VFXManager.spawn_spell_impact(target_pos, Color(1.0, 0.4, 0.1), 5.0)
+		telegraph.queue_free()
+	)
+	tween.tween_property(model, "scale", original_scale, 0.25)
+	tween.tween_callback(_end_cast)
+
+# ---- THERON: Sharpshooter (Aimed Shot, Trap, Volley, Snipe) ----
+
+func _cast_alt_ranger(index: int) -> void:
+	match index:
+		0: _start_alt_targeting(0)
+		1: _start_alt_targeting(1)
+		2: _start_alt_targeting(2)
+		3: _start_alt_targeting(3)
+
+func _alt_aimed_shot_at(target_pos: Vector3) -> void:
+	_consume_spell(0)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("sword_swing", 0.6)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.1, 0.9), 0.15)
+	tween.tween_callback(func():
+		# Precise single-target hit at target position
+		var nearest = GameManager.get_nearest_enemy(target_pos, 2.5)
+		if nearest and is_instance_valid(nearest) and nearest.has_method("take_damage"):
+			var dmg = int(60 * _get_spell_power())
+			# 50% crit chance on aimed shot
+			if randf() < 0.5:
+				dmg = int(dmg * 1.8)
+				GameManager.request_damage_number(nearest.global_position + Vector3.UP * 2.5, dmg, true)
+				GameManager.request_screen_shake(5.0, 0.2)
+			else:
+				GameManager.request_damage_number(nearest.global_position + Vector3.UP * 2.5, dmg, false)
+			nearest.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+		VFXManager.spawn_impact_sparks(target_pos + Vector3.UP, Color(0.3, 0.8, 0.3))
+	)
+	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(_end_cast)
+
+func _alt_trap_at(target_pos: Vector3) -> void:
+	_consume_spell(1)
+	_begin_cast()
+	AudioManager.play_sfx("chest_open", 0.5)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(1.05, 0.95, 1.05), 0.15)
+	tween.tween_callback(func():
+		_spawn_trap(target_pos)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(_end_cast)
+
+func _spawn_trap(pos: Vector3) -> void:
+	var trap_mesh = MeshInstance3D.new()
+	var box = BoxMesh.new()
+	box.size = Vector3(1.5, 0.1, 1.5)
+	trap_mesh.mesh = box
+	trap_mesh.position = pos + Vector3.UP * 0.05
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.4, 0.6, 0.2, 0.5)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = Color(0.4, 0.6, 0.2)
+	mat.emission_energy_multiplier = 0.8
+	trap_mesh.set_surface_override_material(0, mat)
+	get_tree().root.add_child(trap_mesh)
+
+	var tick := 0
+	var triggered := false
+	var check_timer = Timer.new()
+	check_timer.wait_time = 0.3
+	check_timer.autostart = true
+	trap_mesh.add_child(check_timer)
+	check_timer.timeout.connect(func():
+		tick += 1
+		if triggered:
+			return
+		var enemies = GameManager.get_enemies_in_range(pos, 1.5)
+		if enemies.size() > 0:
+			triggered = true
+			var trap_dmg = int(70 * _get_spell_power())
+			for e in enemies:
+				if e.has_method("take_damage"):
+					e.take_damage(trap_dmg)
+					RunStats.record_damage_dealt(trap_dmg)
+				StatusEffectManager.apply_stun(e, 2.0)
+			AudioManager.play_sfx("spike_trap", 0.8)
+			VFXManager.spawn_impact_sparks(pos + Vector3.UP, Color(0.4, 0.6, 0.2), 15)
+			var fade = trap_mesh.create_tween()
+			fade.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+			fade.tween_callback(trap_mesh.queue_free)
+		elif tick >= 100:  # 30s timeout
+			check_timer.stop()
+			trap_mesh.queue_free()
+	)
+
+func _alt_volley_at(target_pos: Vector3) -> void:
+	_consume_spell(2)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("sword_swing", 0.8)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(0.85, 1.2, 0.85), 0.2)
+	tween.tween_callback(func():
+		# Rain of arrows — 3 waves in target area
+		for wave in range(3):
+			get_tree().create_timer(0.3 * wave).timeout.connect(func():
+				var volley_dmg = int(35 * _get_spell_power())
+				var enemies = GameManager.get_enemies_in_range(target_pos, 4.0)
+				for e in enemies:
+					if e.has_method("take_damage"):
+						e.take_damage(volley_dmg)
+						RunStats.record_damage_dealt(volley_dmg)
+				VFXManager.spawn_impact_sparks(target_pos + Vector3(randf_range(-2, 2), 0.5, randf_range(-2, 2)), Color(0.5, 0.35, 0.2), 8)
+				AudioManager.play_sfx("melee_hit", 0.5)
+			)
+		AudienceManager.on_aoe_hit(GameManager.get_enemies_in_range(target_pos, 4.0).size())
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_interval(0.8)
+	tween.tween_callback(_end_cast)
+
+func _alt_snipe_at(target_pos: Vector3) -> void:
+	_consume_spell(3)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+
+	var tween = create_tween()
+	# Brief channel
+	tween.tween_property(model, "scale", original_scale * Vector3(0.85, 1.15, 0.85), 0.5)
+	_set_model_color(Color(0.2, 0.6, 0.3))
+	tween.tween_callback(func():
+		AudioManager.play_sfx("lightning", 0.7)
+		var nearest = GameManager.get_nearest_enemy(target_pos, 3.0)
+		if nearest and is_instance_valid(nearest) and nearest.has_method("take_damage"):
+			var dmg = int(250 * _get_spell_power())
+			nearest.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+			GameManager.request_damage_number(nearest.global_position + Vector3.UP * 2.5, dmg, true)
+			GameManager.request_screen_shake(6.0, 0.25)
+			VFXManager.spawn_impact_sparks(nearest.global_position + Vector3.UP, Color(0.2, 0.8, 0.3), 18)
+		ScreenEffects.screen_flash(Color(0.2, 0.6, 0.3, 0.2), 0.1)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.2)
+	tween.tween_callback(_end_cast)
+
+# ---- SHADE: Shadow Arts (Backstab, Smoke Bomb, Fan of Knives, Shadow Strike) ----
+
+func _cast_alt_rogue(index: int) -> void:
+	match index:
+		0: _alt_backstab()
+		1: _alt_smoke_bomb()
+		2: _alt_fan_of_knives()
+		3: _start_alt_targeting(3)
+
+func _alt_backstab() -> void:
+	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
+	var target = GameManager.get_nearest_enemy(global_position, 10.0 * range_mult)
+	if target == null:
+		return
+	_consume_spell(0)
+	_begin_cast()
+	AudioManager.play_sfx("enemy_death", 0.5)
+
+	# Teleport behind target
+	var behind = target.global_position + (target.global_position - global_position).normalized() * 1.5
+	_flash_color(Color(0.3, 0.1, 0.5), 0.1)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", Vector3(0.5, 0.5, 0.5), 0.1)
+	tween.tween_callback(func():
+		global_position = behind
+		_face_position(target.global_position, 1.0)
+	)
+	tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.9, 1.2), 0.08)
+	tween.tween_callback(func():
+		var dmg = int(_get_melee_damage() * 2.0)
+		if target and is_instance_valid(target) and target.has_method("take_damage"):
+			target.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+			GameManager.request_damage_number(target.global_position + Vector3.UP * 2.5, dmg, true)
+		VFXManager.spawn_impact_sparks(target.global_position + Vector3.UP if target and is_instance_valid(target) else global_position, Color(0.4, 0.1, 0.6), 15)
+		GameManager.request_screen_shake(4.0, 0.15)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(_end_cast)
+
+func _alt_smoke_bomb() -> void:
+	_consume_spell(1)
+	_begin_cast()
+	AudioManager.play_sfx("fire_vent", 0.5)
+	_set_model_color(Color(0.3, 0.3, 0.4))
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(1.1, 0.9, 1.1), 0.15)
+	tween.tween_callback(func():
+		# Stun nearby enemies briefly + smoke effect
+		var enemies = GameManager.get_enemies_in_range(global_position, 5.0)
+		for e in enemies:
+			StatusEffectManager.apply_stun(e, 1.5)
+		VFXManager.spawn_spell_impact(global_position, Color(0.3, 0.3, 0.4), 5.0)
+		# Invisibility visual: make hero semi-transparent for 4s
+		_buff_smoke_bomb = true
+		get_tree().create_timer(4.0).timeout.connect(func():
+			_buff_smoke_bomb = false
+			_restore_model_materials()
+		)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(func(): is_casting = false)
+
+func _alt_fan_of_knives() -> void:
+	_consume_spell(2)
+	_begin_cast()
+	AudioManager.play_sfx("sword_swing", 0.8)
+
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * Vector3(1.3, 0.85, 1.3), 0.12)
+	tween.tween_callback(func():
+		var knife_dmg = int(45 * _get_spell_power())
+		# Hit all enemies within 5 units in a wide arc (360° for simplicity)
+		var enemies = GameManager.get_enemies_in_range(global_position, 5.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(knife_dmg)
+				RunStats.record_damage_dealt(knife_dmg)
+				# Spawn knife VFX toward each enemy
+				var dir = (e.global_position - global_position).normalized()
+				VFXManager.spawn_impact_sparks(global_position + dir * 2.0 + Vector3.UP, Color(0.5, 0.5, 0.6), 4)
+		AudienceManager.on_aoe_hit(enemies.size())
+		GameManager.request_screen_shake(3.0, 0.12)
+	)
+	tween.tween_property(model, "scale", original_scale, 0.12)
+	tween.tween_callback(_end_cast)
+
+func _alt_shadow_strike_at(target_pos: Vector3) -> void:
+	_consume_spell(3)
+	_begin_cast()
+	_face_position(target_pos, 1.0)
+	AudioManager.play_sfx("enemy_death", 0.7)
+	_set_model_color(Color(0.2, 0.05, 0.3))
+
+	# Mark with purple pulse, then detonate after 1.5s
+	var mark_pos = target_pos
+	var mark = MeshInstance3D.new()
+	var sphere = SphereMesh.new()
+	sphere.radius = 1.0
+	sphere.height = 2.0
+	mark.mesh = sphere
+	mark.position = mark_pos + Vector3.UP * 1.0
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.5, 0.1, 0.8, 0.4)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = Color(0.5, 0.1, 0.8)
+	mat.emission_energy_multiplier = 2.0
+	mark.set_surface_override_material(0, mat)
+	get_tree().root.add_child(mark)
+
+	var tween = create_tween()
+	tween.tween_property(mark, "scale", Vector3(1.5, 1.5, 1.5), 1.2)
+	tween.tween_callback(func():
+		# Detonate
+		var strike_dmg = int(180 * _get_spell_power())
+		var enemies = GameManager.get_enemies_in_range(mark_pos, 3.0)
+		for e in enemies:
+			if e.has_method("take_damage"):
+				e.take_damage(strike_dmg)
+				RunStats.record_damage_dealt(strike_dmg)
+		AudienceManager.on_aoe_hit(enemies.size())
+		GameManager.request_screen_shake(8.0, 0.3)
+		ScreenEffects.screen_flash(Color(0.4, 0.1, 0.6, 0.3), 0.15)
+		VFXManager.spawn_spell_impact(mark_pos, Color(0.5, 0.1, 0.8), 3.0)
+		mark.queue_free()
+	)
+	tween.tween_property(model, "scale", original_scale, 0.2)
+	tween.tween_callback(_end_cast)
+
+# ---- BUFF INTEGRATION INTO DAMAGE ----
+
+func _get_buff_damage_multiplier() -> float:
+	var mult := 1.0
+	if _buff_war_cry:
+		mult *= 1.3
+	if _buff_blood_frenzy:
+		mult *= 1.4
+	return mult

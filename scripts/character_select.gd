@@ -18,6 +18,10 @@ var start_button: Button = null
 var left_button: Button = null
 var right_button: Button = null
 var title_label: Label = null
+var spell_set_button: Button = null
+var spell_set_label: Label = null
+var spell_names_label: Label = null
+var current_spell_set: int = 0
 
 # Camera
 var cam: Camera3D = null
@@ -260,6 +264,38 @@ func _build_ui() -> void:
 		stat_grid.add_child(stat_container)
 		stat_labels[stat_name] = stat_value
 
+	# --- Spell Set Toggle ---
+	var spell_sep = HSeparator.new()
+	spell_sep.add_theme_color_override("separator", Color(0.3, 0.3, 0.4, 0.5))
+	vbox.add_child(spell_sep)
+
+	var spell_set_row = HBoxContainer.new()
+	spell_set_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	spell_set_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(spell_set_row)
+
+	var spell_header = Label.new()
+	spell_header.text = "Spell Set:"
+	spell_header.add_theme_font_size_override("font_size", 14)
+	spell_header.add_theme_color_override("font_color", Color(0.6, 0.55, 0.7))
+	spell_set_row.add_child(spell_header)
+
+	spell_set_button = Button.new()
+	spell_set_button.add_theme_font_size_override("font_size", 16)
+	spell_set_button.custom_minimum_size = Vector2(180, 30)
+	spell_set_button.flat = true
+	spell_set_button.add_theme_color_override("font_color", Color(0.9, 0.75, 0.4))
+	spell_set_button.add_theme_color_override("font_hover_color", Color(1.0, 0.9, 0.5))
+	spell_set_button.pressed.connect(_on_spell_set_toggle)
+	spell_set_row.add_child(spell_set_button)
+
+	spell_names_label = Label.new()
+	spell_names_label.add_theme_font_size_override("font_size", 12)
+	spell_names_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.65))
+	spell_names_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	spell_names_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(spell_names_label)
+
 	# --- Start button ---
 	start_button = Button.new()
 	start_button.text = "ENTER THE ARENA"
@@ -337,6 +373,10 @@ func _load_character(index: int) -> void:
 			else:
 				dot.text = "o"
 				dot.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
+
+	# Reset spell set to default when switching characters
+	current_spell_set = 0
+	_update_spell_set_display(data)
 
 	# Load 3D model
 	_swap_character_model(data)
@@ -416,7 +456,7 @@ func _on_start() -> void:
 
 	# Save selection
 	var data = CharacterData.characters[current_index]
-	CharacterData.select(data["id"])
+	CharacterData.select(data["id"], current_spell_set)
 
 	# Route to tutorial floor (Floor 0) on first play, otherwise Floor 1
 	if TutorialManager.should_show_tutorial():
@@ -442,6 +482,29 @@ func _on_start() -> void:
 		get_tree().change_scene_to_file("res://scenes/dungeon_floor1.tscn")
 	)
 
+func _on_spell_set_toggle() -> void:
+	var data = CharacterData.characters[current_index]
+	var sets = data.get("spell_sets", [])
+	if sets.size() <= 1:
+		return
+	current_spell_set = (current_spell_set + 1) % sets.size()
+	_update_spell_set_display(data)
+
+func _update_spell_set_display(data: Dictionary) -> void:
+	var sets = data.get("spell_sets", [])
+	if sets.size() == 0:
+		if spell_set_button:
+			spell_set_button.text = "Default"
+		if spell_names_label:
+			spell_names_label.text = ""
+		return
+	var active_set = sets[current_spell_set]
+	if spell_set_button:
+		spell_set_button.text = "%s  [%d/%d]" % [active_set.get("label", "Set %d" % (current_spell_set + 1)), current_spell_set + 1, sets.size()]
+	if spell_names_label:
+		var names: PackedStringArray = active_set.get("names", [])
+		spell_names_label.text = "Q: %s  |  W: %s  |  E: %s  |  R: %s" % [names[0] if names.size() > 0 else "?", names[1] if names.size() > 1 else "?", names[2] if names.size() > 2 else "?", names[3] if names.size() > 3 else "?"]
+
 func _unhandled_input(event: InputEvent) -> void:
 	if is_transitioning:
 		return
@@ -453,3 +516,5 @@ func _unhandled_input(event: InputEvent) -> void:
 				_on_next()
 			KEY_ENTER, KEY_SPACE:
 				_on_start()
+			KEY_TAB:
+				_on_spell_set_toggle()

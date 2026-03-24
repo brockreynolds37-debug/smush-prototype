@@ -82,8 +82,8 @@ func _create_legend() -> void:
 	vbox.add_theme_constant_override("separation", 1)
 
 	var entries := [
-		[COLOR_HERO, "Hero"],
-		[COLOR_ENEMY, "Enemy"],
+		[AccessibilitySettings.get_hero_color(), "Hero"],
+		[AccessibilitySettings.get_enemy_color(), "Enemy"],
 		[COLOR_EXIT, "Exit"],
 		[COLOR_CHEST, "Chest"],
 		[COLOR_TRAP, "Trap"],
@@ -375,16 +375,16 @@ func _draw() -> void:
 			if dist > ENEMY_VISIBLE_RADIUS:
 				continue
 			var enemy_center := _cell_to_screen(enemy_cell) + Vector2(cell_px / 2.0, cell_px / 2.0)
-			# Elite enemies get a different color
-			var ecol := COLOR_ENEMY
+			# Elite enemies get a different color (colorblind-aware)
+			var ecol := AccessibilitySettings.get_enemy_color()
 			if enemy.has_meta("elite_prefix"):
-				ecol = COLOR_ELITE
+				ecol = AccessibilitySettings.get_elite_color()
 			draw_circle(enemy_center, cell_px * 0.6, ecol)
 
-		# Draw hero (on top)
+		# Draw hero (on top, colorblind-aware)
 		var hero_screen := _cell_to_screen(hero_cell)
 		var hero_center := hero_screen + Vector2(cell_px / 2.0, cell_px / 2.0)
-		draw_circle(hero_center, cell_px * 0.8, COLOR_HERO)
+		draw_circle(hero_center, cell_px * 0.8, AccessibilitySettings.get_hero_color())
 
 	# Draw hovered room outline
 	if not _hovered_room_name.is_empty():

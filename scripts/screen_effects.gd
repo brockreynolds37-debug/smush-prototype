@@ -79,6 +79,10 @@ func _on_hitstop(duration: float) -> void:
 	_hitstop_active = false
 
 func screen_flash(color: Color, duration: float = 0.15) -> void:
+	var flash_scale: float = AccessibilitySettings.screen_flash_scale if AccessibilitySettings else 1.0
+	if flash_scale <= 0.01:
+		return
+	color.a *= flash_scale
 	_flash_rect.color = color
 	var tween = create_tween()
 	tween.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
