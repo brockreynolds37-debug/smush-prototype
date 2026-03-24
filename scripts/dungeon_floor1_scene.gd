@@ -52,6 +52,9 @@ func _ready() -> void:
 	# Start dungeon ambience
 	AudioManager.start_ambience()
 
+	# Start run timer
+	GameManager.start_run()
+
 func _setup_transition_overlay() -> void:
 	var canvas = CanvasLayer.new()
 	canvas.layer = 100  # Above everything
@@ -187,6 +190,9 @@ func _connect_boss_hud(boss: Node3D) -> void:
 	var hud = get_tree().current_scene.get_node_or_null("HUD")
 	if hud and hud.has_method("show_boss_bar"):
 		hud.show_boss_bar(boss)
+	# Wire boss defeat to victory check
+	if boss.has_signal("boss_defeated"):
+		boss.boss_defeated.connect(GameManager.on_boss_defeated)
 
 func _add_room_lights() -> void:
 	var builder = $DungeonBuilder

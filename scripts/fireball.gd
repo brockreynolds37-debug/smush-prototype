@@ -50,11 +50,16 @@ func _explode() -> void:
 		var light_tween = create_tween()
 		light_tween.tween_property(fire_light, "light_energy", 0.0, 0.3)
 
-	# Damage enemies in AoE
+	# Damage enemies in AoE — scale with hero's spell power
+	var hero = GameManager.hero
+	var spell_power: float = 1.0
+	if hero and hero.has_method("_get_spell_power"):
+		spell_power = hero._get_spell_power()
+	var final_damage = int(damage * spell_power)
 	var enemies = GameManager.get_enemies_in_range(global_position, aoe_radius)
 	for e in enemies:
 		if e.has_method("take_damage"):
-			e.take_damage(damage)
+			e.take_damage(final_damage)
 
 	# Explosion sound
 	AudioManager.on_fireball_explode()

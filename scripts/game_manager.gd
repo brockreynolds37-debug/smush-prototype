@@ -17,6 +17,13 @@ var enemies: Array[Node3D] = []
 var camera: Node3D = null
 var total_enemies_spawned: int = 0
 
+# Run statistics
+var run_start_time: float = 0.0
+var run_kills: int = 0
+var run_damage_dealt: int = 0
+var run_gold_earned: int = 0
+const MAX_FLOOR: int = 3
+
 # Spell targeting state
 var is_targeting_spell: bool = false
 var targeting_spell_id: int = -1  # 0=Q, 1=W, 2=E, 3=R
@@ -26,6 +33,18 @@ func request_screen_shake(intensity: float, duration: float) -> void:
 
 func request_damage_number(pos: Vector3, amount: int, is_crit: bool = false) -> void:
 	damage_number_requested.emit(pos, amount, is_crit)
+
+func start_run() -> void:
+	run_start_time = Time.get_ticks_msec() / 1000.0
+
+func get_run_elapsed() -> float:
+	return Time.get_ticks_msec() / 1000.0 - run_start_time
+
+func get_run_time_string() -> String:
+	var elapsed = get_run_elapsed()
+	var minutes = int(elapsed) / 60
+	var seconds = int(elapsed) % 60
+	return "%d:%02d" % [minutes, seconds]
 
 func register_hero(h: Node3D) -> void:
 	hero = h
@@ -38,6 +57,7 @@ func register_enemy(e: Node3D) -> void:
 
 func unregister_enemy(e: Node3D) -> void:
 	enemies.erase(e)
+	run_kills += 1
 	enemy_died.emit(e)
 	_check_win_condition()
 
@@ -49,20 +69,32 @@ func _on_hero_died() -> void:
 
 signal all_enemies_cleared  # Emitted when floor is cleared (enemies dead)
 
+func on_boss_defeated(_boss_type: String) -> void:
+	# If the final floor boss is killed, trigger victory
+	if FloorManager.current_floor >= MAX_FLOOR:
+		if game_state == GameState.PLAYING:
+			game_state = GameState.WON
+			game_over.emit(true)
+			return
+
 func _check_win_condition() -> void:
 	if game_state != GameState.PLAYING:
 		return
 	# When all enemies on this floor are dead
 	if total_enemies_spawned > 0 and enemies.size() == 0:
 		all_enemies_cleared.emit()
-		# Don't trigger game_over — let the player use the exit stairs
-		# Final win is only when the last floor boss is defeated (handled externally)
 
 func reset_game_state() -> void:
 	game_state = GameState.PLAYING
 	total_enemies_spawned = 0
 	enemies.clear()
 	hero = null
+	run_kills = 0
+	run_damage_dealt = 0
+	run_gold_earned = 0
+	run_start_time = 0.0
+	XpManager.reset()
+	FloorManager.reset()
 
 func register_camera(c: Node3D) -> void:
 	camera = c

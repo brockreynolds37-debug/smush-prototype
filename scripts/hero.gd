@@ -282,9 +282,18 @@ func _perform_melee_attack() -> void:
 	tween.tween_property(model, "scale", original_scale, 0.1)
 	tween.tween_callback(func(): is_attacking = false)
 
+func _get_melee_damage() -> int:
+	var base := 35
+	var str_bonus = XpManager.bonus_str * 3  # +3 damage per bonus STR
+	return base + str_bonus
+
+func _get_spell_power() -> float:
+	# Returns a multiplier: 1.0 at base, scales with bonus INT
+	return 1.0 + XpManager.bonus_int * 0.08  # +8% per bonus INT
+
 func _apply_melee_damage() -> void:
 	if attack_target and is_instance_valid(attack_target) and attack_target.has_method("take_damage"):
-		attack_target.take_damage(35)
+		attack_target.take_damage(_get_melee_damage())
 		GameManager.request_screen_shake(3.0, 0.15)
 
 func set_attack_target(target: Node3D) -> void:
@@ -377,7 +386,7 @@ func _cast_heal() -> void:
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * 1.2, 0.3)
 	tween.tween_callback(func():
-		var heal_amount = 150
+		var heal_amount = int(150 * _get_spell_power())
 		current_health = mini(current_health + heal_amount, max_health)
 		health_changed.emit(current_health, max_health)
 		GameManager.request_damage_number(global_position + Vector3.UP * 2.5, heal_amount, false)
@@ -418,10 +427,11 @@ func _cast_ground_slam() -> void:
 	tween.tween_property(model, "scale", original_scale * Vector3(1.5, 0.6, 1.5), 0.1)
 	tween.tween_callback(func():
 		GameManager.request_screen_shake(8.0, 0.4)
+		var slam_damage = int(80 * _get_spell_power())
 		var enemies = GameManager.get_enemies_in_range(global_position, 6.0)
 		for e in enemies:
 			if e.has_method("take_damage"):
-				e.take_damage(80)
+				e.take_damage(slam_damage)
 		_spawn_slam_particles()
 	)
 	tween.tween_property(model, "scale", original_scale, 0.3)

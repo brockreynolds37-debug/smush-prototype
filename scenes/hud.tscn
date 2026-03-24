@@ -190,6 +190,33 @@ text = "Gold: 0"
 horizontal_alignment = 0
 vertical_alignment = 0
 
+[node name="LevelLabel" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 0
+offset_left = 10.0
+offset_top = 38.0
+offset_right = 200.0
+offset_bottom = 60.0
+text = "Lv. 1"
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="XpBarBg" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchors_preset = 0
+offset_left = 10.0
+offset_top = 62.0
+offset_right = 210.0
+offset_bottom = 72.0
+color = Color(0.12, 0.12, 0.12, 0.8)
+
+[node name="XpBarFill" type="ColorRect" parent="XpBarBg"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 0.0
+offset_bottom = 10.0
+color = Color(0.3, 0.7, 1.0, 0.9)
+
 [node name="LootFeed" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
 anchors_preset = 1
@@ -288,34 +315,67 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.15, 0.0, 0.0, 0.7)
+color = Color(0.12, 0.0, 0.0, 0.85)
 
 [node name="GameOverLabel" type="Label" parent="GameOverOverlay"]
 layout_mode = 1
-anchors_preset = 8
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 0.5
 offset_left = -300.0
-offset_top = -60.0
+offset_top = 80.0
 offset_right = 300.0
-offset_bottom = 10.0
+offset_bottom = 150.0
 text = "DEFEATED"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="RestartLabel" type="Label" parent="GameOverOverlay"]
+[node name="StatsLabel" type="Label" parent="GameOverOverlay"]
 layout_mode = 1
-anchors_preset = 8
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 0.5
 offset_left = -200.0
-offset_top = 20.0
+offset_top = 170.0
 offset_right = 200.0
-offset_bottom = 50.0
-text = "Press R to restart"
+offset_bottom = 340.0
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 0
+
+[node name="RetryButton" type="Button" parent="GameOverOverlay"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_top = 360.0
+offset_right = 120.0
+offset_bottom = 405.0
+text = "TRY AGAIN"
+
+[node name="QuitButton" type="Button" parent="GameOverOverlay"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_top = 415.0
+offset_right = 120.0
+offset_bottom = 455.0
+text = "QUIT TO MENU"
+
+[node name="HintLabel" type="Label" parent="GameOverOverlay"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -40.0
+offset_right = 200.0
+offset_bottom = -10.0
+text = "R / Enter = Retry  |  ESC = Menu"
 horizontal_alignment = 1
 vertical_alignment = 1

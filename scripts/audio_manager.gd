@@ -90,6 +90,7 @@ func _generate_sounds() -> void:
 	sounds["floor_transition"] = _gen_transition(sample_rate, 0.8, 400.0)
 	sounds["level_up"] = _gen_fanfare(sample_rate, 0.6, 523.0, 0.5)
 	sounds["boss_roar"] = _gen_roar(sample_rate, 0.7, 55.0, 0.7)
+	sounds["victory_fanfare"] = _gen_victory_fanfare(sample_rate, 1.5, 440.0, 0.6)
 
 	# Ambient drone (looping)
 	sounds["dungeon_ambience"] = _gen_ambient_drone(sample_rate, 4.0, 0.15)
@@ -188,8 +189,9 @@ func _on_enemy_died(_enemy: Node3D) -> void:
 	play_sfx("enemy_death", 0.6, 0.15)
 
 func _on_game_over(won: bool) -> void:
+	stop_ambience()
 	if won:
-		play_sfx("level_up", 1.0, 0.0)
+		play_sfx("victory_fanfare", 1.0, 0.0)
 	else:
 		play_sfx("boss_roar", 0.5, 0.0)
 
@@ -439,6 +441,28 @@ func _gen_ambient_drone(sr: int, dur: float, vol: float) -> AudioStreamWAV:
 			drip = sin(drip_t * 3000.0 * TAU) * exp(-drip_t * 200.0) * 0.4
 		data[i] = (drone + wind + drip) * vol
 	return _make_looping_wav(sr, data)
+
+# Victory fanfare — triumphant ascending chord progression
+func _gen_victory_fanfare(sr: int, dur: float, freq: float, vol: float) -> AudioStreamWAV:
+	var samples = int(sr * dur)
+	var data = PackedFloat32Array()
+	data.resize(samples)
+	# 5 ascending notes: root, major 3rd, 5th, octave, high octave
+	var note_freqs = [freq, freq * 1.25, freq * 1.5, freq * 2.0, freq * 2.5]
+	var note_dur = dur / 5.0
+	for i in range(samples):
+		var t = float(i) / sr
+		var note_idx = mini(int(t / note_dur), 4)
+		var note_t = t - note_idx * note_dur
+		var env = _envelope(note_t, 0.01, 0.05, 0.7, note_dur * 0.3, note_dur)
+		# Layer with octave + fifth harmonics for richness
+		var f = note_freqs[note_idx]
+		var sample = sin(t * f * TAU) * 0.4 + sin(t * f * 2.0 * TAU) * 0.25 + sin(t * f * 1.5 * TAU) * 0.15
+		# Add shimmer at higher notes
+		if note_idx >= 3:
+			sample += sin(t * f * 3.0 * TAU) * 0.1
+		data[i] = sample * env * vol
+	return _make_wav(sr, data)
 
 # ---- UTILITIES ----
 

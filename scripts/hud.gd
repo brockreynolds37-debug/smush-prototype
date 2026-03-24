@@ -24,7 +24,9 @@ extends CanvasLayer
 @onready var smusher_edge: ColorRect = %SmusherScreenEdge
 @onready var game_over_overlay: ColorRect = $GameOverOverlay
 @onready var game_over_label: Label = $GameOverOverlay/GameOverLabel
-@onready var restart_label: Label = $GameOverOverlay/RestartLabel
+@onready var level_label: Label = %LevelLabel
+@onready var xp_bar_bg: ColorRect = %XpBarBg
+@onready var xp_bar_fill: ColorRect = %XpBarFill
 
 var _active_boss: Node3D = null
 var _edge_pulse_tween: Tween = null
@@ -48,6 +50,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_connect_hero()
 	GameManager.game_over.connect(_on_game_over)
+	# Wire game over buttons
+	var retry_btn = game_over_overlay.get_node_or_null("RetryButton") if game_over_overlay else null
+	var quit_btn = game_over_overlay.get_node_or_null("QuitButton") if game_over_overlay else null
+	if retry_btn:
+		retry_btn.pressed.connect(_on_retry_pressed)
+	if quit_btn:
+		quit_btn.pressed.connect(_on_quit_menu_pressed)
 	LootManager.item_picked_up.connect(_on_item_picked_up)
 	LootManager.gold_changed.connect(_on_gold_changed)
 	# Smusher Timer
@@ -56,6 +65,10 @@ func _ready() -> void:
 	SmusherTimer.critical_phase_entered.connect(_on_smusher_critical)
 	SmusherTimer.overtime_started.connect(_on_smusher_overtime)
 	SmusherTimer.room_collapsed.connect(_on_room_collapsed)
+	# XP system
+	XpManager.xp_gained.connect(_on_xp_gained)
+	XpManager.level_up.connect(_on_level_up)
+	_update_xp_display()
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -112,18 +125,32 @@ func _update_floor_label(floor_num: int) -> void:
 		tween.tween_property(floor_label, "modulate", Color(1, 1, 1, 1), 0.5)
 
 func _on_game_over(won: bool) -> void:
-	if game_over_overlay:
-		game_over_overlay.visible = true
-		if won:
-			game_over_label.text = "VICTORY!"
-			game_over_overlay.color = Color(0.0, 0.1, 0.0, 0.7)
-		else:
-			game_over_label.text = "DEFEATED"
-			game_over_overlay.color = Color(0.15, 0.0, 0.0, 0.7)
-		# Fade in the overlay
-		game_over_overlay.modulate = Color(1, 1, 1, 0)
-		var tween = create_tween()
-		tween.tween_property(game_over_overlay, "modulate", Color(1, 1, 1, 1), 1.0)
+	if game_over_overlay == null:
+		return
+	game_over_overlay.visible = true
+	if won:
+		game_over_label.text = "VICTORY!"
+		game_over_overlay.color = Color(0.0, 0.08, 0.0, 0.85)
+	else:
+		game_over_label.text = "DEFEATED"
+		game_over_overlay.color = Color(0.12, 0.0, 0.0, 0.85)
+
+	# Build stats text
+	var char_name = CharacterData.get_selected().get("name", "Hero")
+	var stats_text = ""
+	stats_text += "%s  —  Level %d\n" % [char_name, XpManager.current_level]
+	stats_text += "Floor Reached: %d\n" % FloorManager.max_floor_reached
+	stats_text += "Time: %s\n" % GameManager.get_run_time_string()
+	stats_text += "Enemies Slain: %d\n" % GameManager.run_kills
+	stats_text += "Gold Earned: %d" % LootManager.gold
+	var stats_label = game_over_overlay.get_node_or_null("StatsLabel")
+	if stats_label:
+		stats_label.text = stats_text
+
+	# Fade in the overlay
+	game_over_overlay.modulate = Color(1, 1, 1, 0)
+	var tween = create_tween()
+	tween.tween_property(game_over_overlay, "modulate", Color(1, 1, 1, 1), 1.0)
 
 func _on_gold_changed(amount: int) -> void:
 	if gold_label:
@@ -232,6 +259,9 @@ func _start_timer_flash() -> void:
 	_timer_flash_tween.tween_property(smusher_label, "modulate:a", 1.0, 0.4)
 
 func _show_center_message(text: String) -> void:
+	_show_center_message_colored(text, Color(1.0, 0.2, 0.2))
+
+func _show_center_message_colored(text: String, color: Color) -> void:
 	var msg := Label.new()
 	msg.text = text
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -241,15 +271,49 @@ func _show_center_message(text: String) -> void:
 	msg.offset_right = 300.0
 	msg.offset_top = 60.0
 	msg.offset_bottom = 100.0
-	msg.add_theme_color_override("font_color", Color(1.0, 0.2, 0.2))
+	msg.add_theme_color_override("font_color", color)
 	add_child(msg)
 	var tween := create_tween()
 	tween.tween_interval(1.5)
 	tween.tween_property(msg, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(msg.queue_free)
 
+# ---------- XP SYSTEM ----------
+
+func _on_xp_gained(_amount: int, _total: int, _needed: int) -> void:
+	_update_xp_display()
+
+func _on_level_up(new_level: int) -> void:
+	_update_xp_display()
+	# Flash level-up message in gold
+	_show_center_message_colored("LEVEL %d!" % new_level, Color(1.0, 0.85, 0.2))
+	# Brief golden flash on the XP bar
+	if xp_bar_fill:
+		var original_color = xp_bar_fill.color
+		xp_bar_fill.color = Color(1.0, 0.85, 0.2, 1.0)
+		var tween = create_tween()
+		tween.tween_property(xp_bar_fill, "color", original_color, 0.6)
+
+func _update_xp_display() -> void:
+	if level_label:
+		level_label.text = "Lv. %d" % XpManager.current_level
+	if xp_bar_fill and xp_bar_bg:
+		var progress = XpManager.get_xp_progress()
+		var max_width = xp_bar_bg.size.x
+		xp_bar_fill.size.x = max_width * progress
+
+func _on_retry_pressed() -> void:
+	GameManager.reset_game_state()
+	get_tree().change_scene_to_file("res://scenes/character_select.tscn")
+
+func _on_quit_menu_pressed() -> void:
+	GameManager.reset_game_state()
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+	if event is InputEventKey and event.pressed:
 		if GameManager.game_state != GameManager.GameState.PLAYING:
-			get_tree().reload_current_scene()
-			GameManager.reset_game_state()
+			if event.keycode == KEY_R or event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
+				_on_retry_pressed()
+			elif event.keycode == KEY_ESCAPE:
+				_on_quit_menu_pressed()
