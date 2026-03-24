@@ -227,12 +227,23 @@ func update(delta: float) -> void:
 							break
 
 				if not distracted:
-					any_spotted = true
-					_spotted_timer += delta
-					if _spotted_timer > 0.6:
-						_trigger_alarm(patrol)
-						_spotted_timer = 0.0
-					_set_cone_color(patrol, Color(1.0, 1.0, 0.0, 0.12))
+					# If hero is disguised, run a disguise check instead of instant alarm
+					if DisguiseSystem.is_disguised:
+						if not patrol.get_meta("disguise_checked_this_sight", false):
+							patrol.set_meta("disguise_checked_this_sight", true)
+							var passed := DisguiseSystem.check_disguise(patrol)
+							if not passed:
+								any_spotted = true
+								_trigger_alarm(patrol)
+						_set_cone_color(patrol, Color(1.0, 0.85, 0.0, 0.10))
+					else:
+						patrol.set_meta("disguise_checked_this_sight", false)
+						any_spotted = true
+						_spotted_timer += delta
+						if _spotted_timer > 0.6:
+							_trigger_alarm(patrol)
+							_spotted_timer = 0.0
+						_set_cone_color(patrol, Color(1.0, 1.0, 0.0, 0.12))
 			else:
 				_set_cone_color(patrol, Color(1.0, 0.3, 0.0, 0.08))
 

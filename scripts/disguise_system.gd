@@ -96,9 +96,20 @@ func check_disguise(guard: Node3D) -> bool:
 		if checks_passed >= 2:
 			AudienceManager.grant_vp(10, "Disguise holds!")
 	else:
-		# Busted!
 		disguise_checked.emit(false, guard)
-		break_disguise("Guard saw through the disguise!")
+		# Progressive detection: first failure = warning, second = alarm
+		if checks_passed == 0:
+			# First failure: guard is suspicious but not sure yet
+			var archetype = FloorManager.current_archetype
+			if archetype and archetype.has_method("show_message"):
+				archetype.show_message(
+					'"Wait... something\'s off..."',
+					Color(1.0, 0.9, 0.2), 2.5
+				)
+			checks_passed = -1  # Flag: one warning already issued
+		else:
+			# Already warned — now fully spotted
+			break_disguise("Guard saw through the disguise!")
 
 	return success
 

@@ -375,6 +375,9 @@ func _perform_melee_attack() -> void:
 	_swap_model(AnimState.ATTACK, true)
 	AudioManager.on_hero_attack()
 
+	# Break disguise if active
+	DisguiseSystem.on_hero_attacked()
+
 	# Squash/stretch juice on top of the animation
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * Vector3(1.3, 0.8, 1.3), 0.15)
