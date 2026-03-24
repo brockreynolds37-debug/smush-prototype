@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Smush Prototype"
-run/main_scene="res://scenes/character_select.tscn"
+run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.6")
 config/icon="res://icon.svg"
 
@@ -27,6 +27,7 @@ FloorManager="*res://scripts/floor_manager.gd"
 LootManager="*res://scripts/loot_manager.gd"
 AudioManager="*res://scripts/audio_manager.gd"
 SmusherTimer="*res://scripts/smusher_timer.gd"
+XpManager="*res://scripts/xp_manager.gd"
 
 [display]
 
