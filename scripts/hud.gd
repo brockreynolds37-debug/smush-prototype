@@ -27,6 +27,9 @@ extends CanvasLayer
 @onready var level_label: Label = %LevelLabel
 @onready var xp_bar_bg: ColorRect = %XpBarBg
 @onready var xp_bar_fill: ColorRect = %XpBarFill
+@onready var vp_label: Label = %VpLabel
+@onready var mood_label: Label = %MoodLabel
+@onready var audience_chat: VBoxContainer = %AudienceChat
 
 var _active_boss: Node3D = null
 var _edge_pulse_tween: Tween = null
@@ -69,6 +72,11 @@ func _ready() -> void:
 	XpManager.xp_gained.connect(_on_xp_gained)
 	XpManager.level_up.connect(_on_level_up)
 	_update_xp_display()
+	# Audience system
+	AudienceManager.vp_gained.connect(_on_vp_gained)
+	AudienceManager.mood_changed.connect(_on_mood_changed)
+	AudienceManager.audience_comment.connect(_on_audience_comment)
+	_update_vp_display()
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -101,6 +109,10 @@ func _on_floor_changed(floor_num: int) -> void:
 	_update_floor_label(floor_num)
 	hide_boss_bar()
 	_reset_smusher_visuals()
+	_update_vp_display()
+	if mood_label:
+		mood_label.text = "Audience: WATCHING"
+		mood_label.add_theme_color_override("font_color", AudienceManager.MOOD_COLORS[AudienceManager.Mood.WATCHING])
 
 func _reset_smusher_visuals() -> void:
 	# Reset timer label to white/normal state for new floor
@@ -142,7 +154,9 @@ func _on_game_over(won: bool) -> void:
 	stats_text += "Floor Reached: %d\n" % FloorManager.max_floor_reached
 	stats_text += "Time: %s\n" % GameManager.get_run_time_string()
 	stats_text += "Enemies Slain: %d\n" % GameManager.run_kills
-	stats_text += "Gold Earned: %d" % LootManager.gold
+	stats_text += "Gold Earned: %d\n" % LootManager.gold
+	stats_text += "Viewership Points: %d\n" % AudienceManager.total_vp
+	stats_text += "Audience Mood: %s" % AudienceManager.get_mood_name()
 	var stats_label = game_over_overlay.get_node_or_null("StatsLabel")
 	if stats_label:
 		stats_label.text = stats_text
@@ -301,6 +315,48 @@ func _update_xp_display() -> void:
 		var progress = XpManager.get_xp_progress()
 		var max_width = xp_bar_bg.size.x
 		xp_bar_fill.size.x = max_width * progress
+
+# ---------- AUDIENCE SYSTEM ----------
+
+func _on_vp_gained(_amount: int, _reason: String) -> void:
+	_update_vp_display()
+
+func _on_mood_changed(new_mood: int) -> void:
+	if mood_label:
+		mood_label.text = "Audience: %s" % AudienceManager.MOOD_NAMES[new_mood]
+		mood_label.add_theme_color_override("font_color", AudienceManager.MOOD_COLORS[new_mood])
+		# Pulse on mood change
+		var tween = create_tween()
+		tween.tween_property(mood_label, "scale", Vector2(1.15, 1.15), 0.1)
+		tween.tween_property(mood_label, "scale", Vector2(1.0, 1.0), 0.15)
+
+func _on_audience_comment(text: String, color: Color) -> void:
+	if audience_chat == null:
+		return
+	var label := Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.modulate = Color(1, 1, 1, 0)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	audience_chat.add_child(label)
+	# Fade in, hold, fade out
+	var tween := create_tween()
+	tween.tween_property(label, "modulate:a", 0.9, 0.15)
+	tween.tween_interval(2.0)
+	tween.tween_property(label, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(label.queue_free)
+	# Cap to 4 visible comments
+	while audience_chat.get_child_count() > 4:
+		var oldest := audience_chat.get_child(0)
+		audience_chat.remove_child(oldest)
+		oldest.queue_free()
+
+func _update_vp_display() -> void:
+	if vp_label:
+		vp_label.text = "VP: %d" % AudienceManager.total_vp
+		# Brief flash on VP gain
+		vp_label.add_theme_color_override("font_color", AudienceManager.get_mood_color())
 
 func _on_retry_pressed() -> void:
 	GameManager.reset_game_state()

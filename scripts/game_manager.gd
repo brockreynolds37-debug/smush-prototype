@@ -94,6 +94,7 @@ func reset_game_state() -> void:
 	run_gold_earned = 0
 	run_start_time = 0.0
 	XpManager.reset()
+	AudienceManager.reset()
 	FloorManager.reset()
 
 func register_camera(c: Node3D) -> void:

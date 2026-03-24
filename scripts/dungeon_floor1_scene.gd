@@ -143,6 +143,7 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 	# Enemy scenes
 	var orc_scene = preload("res://scenes/enemy.tscn")
 	var skeleton_scene = preload("res://scenes/enemy_skeleton.tscn")
+	var archer_scene = preload("res://scenes/enemy_goblin_archer.tscn")
 
 	# Boss scenes per floor
 	var boss_scenes := {
@@ -164,9 +165,11 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 		if pos == Vector3.ZERO:
 			continue
 
-		# Alternate enemy types
+		# Mix of melee and ranged enemies — every 3rd enemy is a ranged archer
 		var enemy: Node3D
-		if i % 2 == 0:
+		if i % 3 == 2:
+			enemy = archer_scene.instantiate()
+		elif i % 2 == 0:
 			enemy = orc_scene.instantiate()
 		else:
 			enemy = skeleton_scene.instantiate()

@@ -325,6 +325,7 @@ func _cast_strike() -> void:
 		set_attack_target(target)
 		spell_cooldowns[0] = spell_max_cooldowns[0]
 		spell_cast.emit(0)
+		AudienceManager.on_spell_cast(0)
 	else:
 		target = GameManager.get_nearest_enemy(global_position, 15.0)
 		if target:
@@ -347,6 +348,7 @@ func cast_fireball_at(target_pos: Vector3) -> void:
 	mana_changed.emit(current_mana, max_mana)
 	spell_cooldowns[1] = spell_max_cooldowns[1]
 	spell_cast.emit(1)
+	AudienceManager.on_spell_cast(1)
 
 	anim_state = AnimState.CAST
 	AudioManager.on_hero_cast_fireball()
@@ -378,6 +380,7 @@ func _cast_heal() -> void:
 	mana_changed.emit(current_mana, max_mana)
 	spell_cooldowns[2] = spell_max_cooldowns[2]
 	spell_cast.emit(2)
+	AudienceManager.on_spell_cast(2)
 
 	anim_state = AnimState.CAST
 	_set_model_color(Color(0.2, 1.0, 0.3))
@@ -417,6 +420,7 @@ func _cast_ground_slam() -> void:
 	mana_changed.emit(current_mana, max_mana)
 	spell_cooldowns[3] = spell_max_cooldowns[3]
 	spell_cast.emit(3)
+	AudienceManager.on_spell_cast(3)
 
 	anim_state = AnimState.CAST
 	AudioManager.on_hero_cast_ground_slam()
@@ -432,6 +436,7 @@ func _cast_ground_slam() -> void:
 		for e in enemies:
 			if e.has_method("take_damage"):
 				e.take_damage(slam_damage)
+		AudienceManager.on_aoe_hit(enemies.size())
 		_spawn_slam_particles()
 	)
 	tween.tween_property(model, "scale", original_scale, 0.3)

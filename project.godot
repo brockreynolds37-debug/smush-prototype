@@ -28,6 +28,7 @@ LootManager="*res://scripts/loot_manager.gd"
 AudioManager="*res://scripts/audio_manager.gd"
 SmusherTimer="*res://scripts/smusher_timer.gd"
 XpManager="*res://scripts/xp_manager.gd"
+AudienceManager="*res://scripts/audience_manager.gd"
 
 [display]
 
