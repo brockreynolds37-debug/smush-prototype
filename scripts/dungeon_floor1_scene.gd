@@ -69,6 +69,13 @@ func _ready() -> void:
 	skill_tree_ui.name = "SkillTreeUI"
 	add_child(skill_tree_ui)
 
+	# Gamepad handler for controller support
+	var gamepad_script = preload("res://scripts/gamepad_handler.gd")
+	var gamepad = Node.new()
+	gamepad.set_script(gamepad_script)
+	gamepad.name = "GamepadHandler"
+	add_child(gamepad)
+
 	# Clear scene-baked enemies and spawn fresh for correct floor
 	_clear_enemies()
 	_spawn_floor_enemies(FloorManager.current_floor)
