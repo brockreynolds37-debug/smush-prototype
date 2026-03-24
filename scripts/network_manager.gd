@@ -326,6 +326,9 @@ func _on_peer_connected(id: int) -> void:
 		# Send existing player data to the new peer
 		for pid in players:
 			rpc_id(id, "_sync_player_info", pid, players[pid])
+		# Send room code to new peer
+		if room_code != "":
+			rpc_id(id, "_sync_room_code", room_code)
 
 	# Add placeholder entry
 	if not players.has(id):
@@ -415,6 +418,11 @@ func _sync_player_name(pid: int, player_name: String) -> void:
 	if players.has(pid):
 		players[pid]["name"] = player_name
 		player_info_updated.emit(pid, players[pid])
+
+@rpc("authority", "reliable")
+func _sync_room_code(code: String) -> void:
+	room_code = code
+	lobby_room_code_generated.emit(code)
 
 @rpc("authority", "reliable")
 func _on_game_start() -> void:

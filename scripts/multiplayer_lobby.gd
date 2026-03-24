@@ -21,14 +21,17 @@ var player_list_container: VBoxContainer = null
 var start_button: Button = null
 var ready_button: Button = null
 var join_address_edit: LineEdit = null
+var join_code_edit: LineEdit = null
 var join_error_label: Label = null
 var join_panel: VBoxContainer = null
+var name_edit: LineEdit = null
 
 # Per-player character browse (local)
 var _local_char_index: int = 0
 var _local_spell_set: int = 0
 var _local_char_label: Label = null
 var _local_ready: bool = false
+var _local_player_name: String = ""
 
 func _ready() -> void:
 	_build_3d_backdrop()
@@ -149,10 +152,40 @@ func _build_mode_panel() -> void:
 	mode_panel.set_anchors_preset(Control.PRESET_CENTER)
 	mode_panel.offset_left = -180
 	mode_panel.offset_right = 180
-	mode_panel.offset_top = -60
-	mode_panel.offset_bottom = 120
-	mode_panel.add_theme_constant_override("separation", 20)
+	mode_panel.offset_top = -100
+	mode_panel.offset_bottom = 160
+	mode_panel.add_theme_constant_override("separation", 16)
 	canvas.add_child(mode_panel)
+
+	# Player name input
+	var name_lbl = Label.new()
+	name_lbl.text = "Your Name:"
+	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.add_theme_color_override("font_color", Color(0.7, 0.65, 0.8))
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mode_panel.add_child(name_lbl)
+
+	name_edit = LineEdit.new()
+	name_edit.placeholder_text = "Enter your name"
+	name_edit.text = "Player %d" % randi_range(1, 999)
+	name_edit.add_theme_font_size_override("font_size", 22)
+	name_edit.custom_minimum_size = Vector2(320, 46)
+	name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_edit.max_length = 20
+	var name_style = StyleBoxFlat.new()
+	name_style.bg_color = Color(0.08, 0.06, 0.12, 0.9)
+	name_style.border_color = Color(0.5, 0.4, 0.6)
+	name_style.set_border_width_all(2)
+	name_style.set_corner_radius_all(6)
+	name_style.set_content_margin_all(8)
+	name_edit.add_theme_stylebox_override("normal", name_style)
+	name_edit.add_theme_color_override("font_color", Color(0.95, 0.9, 0.8))
+	name_edit.add_theme_color_override("font_placeholder_color", Color(0.4, 0.4, 0.45))
+	mode_panel.add_child(name_edit)
+
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 8)
+	mode_panel.add_child(spacer)
 
 	var host_btn = _make_button("HOST GAME")
 	host_btn.pressed.connect(_on_host)
@@ -167,34 +200,56 @@ func _build_join_panel() -> void:
 	join_panel.set_anchors_preset(Control.PRESET_CENTER)
 	join_panel.offset_left = -220
 	join_panel.offset_right = 220
-	join_panel.offset_top = -80
-	join_panel.offset_bottom = 120
-	join_panel.add_theme_constant_override("separation", 14)
+	join_panel.offset_top = -120
+	join_panel.offset_bottom = 160
+	join_panel.add_theme_constant_override("separation", 12)
 	join_panel.visible = false
 	canvas.add_child(join_panel)
 
-	var lbl = Label.new()
-	lbl.text = "Enter host IP address:"
-	lbl.add_theme_font_size_override("font_size", 20)
-	lbl.add_theme_color_override("font_color", Color(0.7, 0.65, 0.8))
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	join_panel.add_child(lbl)
+	var ip_lbl = Label.new()
+	ip_lbl.text = "Host IP Address:"
+	ip_lbl.add_theme_font_size_override("font_size", 18)
+	ip_lbl.add_theme_color_override("font_color", Color(0.7, 0.65, 0.8))
+	ip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	join_panel.add_child(ip_lbl)
 
-	join_address_edit = LineEdit.new()
-	join_address_edit.placeholder_text = "192.168.1.100"
-	join_address_edit.add_theme_font_size_override("font_size", 24)
-	join_address_edit.custom_minimum_size = Vector2(400, 50)
-	join_address_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var edit_style = StyleBoxFlat.new()
 	edit_style.bg_color = Color(0.08, 0.06, 0.12, 0.9)
 	edit_style.border_color = Color(0.5, 0.4, 0.6)
 	edit_style.set_border_width_all(2)
 	edit_style.set_corner_radius_all(6)
 	edit_style.set_content_margin_all(8)
+
+	join_address_edit = LineEdit.new()
+	join_address_edit.placeholder_text = "192.168.1.100"
+	join_address_edit.add_theme_font_size_override("font_size", 22)
+	join_address_edit.custom_minimum_size = Vector2(400, 46)
+	join_address_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	join_address_edit.add_theme_stylebox_override("normal", edit_style)
 	join_address_edit.add_theme_color_override("font_color", Color(0.95, 0.9, 0.8))
 	join_address_edit.add_theme_color_override("font_placeholder_color", Color(0.4, 0.4, 0.45))
 	join_panel.add_child(join_address_edit)
+
+	var code_lbl = Label.new()
+	code_lbl.text = "Room Code (optional — to verify):"
+	code_lbl.add_theme_font_size_override("font_size", 14)
+	code_lbl.add_theme_color_override("font_color", Color(0.55, 0.5, 0.6))
+	code_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	join_panel.add_child(code_lbl)
+
+	var code_style = edit_style.duplicate()
+	code_style.border_color = Color(0.4, 0.5, 0.3)
+
+	join_code_edit = LineEdit.new()
+	join_code_edit.placeholder_text = "ABC123"
+	join_code_edit.add_theme_font_size_override("font_size", 28)
+	join_code_edit.custom_minimum_size = Vector2(220, 46)
+	join_code_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	join_code_edit.max_length = 6
+	join_code_edit.add_theme_stylebox_override("normal", code_style)
+	join_code_edit.add_theme_color_override("font_color", Color(0.4, 0.9, 0.6))
+	join_code_edit.add_theme_color_override("font_placeholder_color", Color(0.3, 0.4, 0.35))
+	join_panel.add_child(join_code_edit)
 
 	join_error_label = Label.new()
 	join_error_label.text = ""
@@ -342,15 +397,22 @@ func _disconnect_network_signals() -> void:
 # ── ACTIONS ──
 
 func _on_host() -> void:
-	# Set player name before hosting
-	NetworkManager.set_player_name("Host")
+	_local_player_name = name_edit.text.strip_edges() if name_edit else "Host"
+	if _local_player_name.is_empty():
+		_local_player_name = "Host"
+	NetworkManager.set_player_name(_local_player_name)
 	var err := NetworkManager.host_game()
 	if err != OK:
 		return
 	_show_mode(LobbyMode.HOST)
 	start_button.visible = true
 	_update_start_button()
-	ip_label.text = "Share your IP with friends to connect"
+	# Show local IP addresses for players to connect
+	var ips := _get_local_ips()
+	if ips.is_empty():
+		ip_label.text = "Share your IP address with friends (port %d)" % NetworkManager.DEFAULT_PORT
+	else:
+		ip_label.text = "Your IP: %s  (port %d)" % [ips[0], NetworkManager.DEFAULT_PORT]
 	_refresh_player_list()
 
 func _on_show_join() -> void:
@@ -362,10 +424,14 @@ func _on_join_connect() -> void:
 	var address := join_address_edit.text.strip_edges()
 	if address.is_empty():
 		join_error_label.text = "Enter a valid IP address"
+		join_error_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 		return
-	join_error_label.text = "Connecting..."
+	_local_player_name = name_edit.text.strip_edges() if name_edit else ""
+	if _local_player_name.is_empty():
+		_local_player_name = "Player %d" % randi_range(1, 999)
+	join_error_label.text = "Connecting to %s..." % address
 	join_error_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.4))
-	NetworkManager.set_player_name("Player %d" % randi_range(1, 999))
+	NetworkManager.set_player_name(_local_player_name)
 	var err := NetworkManager.join_game(address)
 	if err != OK:
 		join_error_label.text = "Failed to connect: %s" % error_string(err)
@@ -454,9 +520,19 @@ func _on_network_state_changed(new_state: NetworkManager.ConnectionState) -> voi
 	match new_state:
 		NetworkManager.ConnectionState.LOBBY:
 			if mode == LobbyMode.JOIN:
+				# Verify room code if provided
+				if join_code_edit and not join_code_edit.text.strip_edges().is_empty():
+					var entered_code := join_code_edit.text.strip_edges().to_upper()
+					if entered_code != NetworkManager.room_code and not NetworkManager.room_code.is_empty():
+						# Room code mismatch — warn but still connect
+						if status_label:
+							status_label.text = "Connected (room code mismatch — expected %s)" % entered_code
+							status_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
 				# Successfully connected — switch to lobby view
 				_show_mode(LobbyMode.HOST)
 				start_button.visible = NetworkManager.is_host
+				if room_code_label and not NetworkManager.room_code.is_empty():
+					room_code_label.text = "Room: %s" % NetworkManager.room_code
 				_update_local_char()
 				_refresh_player_list()
 		NetworkManager.ConnectionState.IN_GAME:
@@ -603,6 +679,16 @@ func _fade_to_scene(scene_path: String) -> void:
 	tween.tween_callback(func():
 		get_tree().change_scene_to_file(scene_path)
 	)
+
+func _get_local_ips() -> Array[String]:
+	var result: Array[String] = []
+	for addr in IP.get_local_addresses():
+		# Filter to private IPv4 addresses (skip loopback and IPv6)
+		if addr.begins_with("127.") or addr.contains(":"):
+			continue
+		if addr.begins_with("192.168.") or addr.begins_with("10.") or addr.begins_with("172."):
+			result.append(addr)
+	return result
 
 func _unhandled_input(event: InputEvent) -> void:
 	if is_transitioning:
