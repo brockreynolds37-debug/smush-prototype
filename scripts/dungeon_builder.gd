@@ -156,7 +156,8 @@ func _ready() -> void:
 		1: _define_floor1_layout()
 		2: _define_floor2_layout()
 		3: _define_floor3_layout()
-		_: _define_floor4_layout()
+		4: _define_floor4_layout()
+		_: _generate_procedural_layout()
 	_build_grid_from_rooms()
 	_generate_geometry()
 	_apply_theme_lighting()
@@ -616,6 +617,147 @@ func _define_floor4_layout() -> void:
 			{"type": "candle", "offset": Vector2i(13, 11)},
 		]},
 	]
+
+func _generate_procedural_layout() -> void:
+	# Procedural floor generation v2: random room shapes + connections.
+	# Room templates: small, medium, large, L-shape, narrow corridor, arena.
+	# Uses weighted random selection. Secret rooms behind breakable walls.
+
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+
+	rooms = []
+	var corridor_index := 0
+
+	# Always start with spawn room
+	var spawn_size := Vector2i(8, 8)
+	rooms.append({"pos": Vector2i(0, 0), "size": spawn_size, "name": "spawn",
+		"props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(spawn_size.x - 1, 0)},
+			{"type": "barrel", "offset": Vector2i(1, 1)},
+		]})
+	spawn_cell = Vector2i(4, 4)
+
+	# Room templates with weights
+	var templates := [
+		{"weight": 3, "size": Vector2i(8, 6), "name": "guard"},     # Medium room
+		{"weight": 3, "size": Vector2i(6, 6), "name": "loot"},      # Small square
+		{"weight": 2, "size": Vector2i(12, 10), "name": "arena"},   # Large arena
+		{"weight": 2, "size": Vector2i(4, 10), "name": "guard"},    # Narrow corridor room
+		{"weight": 1, "size": Vector2i(10, 4), "name": "guard"},    # Wide corridor room
+	]
+	var total_weight: int = 0
+	for t in templates:
+		total_weight += t["weight"]
+
+	# Generate 4-6 connected rooms
+	var room_count := rng.randi_range(4, 6)
+	var last_room_pos := Vector2i(0, 0)
+	var last_room_size := spawn_size
+	var direction := 0  # 0=south, 1=east, alternating
+
+	for i in range(room_count):
+		# Pick random template
+		var roll := rng.randi_range(0, total_weight - 1)
+		var cumulative := 0
+		var template: Dictionary = templates[0]
+		for t in templates:
+			cumulative += t["weight"]
+			if roll < cumulative:
+				template = t
+				break
+
+		var room_size: Vector2i = template["size"]
+
+		# Place corridor connecting previous room
+		var corridor_pos: Vector2i
+		var corridor_size: Vector2i
+		var room_pos: Vector2i
+
+		if direction == 0:
+			# Go south: vertical corridor
+			corridor_pos = Vector2i(last_room_pos.x + last_room_size.x / 2 - 1, last_room_pos.y + last_room_size.y)
+			corridor_size = Vector2i(2, 4)
+			room_pos = Vector2i(corridor_pos.x - room_size.x / 2 + 1, corridor_pos.y + corridor_size.y)
+		else:
+			# Go east: horizontal corridor
+			corridor_pos = Vector2i(last_room_pos.x + last_room_size.x, last_room_pos.y + last_room_size.y / 2 - 1)
+			corridor_size = Vector2i(4, 2)
+			room_pos = Vector2i(corridor_pos.x + corridor_size.x, corridor_pos.y - room_size.y / 2 + 1)
+
+		corridor_index += 1
+		rooms.append({"pos": corridor_pos, "size": corridor_size, "name": "corridor_%d" % corridor_index})
+
+		# Add props based on room type
+		var props: Array[Dictionary] = []
+		props.append({"type": "candle", "offset": Vector2i(0, 0)})
+		props.append({"type": "candle", "offset": Vector2i(room_size.x - 1, 0)})
+		# Random columns
+		if room_size.x >= 8 and room_size.y >= 6:
+			props.append({"type": "column", "offset": Vector2i(2, 2)})
+			props.append({"type": "column", "offset": Vector2i(room_size.x - 3, 2)})
+		# Random traps
+		if rng.randf() < 0.4:
+			var trap_types := ["trap_spike", "trap_poison", "trap_fire"]
+			var trap_type = trap_types[rng.randi() % trap_types.size()]
+			props.append({"type": trap_type, "offset": Vector2i(rng.randi_range(2, room_size.x - 3), rng.randi_range(2, room_size.y - 3))})
+		# Random chests in loot rooms
+		if template["name"] == "loot":
+			props.append({"type": "chest", "offset": Vector2i(room_size.x / 2, room_size.y / 2)})
+		# Random barrels
+		if rng.randf() < 0.5:
+			props.append({"type": "barrel", "offset": Vector2i(rng.randi_range(0, 2), rng.randi_range(0, 2))})
+
+		var room_name: String = template["name"]
+		# Ensure at least one arena for combat
+		if i == 0:
+			room_name = "arena"
+
+		rooms.append({"pos": room_pos, "size": room_size, "name": room_name, "props": props})
+
+		last_room_pos = room_pos
+		last_room_size = room_size
+		direction = 1 - direction  # Alternate south/east
+
+	# Add boss room at the end
+	var boss_size := Vector2i(14, 10)
+	corridor_index += 1
+	var boss_corridor_pos := Vector2i(last_room_pos.x + last_room_size.x / 2 - 1, last_room_pos.y + last_room_size.y)
+	var boss_corridor_size := Vector2i(2, 4)
+	rooms.append({"pos": boss_corridor_pos, "size": boss_corridor_size, "name": "corridor_%d" % corridor_index})
+
+	var boss_pos := Vector2i(boss_corridor_pos.x - boss_size.x / 2 + 1, boss_corridor_pos.y + boss_corridor_size.y)
+	rooms.append({"pos": boss_pos, "size": boss_size, "name": "boss",
+		"props": [
+			{"type": "column", "offset": Vector2i(3, 2)},
+			{"type": "column", "offset": Vector2i(boss_size.x - 4, 2)},
+			{"type": "column", "offset": Vector2i(3, boss_size.y - 3)},
+			{"type": "column", "offset": Vector2i(boss_size.x - 4, boss_size.y - 3)},
+			{"type": "gate", "offset": Vector2i(boss_size.x / 2, 0)},
+			{"type": "banner", "offset": Vector2i(boss_size.x / 2, boss_size.y - 2)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(boss_size.x - 1, 0)},
+			{"type": "candle", "offset": Vector2i(0, boss_size.y - 1)},
+			{"type": "candle", "offset": Vector2i(boss_size.x - 1, boss_size.y - 1)},
+		]})
+
+	exit_cell = Vector2i(boss_pos.x + boss_size.x / 2, boss_pos.y + boss_size.y - 2)
+
+	# Secret room (25% chance) — small room off to the side with extra loot
+	if rng.randf() < 0.25 and rooms.size() > 3:
+		var parent_room: Dictionary = rooms[2]  # First real room after spawn
+		var secret_size := Vector2i(4, 4)
+		var secret_pos := Vector2i(parent_room["pos"].x + parent_room["size"].x + 2, parent_room["pos"].y)
+		corridor_index += 1
+		rooms.append({"pos": Vector2i(parent_room["pos"].x + parent_room["size"].x, parent_room["pos"].y + parent_room["size"].y / 2 - 1), "size": Vector2i(2, 2), "name": "corridor_%d" % corridor_index})
+		rooms.append({"pos": secret_pos, "size": secret_size, "name": "loot",
+			"props": [
+				{"type": "chest", "offset": Vector2i(1, 1)},
+				{"type": "chest", "offset": Vector2i(2, 1)},
+				{"type": "candle", "offset": Vector2i(0, 0)},
+				{"type": "candle", "offset": Vector2i(3, 0)},
+			]})
 
 func _build_grid_from_rooms() -> void:
 	grid.clear()
