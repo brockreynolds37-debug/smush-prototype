@@ -14,6 +14,7 @@ var _loot_sync: Node = null
 var _floor_transition_sync: Node = null
 var _combat_sync: Node = null
 var _archetype_adapter: Node = null
+var _stability: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -173,6 +174,15 @@ func _ready() -> void:
 		_archetype_adapter.set_script(adapter_script)
 		_archetype_adapter.name = "ArchetypeAdapter"
 		add_child(_archetype_adapter)
+
+	# Multiplayer: stability (disconnect handler, host migration, netstat, solo fallback)
+	if NetworkManager.is_multiplayer_active():
+		var stab_script := preload("res://scripts/multiplayer_stability.gd")
+		_stability = Node.new()
+		_stability.set_script(stab_script)
+		_stability.name = "MultiplayerStability"
+		add_child(_stability)
+		_stability.setup(_player_spawner)
 
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):

@@ -377,9 +377,14 @@ func _on_connection_failed() -> void:
 
 func _on_server_disconnected() -> void:
 	print("NetworkManager: Server disconnected!")
-	_attempt_host_migration()
-	if not is_host:
-		disconnect_from_game()
+	# Delegate to stability system for robust host migration
+	var stability = get_tree().current_scene.get_node_or_null("MultiplayerStability")
+	if stability and stability.has_method("attempt_host_migration"):
+		stability.attempt_host_migration()
+	else:
+		_attempt_host_migration()
+		if not is_host:
+			disconnect_from_game()
 
 # ---------- SYNCED RPCs ----------
 
