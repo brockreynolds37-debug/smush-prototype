@@ -5,6 +5,8 @@ extends Node
 
 signal screen_shake_requested(intensity: float, duration: float)
 signal damage_number_requested(position: Vector3, amount: int, is_crit: bool)
+signal hitstop_requested(duration: float)
+signal camera_punch_requested(direction: Vector3, strength: float)
 signal enemy_died(enemy: Node3D)
 signal hero_target_changed(target: Node3D)
 signal game_over(won: bool)
@@ -33,6 +35,12 @@ func request_screen_shake(intensity: float, duration: float) -> void:
 
 func request_damage_number(pos: Vector3, amount: int, is_crit: bool = false) -> void:
 	damage_number_requested.emit(pos, amount, is_crit)
+
+func request_hitstop(duration: float) -> void:
+	hitstop_requested.emit(duration)
+
+func request_camera_punch(direction: Vector3, strength: float) -> void:
+	camera_punch_requested.emit(direction, strength)
 
 func start_run() -> void:
 	run_start_time = Time.get_ticks_msec() / 1000.0

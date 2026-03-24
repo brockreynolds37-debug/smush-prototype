@@ -33,6 +33,7 @@ StatusEffectManager="*res://scripts/status_effect_manager.gd"
 RunStats="*res://scripts/run_stats.gd"
 Narrator="*res://scripts/narrator.gd"
 SaveManager="*res://scripts/save_manager.gd"
+ScreenEffects="*res://scripts/screen_effects.gd"
 
 [display]
 

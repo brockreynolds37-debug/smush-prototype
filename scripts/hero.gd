@@ -86,6 +86,7 @@ var equipment_armor_bonus: int = 0
 var equipment_hp_bonus: int = 0
 var equipment_speed_bonus: int = 0
 var _base_max_health: int = 500
+var _last_hit_was_crit: bool = false
 
 func _ready() -> void:
 	GameManager.register_hero(self)
@@ -347,12 +348,14 @@ func _perform_melee_attack() -> void:
 	tween.tween_callback(func(): is_attacking = false)
 
 func _get_melee_damage() -> int:
+	_last_hit_was_crit = false
 	var base := 35
 	var str_bonus = (XpManager.bonus_str + equipment_str_bonus) * 3  # +3 damage per STR
 	var dmg := base + str_bonus + equipment_damage_bonus
 	# Crit chance from equipment
 	if equipment_crit_bonus > 0 and randf() * 100.0 < equipment_crit_bonus:
 		dmg = int(dmg * 1.8)
+		_last_hit_was_crit = true
 	# Berserker Rage: +50% damage below 30% HP
 	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
 		dmg = int(dmg * 1.5)
@@ -373,7 +376,14 @@ func _apply_melee_damage() -> void:
 		var dmg = _get_melee_damage()
 		attack_target.take_damage(dmg)
 		RunStats.record_damage_dealt(dmg)
-		GameManager.request_screen_shake(3.0, 0.15)
+		if _last_hit_was_crit:
+			GameManager.request_screen_shake(6.0, 0.25)
+			GameManager.request_hitstop(0.08)
+			var dir = (attack_target.global_position - global_position).normalized()
+			GameManager.request_camera_punch(dir, 5.0)
+			ScreenEffects.screen_flash(Color(1.0, 0.9, 0.7, 0.3), 0.12)
+		else:
+			GameManager.request_screen_shake(3.0, 0.15)
 
 func set_attack_target(target: Node3D) -> void:
 	attack_target = target

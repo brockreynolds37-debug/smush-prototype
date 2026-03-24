@@ -1,6 +1,6 @@
 extends Node3D
 
-## WC3-style isometric camera with WASD/edge scrolling and zoom.
+## WC3-style isometric camera with WASD/edge scrolling, zoom, camera punch, and smusher shake.
 
 @export var pan_speed: float = 25.0
 @export var edge_scroll_speed: float = 20.0
@@ -16,10 +16,16 @@ var target_position: Vector3 = Vector3.ZERO
 var current_zoom: float = 18.0
 var target_zoom: float = 18.0
 
-# Screen shake
+# Screen shake (event-based)
 var shake_intensity: float = 0.0
 var shake_duration: float = 0.0
 var shake_timer: float = 0.0
+
+# Camera punch (directional, crits)
+var punch_offset := Vector2.ZERO
+
+# Smusher persistent shake
+var _smusher_shake: float = 0.0
 
 @onready var camera_arm: Node3D = $CameraArm
 @onready var camera: Camera3D = $CameraArm/Camera3D
@@ -27,6 +33,12 @@ var shake_timer: float = 0.0
 func _ready() -> void:
 	GameManager.register_camera(self)
 	GameManager.screen_shake_requested.connect(_on_screen_shake)
+	GameManager.camera_punch_requested.connect(_on_camera_punch)
+	SmusherTimer.warning_phase_entered.connect(_on_smusher_warning)
+	SmusherTimer.critical_phase_entered.connect(_on_smusher_critical)
+	SmusherTimer.overtime_started.connect(_on_smusher_overtime)
+	SmusherTimer.room_collapsed.connect(_on_room_collapsed)
+	FloorManager.floor_changed.connect(_on_floor_changed)
 	target_position = global_position
 	_update_camera_transform()
 
@@ -42,7 +54,7 @@ func _process(delta: float) -> void:
 	current_zoom = lerp(current_zoom, target_zoom, smoothing * delta)
 	_update_camera_transform()
 
-	# Screen shake
+	# Screen shake + camera punch
 	_process_screen_shake(delta)
 
 func _handle_keyboard_pan(delta: float) -> void:
@@ -58,7 +70,6 @@ func _handle_keyboard_pan(delta: float) -> void:
 
 	if input_dir != Vector2.ZERO:
 		input_dir = input_dir.normalized()
-		# Convert to world-space movement (rotated to match camera angle)
 		var rad = deg_to_rad(camera_rotation_y)
 		var forward = Vector3(sin(rad), 0, cos(rad))
 		var right_vec = Vector3(cos(rad), 0, -sin(rad))
@@ -109,22 +120,53 @@ func _on_screen_shake(intensity: float, duration: float) -> void:
 	shake_duration = duration
 	shake_timer = 0.0
 
+func _on_camera_punch(direction: Vector3, strength: float) -> void:
+	punch_offset = Vector2(direction.x, direction.z) * strength * 0.015
+
 func _process_screen_shake(delta: float) -> void:
+	var offset_x := 0.0
+	var offset_y := 0.0
+
+	# Event-based shake (hits, slams, etc.)
 	if shake_timer < shake_duration:
 		shake_timer += delta
 		var progress = shake_timer / shake_duration
 		var current_intensity = shake_intensity * (1.0 - progress)
-		camera.h_offset = randf_range(-current_intensity, current_intensity) * 0.02
-		camera.v_offset = randf_range(-current_intensity, current_intensity) * 0.02
-	else:
-		camera.h_offset = 0.0
-		camera.v_offset = 0.0
+		offset_x += randf_range(-current_intensity, current_intensity) * 0.02
+		offset_y += randf_range(-current_intensity, current_intensity) * 0.02
+
+	# Smusher persistent shake (warning/critical/overtime)
+	if _smusher_shake > 0.0:
+		offset_x += randf_range(-_smusher_shake, _smusher_shake) * 0.003
+		offset_y += randf_range(-_smusher_shake, _smusher_shake) * 0.003
+
+	# Camera punch decay
+	punch_offset = punch_offset.lerp(Vector2.ZERO, 8.0 * delta)
+	offset_x += punch_offset.x
+	offset_y += punch_offset.y
+
+	camera.h_offset = offset_x
+	camera.v_offset = offset_y
+
+func _on_smusher_warning() -> void:
+	_smusher_shake = 0.5
+
+func _on_smusher_critical() -> void:
+	_smusher_shake = 1.5
+
+func _on_smusher_overtime() -> void:
+	_smusher_shake = 3.0
+
+func _on_room_collapsed(_room_index: int, _room_name: String) -> void:
+	_on_screen_shake(12.0, 0.5)
+
+func _on_floor_changed(_floor_number: int) -> void:
+	_smusher_shake = 0.0
 
 func get_ground_position_from_mouse() -> Vector3:
 	var mouse_pos = get_viewport().get_mouse_position()
 	var from = camera.project_ray_origin(mouse_pos)
 	var dir = camera.project_ray_normal(mouse_pos)
-	# Intersect with Y=0 plane
 	if dir.y != 0:
 		var t = -from.y / dir.y
 		if t > 0:
