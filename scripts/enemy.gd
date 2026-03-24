@@ -277,6 +277,15 @@ func _try_attack(hero: Node3D) -> void:
 				"wolf":
 					if randf() < 0.25:
 						StatusEffectManager.apply_slow(hero, 2.0, 0.3)
+			# Elite: Venomous applies poison on any hit
+			if has_meta("venomous_dot") and get_meta("venomous_dot"):
+				StatusEffectManager.apply_poison(hero, 5.0, 8, 1.0)
+			# Elite: Vampiric heals on damage dealt
+			if has_meta("vampiric_leech"):
+				var leech_pct: float = get_meta("vampiric_leech")
+				var heal_amount := int(attack_damage * leech_pct)
+				current_health = mini(current_health + heal_amount, max_health)
+				health_changed.emit(current_health, max_health)
 	)
 	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.1, 0.9), 0.1)
 	tween.tween_property(model, "scale", original_scale, 0.1)
@@ -364,3 +373,17 @@ func _remove_status_slow() -> void:
 
 func _apply_status_stun(stunned: bool) -> void:
 	_is_stunned = stunned
+
+# ---------- ELITE SYSTEM ----------
+
+func _apply_elite_tint() -> void:
+	if not has_meta("elite_tint"):
+		return
+	var tint: Color = get_meta("elite_tint")
+	_set_model_color(tint)
+
+func is_elite() -> bool:
+	return EliteModifier.is_elite(self)
+
+func get_elite_display_name() -> String:
+	return EliteModifier.get_display_name(self)

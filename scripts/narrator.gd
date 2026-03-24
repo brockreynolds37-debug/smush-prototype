@@ -180,6 +180,19 @@ func _on_enemy_died(enemy: Node3D) -> void:
 		_kill_count_since_last = 0
 		return
 
+	# Elite kill callout
+	if enemy and is_instance_valid(enemy) and EliteModifier.is_elite(enemy):
+		var elite_lines := [
+			"A champion falls! The crowd roars!",
+			"That one had a name. Not anymore.",
+			"The elite crumbles. Impressive.",
+			"One less champion to worry about.",
+			"They promoted that one. Didn't help.",
+		]
+		_say_line(elite_lines, Color(1.0, 0.6, 0.1), 28, true)
+		_kill_count_since_last = 0
+		return
+
 	# Kill streak announcements (every 5 kills)
 	if _kill_count_since_last >= 5 and _kill_count_since_last % 5 == 0:
 		_say_line(KILL_STREAK, Color(1.0, 0.6, 0.0), 28)

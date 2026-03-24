@@ -252,6 +252,12 @@ func _fire_arrow(hero: Node3D) -> void:
 	arrow.global_position = global_position + Vector3.UP * 1.2
 	arrow.damage = attack_damage
 	arrow.speed = arrow_speed
+	# Pass elite flags to arrow for on-hit effects
+	if has_meta("venomous_dot") and get_meta("venomous_dot"):
+		arrow.set_meta("venomous_dot", true)
+	if has_meta("vampiric_leech"):
+		arrow.set_meta("vampiric_leech", get_meta("vampiric_leech"))
+		arrow.set_meta("vampiric_source", self)
 	arrow.launch(hero.global_position + Vector3.UP * 0.8)
 
 	# Arrow whoosh sound
@@ -336,3 +342,17 @@ func _remove_status_slow() -> void:
 
 func _apply_status_stun(stunned: bool) -> void:
 	_is_stunned = stunned
+
+# ---------- ELITE SYSTEM ----------
+
+func _apply_elite_tint() -> void:
+	if not has_meta("elite_tint"):
+		return
+	var tint: Color = get_meta("elite_tint")
+	_set_model_color(tint)
+
+func is_elite() -> bool:
+	return EliteModifier.is_elite(self)
+
+func get_elite_display_name() -> String:
+	return EliteModifier.get_display_name(self)

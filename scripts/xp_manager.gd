@@ -97,6 +97,11 @@ func _on_enemy_died(enemy: Node3D) -> void:
 		etype = enemy.enemy_type
 
 	var reward = xp_rewards.get(etype, 20)  # Default 20 XP for unknown types
+
+	# Elite enemies give 2.5x XP
+	if EliteModifier.is_elite(enemy):
+		reward = int(reward * 2.5)
+
 	grant_xp(reward)
 
 func _apply_level_up() -> void:

@@ -10,6 +10,7 @@ signal stat_updated(stat_name: String, value: int)
 var total_kills: int = 0
 var kills_by_type: Dictionary = {}  # enemy_type -> count
 var boss_kills: int = 0
+var elite_kills: int = 0
 
 # Damage tracking
 var damage_dealt: int = 0
@@ -95,6 +96,11 @@ func _on_enemy_died(enemy: Node3D) -> void:
 		etype = enemy.enemy_type
 
 	kills_by_type[etype] = kills_by_type.get(etype, 0) + 1
+
+	# Track elite kills
+	if EliteModifier.is_elite(enemy):
+		elite_kills += 1
+
 	stat_updated.emit("kills", total_kills)
 
 func _on_game_over(_won: bool) -> void:

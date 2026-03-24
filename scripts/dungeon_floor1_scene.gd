@@ -285,6 +285,9 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 			enemy.move_speed *= 1.2
 			enemy.aggro_range *= 1.5
 
+		# Roll for elite/champion promotion (~15% base, scales with floor)
+		EliteModifier.try_promote(enemy, floor_number)
+
 		enemy.global_position = pos
 		units_node.add_child(enemy)
 
