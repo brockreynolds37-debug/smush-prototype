@@ -180,6 +180,18 @@ func _on_game_over(won: bool) -> void:
 	stats_text += "Items Collected: %d\n" % s["items_collected"]
 	stats_text += "\n"
 	stats_text += "VP: %d  —  %s" % [AudienceManager.total_vp, AudienceManager.get_mood_name()]
+
+	# Death recap highlights
+	stats_text += "\n\n— HIGHLIGHTS —\n"
+	var highlights := _build_highlights(s, won)
+	for h in highlights:
+		stats_text += h + "\n"
+
+	# Narrator quip
+	var quip := _get_death_quip(won)
+	if quip != "":
+		stats_text += "\n\"%s\"" % quip
+
 	var stats_label = game_over_overlay.get_node_or_null("StatsLabel")
 	if stats_label:
 		stats_label.text = stats_text
@@ -188,6 +200,63 @@ func _on_game_over(won: bool) -> void:
 	game_over_overlay.modulate = Color(1, 1, 1, 0)
 	var tween = create_tween()
 	tween.tween_property(game_over_overlay, "modulate", Color(1, 1, 1, 1), 1.0)
+
+func _build_highlights(s: Dictionary, won: bool) -> Array[String]:
+	var highlights: Array[String] = []
+	if s["largest_hit"] > 0:
+		highlights.append("Biggest Hit: %d damage in one strike" % s["largest_hit"])
+	var most_killed := RunStats.get_most_killed_enemy()
+	if most_killed != "":
+		var count: int = s["kills_by_type"].get(most_killed, 0)
+		highlights.append("Nemesis: %s (%d slain)" % [most_killed.capitalize(), count])
+	var floor_times: Dictionary = s.get("floor_times", {})
+	if not floor_times.is_empty():
+		var fastest_floor: int = 0
+		var fastest_time: float = 999.0
+		for fl in floor_times:
+			if floor_times[fl] < fastest_time:
+				fastest_time = floor_times[fl]
+				fastest_floor = fl
+		if fastest_floor > 0:
+			highlights.append("Speed Demon: Floor %d in %d:%02d" % [fastest_floor, int(fastest_time) / 60, int(fastest_time) % 60])
+	if s["gold_earned"] > 100:
+		highlights.append("Treasure Hunter: %d gold earned" % s["gold_earned"])
+	var spells_used: int = 0
+	for sc in s["spells_cast"]:
+		if sc > 0:
+			spells_used += 1
+	if spells_used >= 4:
+		highlights.append("Arcane Mastery: All 4 spells used")
+	elif spells_used == 0 and s["total_kills"] > 5:
+		highlights.append("Pugilist: Never cast a single spell")
+	if s["boss_kills"] >= 3:
+		highlights.append("Boss Slayer: All bosses defeated")
+	if AudienceManager.total_vp > 500:
+		highlights.append("Fan Favorite: %d VP earned" % AudienceManager.total_vp)
+	if highlights.is_empty():
+		highlights.append("The arena remembers you." if not won else "A legend is born.")
+	return highlights
+
+const DEATH_QUIPS := [
+	"Another gladiator falls. The crowd barely noticed.",
+	"The dungeon claims yet another soul.",
+	"So close... yet so very far.",
+	"The Collective will find someone better.",
+	"At least you provided some entertainment.",
+	"The Smusher always wins eventually.",
+	"Your corpse will make fine decoration.",
+]
+const VICTORY_QUIPS := [
+	"Against all odds — a champion rises!",
+	"The Collective roars! A legend forged in blood!",
+	"The dungeon bows to its conqueror.",
+	"You've earned a seat among the immortals.",
+	"The crowd will speak your name for generations.",
+]
+
+func _get_death_quip(won: bool) -> String:
+	var pool: Array = VICTORY_QUIPS if won else DEATH_QUIPS
+	return pool[randi() % pool.size()]
 
 func _on_gold_changed(amount: int) -> void:
 	if gold_label:
