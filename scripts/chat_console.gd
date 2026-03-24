@@ -143,6 +143,8 @@ func _execute(cmd: String) -> void:
 			_cmd_factions()
 		"consequence", "consequences", "tags":
 			_cmd_consequences()
+		"blocs", "bloc", "audience_blocs":
+			_cmd_blocs()
 		"replays":
 			_cmd_replays()
 		"clear", "cls":
@@ -181,6 +183,7 @@ func _cmd_help() -> void:
 	_print_line("-path       Show current solution path")
 	_print_line("-faction    Show faction reputation")
 	_print_line("-tags       Show cross-floor consequence tags")
+	_print_line("-blocs      Show audience civilization blocs")
 	_print_line("-replays  List saved replays")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
@@ -299,6 +302,14 @@ func _cmd_replays() -> void:
 			r.get("floors_cleared", 0),
 			r.get("total_kills", 0),
 		])
+
+func _cmd_blocs() -> void:
+	_print_line("[color=cyan]── Audience Civilization Blocs ──[/color]")
+	_print_line(AudienceBlocs.get_summary())
+	var loudest := AudienceBlocs.get_loudest_bloc()
+	if not loudest.is_empty():
+		var def: Dictionary = AudienceBlocs.BLOC_DEFS.get(loudest, {})
+		_print_line("[color=yellow]Loudest: %s[/color]" % def.get("name", loudest))
 
 func _cmd_consequences() -> void:
 	_print_line("[color=cyan]── Cross-Floor Consequences ──[/color]")
