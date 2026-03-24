@@ -22,29 +22,38 @@ var sounds: Dictionary = {}
 
 # Volume settings (linear, not dB)
 var master_volume: float = 0.7
-var sfx_volume: float = 0.8
-var ambience_volume: float = 0.3
-var music_volume: float = 0.4
+var sfx_volume: float = 0.75
+var ambience_volume: float = 0.25
+var music_volume: float = 0.35
+var voice_volume: float = 0.8
+
+# Audio bus indices (set in _setup_buses)
+var _sfx_bus: int = -1
+var _music_bus: int = -1
+var _voice_bus: int = -1
 
 func _ready() -> void:
 	# Load persisted volume settings
 	_load_volume_settings()
 
+	# Create audio buses: SFX, Music, Voice — all children of Master
+	_setup_buses()
+
 	# Create SFX pool
 	for i in range(sfx_pool_size):
 		var player = AudioStreamPlayer.new()
-		player.bus = "Master"
+		player.bus = "SFX"
 		add_child(player)
 		sfx_pool.append(player)
 
-	# Ambient player
+	# Ambient player — routes to Music bus
 	ambience_player = AudioStreamPlayer.new()
-	ambience_player.bus = "Master"
+	ambience_player.bus = "Music"
 	add_child(ambience_player)
 
 	# Music player
 	music_player = AudioStreamPlayer.new()
-	music_player.bus = "Master"
+	music_player.bus = "Music"
 	add_child(music_player)
 
 	# Generate all sound effects
@@ -62,6 +71,61 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_process_hero_footsteps(delta)
+
+# ---- AUDIO BUS SETUP ----
+
+func _setup_buses() -> void:
+	# Add SFX bus if it doesn't exist
+	_sfx_bus = _ensure_bus("SFX", "Master")
+	_music_bus = _ensure_bus("Music", "Master")
+	_voice_bus = _ensure_bus("Voice", "Master")
+	_apply_bus_volumes()
+
+func _ensure_bus(bus_name: String, parent_name: String) -> int:
+	var idx = AudioServer.get_bus_index(bus_name)
+	if idx >= 0:
+		return idx
+	var count = AudioServer.bus_count
+	AudioServer.add_bus(count)
+	AudioServer.set_bus_name(count, bus_name)
+	var parent_idx = AudioServer.get_bus_index(parent_name)
+	AudioServer.set_bus_send(count, parent_name)
+	return count
+
+func _apply_bus_volumes() -> void:
+	# Master bus (index 0)
+	AudioServer.set_bus_volume_db(0, linear_to_db(master_volume))
+	# SFX bus
+	if _sfx_bus >= 0:
+		AudioServer.set_bus_volume_db(_sfx_bus, linear_to_db(sfx_volume))
+	# Music bus (ambience + music share this)
+	if _music_bus >= 0:
+		AudioServer.set_bus_volume_db(_music_bus, linear_to_db(music_volume))
+	# Voice bus (narrator)
+	if _voice_bus >= 0:
+		AudioServer.set_bus_volume_db(_voice_bus, linear_to_db(voice_volume))
+
+func set_master_volume(val: float) -> void:
+	master_volume = val
+	AudioServer.set_bus_volume_db(0, linear_to_db(val))
+
+func set_sfx_volume(val: float) -> void:
+	sfx_volume = val
+	if _sfx_bus >= 0:
+		AudioServer.set_bus_volume_db(_sfx_bus, linear_to_db(val))
+
+func set_music_volume(val: float) -> void:
+	music_volume = val
+	if _music_bus >= 0:
+		AudioServer.set_bus_volume_db(_music_bus, linear_to_db(val))
+	# Also update ambience player volume directly for the ambient drone
+	if ambience_player and ambience_player.playing:
+		ambience_player.volume_db = linear_to_db(ambience_volume)
+
+func set_voice_volume(val: float) -> void:
+	voice_volume = val
+	if _voice_bus >= 0:
+		AudioServer.set_bus_volume_db(_voice_bus, linear_to_db(val))
 
 # ---- SOUND GENERATION ----
 
@@ -114,7 +178,8 @@ func play_sfx(sound_name: String, volume_scale: float = 1.0, pitch_variance: flo
 	var player = sfx_pool[sfx_pool_index]
 	sfx_pool_index = (sfx_pool_index + 1) % sfx_pool_size
 	player.stream = sounds[sound_name]
-	player.volume_db = linear_to_db(sfx_volume * master_volume * volume_scale)
+	# Volume scale is per-sound relative loudness; bus handles master/sfx levels
+	player.volume_db = linear_to_db(volume_scale)
 	player.pitch_scale = randf_range(1.0 - pitch_variance, 1.0 + pitch_variance)
 	player.play()
 
@@ -124,14 +189,14 @@ func play_sfx_at_pitch(sound_name: String, pitch: float, volume_scale: float = 1
 	var player = sfx_pool[sfx_pool_index]
 	sfx_pool_index = (sfx_pool_index + 1) % sfx_pool_size
 	player.stream = sounds[sound_name]
-	player.volume_db = linear_to_db(sfx_volume * master_volume * volume_scale)
+	player.volume_db = linear_to_db(volume_scale)
 	player.pitch_scale = pitch
 	player.play()
 
 func start_ambience() -> void:
 	if sounds.has("dungeon_ambience"):
 		ambience_player.stream = sounds["dungeon_ambience"]
-		ambience_player.volume_db = linear_to_db(ambience_volume * master_volume)
+		ambience_player.volume_db = linear_to_db(ambience_volume)
 		ambience_player.play()
 
 func stop_ambience() -> void:
@@ -154,63 +219,63 @@ func _process_hero_footsteps(delta: float) -> void:
 		play_sfx(step_name, 0.5, 0.15)
 
 func on_hero_attack() -> void:
-	play_sfx("sword_swing", 0.7, 0.1)
+	play_sfx("sword_swing", 0.55, 0.1)
 	# Delayed hit sound
 	get_tree().create_timer(0.15).timeout.connect(func():
-		play_sfx("melee_hit", 0.6, 0.15)
+		play_sfx("melee_hit", 0.5, 0.15)
 	)
 
 func on_hero_cast_fireball() -> void:
-	play_sfx("fireball_cast", 0.8, 0.05)
+	play_sfx("fireball_cast", 0.65, 0.05)
 
 func on_fireball_explode() -> void:
-	play_sfx("fireball_explode", 0.9, 0.1)
+	play_sfx("fireball_explode", 0.7, 0.1)
 
 func on_hero_cast_heal() -> void:
-	play_sfx("heal", 0.7, 0.05)
+	play_sfx("heal", 0.6, 0.05)
 
 func on_hero_cast_ice_shard() -> void:
-	play_sfx("ice_shard", 0.7, 0.08)
+	play_sfx("ice_shard", 0.55, 0.08)
 
 func on_hero_cast_lightning() -> void:
-	play_sfx("lightning", 0.8, 0.05)
+	play_sfx("lightning", 0.65, 0.05)
 
 func on_hero_cast_ground_slam() -> void:
-	play_sfx("ground_slam", 1.0, 0.05)
+	play_sfx("ground_slam", 0.75, 0.05)
 
 func on_hero_take_damage() -> void:
-	play_sfx("enemy_hit", 0.5, 0.2)
+	play_sfx("enemy_hit", 0.45, 0.2)
 
 func on_enemy_take_damage() -> void:
-	play_sfx("enemy_hit", 0.4, 0.2)
+	play_sfx("enemy_hit", 0.35, 0.2)
 
 func on_loot_pickup(rarity: String = "common") -> void:
 	if rarity in ["rare", "epic", "legendary"]:
-		play_sfx("loot_rare", 0.7, 0.05)
+		play_sfx("loot_rare", 0.6, 0.05)
 	else:
-		play_sfx("loot_pickup", 0.6, 0.15)
+		play_sfx("loot_pickup", 0.5, 0.15)
 
 func on_boss_spawn() -> void:
-	play_sfx("boss_roar", 1.0, 0.05)
+	play_sfx("boss_roar", 0.8, 0.05)
 
 func _on_screen_shake(_intensity: float, _duration: float) -> void:
 	pass  # Screen shake already has visual — sound is handled at source
 
 func _on_enemy_died(_enemy: Node3D) -> void:
-	play_sfx("enemy_death", 0.6, 0.15)
+	play_sfx("enemy_death", 0.5, 0.15)
 
 func _on_game_over(won: bool) -> void:
 	stop_ambience()
 	if won:
-		play_sfx("victory_fanfare", 1.0, 0.0)
+		play_sfx("victory_fanfare", 0.8, 0.0)
 	else:
-		play_sfx("boss_roar", 0.5, 0.0)
+		play_sfx("boss_roar", 0.4, 0.0)
 
 func _on_floor_cleared() -> void:
-	play_sfx("level_up", 0.6, 0.0)
+	play_sfx("level_up", 0.55, 0.0)
 
 func _on_floor_changed(_floor_num: int) -> void:
-	play_sfx("floor_transition", 0.8, 0.0)
+	play_sfx("floor_transition", 0.65, 0.0)
 
 # ---- PROCEDURAL SOUND GENERATORS ----
 
@@ -477,13 +542,25 @@ func _gen_victory_fanfare(sr: int, dur: float, freq: float, vol: float) -> Audio
 
 # ---- SETTINGS PERSISTENCE ----
 
+func save_volume_settings() -> void:
+	var config = ConfigFile.new()
+	config.load("user://settings.cfg")
+	config.set_value("audio", "master", master_volume)
+	config.set_value("audio", "sfx", sfx_volume)
+	config.set_value("audio", "music", music_volume)
+	config.set_value("audio", "ambience", ambience_volume)
+	config.set_value("audio", "voice", voice_volume)
+	config.save("user://settings.cfg")
+
 func _load_volume_settings() -> void:
 	var config = ConfigFile.new()
 	if config.load("user://settings.cfg") != OK:
 		return
 	master_volume = config.get_value("audio", "master", 0.7)
-	sfx_volume = config.get_value("audio", "sfx", 0.8)
-	ambience_volume = config.get_value("audio", "ambience", 0.3)
+	sfx_volume = config.get_value("audio", "sfx", 0.75)
+	music_volume = config.get_value("audio", "music", 0.35)
+	ambience_volume = config.get_value("audio", "ambience", 0.25)
+	voice_volume = config.get_value("audio", "voice", 0.8)
 
 # ---- UTILITIES ----
 

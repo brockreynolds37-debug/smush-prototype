@@ -9,10 +9,14 @@ signal closed
 var _overlay: ColorRect
 var _master_slider: HSlider
 var _sfx_slider: HSlider
+var _music_slider: HSlider
 var _ambience_slider: HSlider
+var _voice_slider: HSlider
 var _master_label: Label
 var _sfx_label: Label
+var _music_label: Label
 var _ambience_label: Label
+var _voice_label: Label
 
 # Accessibility controls
 var _colorblind_button: Button
@@ -52,50 +56,53 @@ func _sync_sliders() -> void:
 	if AudioManager:
 		_master_slider.value = AudioManager.master_volume
 		_sfx_slider.value = AudioManager.sfx_volume
+		_music_slider.value = AudioManager.music_volume
 		_ambience_slider.value = AudioManager.ambience_volume
+		_voice_slider.value = AudioManager.voice_volume
 		_update_label(_master_label, AudioManager.master_volume)
 		_update_label(_sfx_label, AudioManager.sfx_volume)
+		_update_label(_music_label, AudioManager.music_volume)
 		_update_label(_ambience_label, AudioManager.ambience_volume)
+		_update_label(_voice_label, AudioManager.voice_volume)
 
 func _update_label(lbl: Label, val: float) -> void:
 	lbl.text = str(int(val * 100)) + "%"
 
 func _on_master_changed(val: float) -> void:
 	if AudioManager:
-		AudioManager.master_volume = val
-		# Update live ambience volume
-		if AudioManager.ambience_player and AudioManager.ambience_player.playing:
-			AudioManager.ambience_player.volume_db = linear_to_db(AudioManager.ambience_volume * val)
+		AudioManager.set_master_volume(val)
 	_update_label(_master_label, val)
 
 func _on_sfx_changed(val: float) -> void:
 	if AudioManager:
-		AudioManager.sfx_volume = val
+		AudioManager.set_sfx_volume(val)
 	_update_label(_sfx_label, val)
+
+func _on_music_changed(val: float) -> void:
+	if AudioManager:
+		AudioManager.set_music_volume(val)
+	_update_label(_music_label, val)
 
 func _on_ambience_changed(val: float) -> void:
 	if AudioManager:
 		AudioManager.ambience_volume = val
 		if AudioManager.ambience_player and AudioManager.ambience_player.playing:
-			AudioManager.ambience_player.volume_db = linear_to_db(val * AudioManager.master_volume)
+			AudioManager.ambience_player.volume_db = linear_to_db(val)
 	_update_label(_ambience_label, val)
 
+func _on_voice_changed(val: float) -> void:
+	if AudioManager:
+		AudioManager.set_voice_volume(val)
+	_update_label(_voice_label, val)
+
 func _save_settings() -> void:
-	var config = ConfigFile.new()
-	config.set_value("audio", "master", AudioManager.master_volume if AudioManager else 0.7)
-	config.set_value("audio", "sfx", AudioManager.sfx_volume if AudioManager else 0.8)
-	config.set_value("audio", "ambience", AudioManager.ambience_volume if AudioManager else 0.3)
-	config.save(SETTINGS_PATH)
+	if AudioManager:
+		AudioManager.save_volume_settings()
 	AccessibilitySettings.save_settings()
 
 func _load_settings() -> void:
-	var config = ConfigFile.new()
-	if config.load(SETTINGS_PATH) != OK:
-		return
-	if AudioManager:
-		AudioManager.master_volume = config.get_value("audio", "master", 0.7)
-		AudioManager.sfx_volume = config.get_value("audio", "sfx", 0.8)
-		AudioManager.ambience_volume = config.get_value("audio", "ambience", 0.3)
+	# AudioManager loads its own settings in _ready()
+	pass
 
 func _on_back() -> void:
 	hide_menu()
@@ -151,12 +158,26 @@ func _build_ui() -> void:
 	_sfx_slider.value_changed.connect(_on_sfx_changed)
 	main_box.add_child(sfx_row[2])
 
+	# Music volume
+	var music_row = _make_slider_row("Music")
+	_music_slider = music_row[0]
+	_music_label = music_row[1]
+	_music_slider.value_changed.connect(_on_music_changed)
+	main_box.add_child(music_row[2])
+
 	# Ambience volume
 	var amb_row = _make_slider_row("Ambience")
 	_ambience_slider = amb_row[0]
 	_ambience_label = amb_row[1]
 	_ambience_slider.value_changed.connect(_on_ambience_changed)
 	main_box.add_child(amb_row[2])
+
+	# Voice/Narrator volume
+	var voice_row = _make_slider_row("Voice")
+	_voice_slider = voice_row[0]
+	_voice_label = voice_row[1]
+	_voice_slider.value_changed.connect(_on_voice_changed)
+	main_box.add_child(voice_row[2])
 
 	# ---- SEPARATOR ----
 	var sep = HSeparator.new()
