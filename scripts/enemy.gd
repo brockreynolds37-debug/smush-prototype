@@ -25,6 +25,11 @@ var leash_range: float = 20.0
 var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
+# Status effects
+var _base_move_speed: float = 5.0
+var _is_stunned: bool = false
+var _slow_amount: float = 0.0
+
 # Animation
 enum AnimState { IDLE, WALK, ATTACK, DEATH }
 var anim_state: AnimState = AnimState.IDLE
@@ -45,6 +50,8 @@ func _ready() -> void:
 	current_health = max_health
 
 	# Load model based on enemy type
+	_base_move_speed = move_speed
+
 	_load_enemy_model()
 	original_scale = model.scale
 
@@ -147,6 +154,12 @@ func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
 
+	if _is_stunned:
+		velocity = Vector3.ZERO
+		current_speed = 0.0
+		move_and_slide()
+		return
+
 	var hero = GameManager.hero
 	if hero == null or hero.is_dead:
 		_return_to_spawn(delta)
@@ -241,6 +254,15 @@ func _try_attack(hero: Node3D) -> void:
 	tween.tween_callback(func():
 		if is_instance_valid(hero) and hero.has_method("take_damage"):
 			hero.take_damage(attack_damage)
+			# Enemy-type status effects on melee hit
+			match enemy_type:
+				"spider":
+					StatusEffectManager.apply_poison(hero, 4.0, 6, 1.0)
+				"slime":
+					StatusEffectManager.apply_slow(hero, 3.0, 0.4)
+				"wolf":
+					if randf() < 0.25:
+						StatusEffectManager.apply_slow(hero, 2.0, 0.3)
 	)
 	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.1, 0.9), 0.1)
 	tween.tween_property(model, "scale", original_scale, 0.1)
@@ -313,3 +335,18 @@ func _flash_color(color: Color, duration: float) -> void:
 	await get_tree().create_timer(duration).timeout
 	if not is_dead:
 		_restore_model_materials()
+
+# ---------- STATUS EFFECTS ----------
+
+func _apply_status_slow(slow_pct: float) -> void:
+	_slow_amount = slow_pct
+	move_speed = _base_move_speed * (1.0 - _slow_amount)
+	nav_agent.max_speed = move_speed
+
+func _remove_status_slow() -> void:
+	_slow_amount = 0.0
+	move_speed = _base_move_speed
+	nav_agent.max_speed = move_speed
+
+func _apply_status_stun(stunned: bool) -> void:
+	_is_stunned = stunned

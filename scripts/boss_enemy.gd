@@ -31,6 +31,11 @@ var leash_range: float = 30.0
 var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
+# Status effects
+var _base_move_speed: float = 4.0
+var _is_stunned: bool = false
+var _slow_amount: float = 0.0
+
 # Boss phases
 enum Phase { IDLE, PHASE_1, PHASE_2, ENRAGED }
 var current_phase: Phase = Phase.IDLE
@@ -116,6 +121,12 @@ func _find_mesh_instances(node: Node) -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_dead:
+		return
+
+	if _is_stunned:
+		velocity = Vector3.ZERO
+		current_speed = 0.0
+		move_and_slide()
 		return
 
 	# Slam cooldown countdown
@@ -233,12 +244,15 @@ func _slam_attack() -> void:
 		var slam_tween = create_tween()
 		slam_tween.tween_property(model, "scale", Vector3.ONE * model_scale * Vector3(1.5, 0.6, 1.5), 0.1)
 		slam_tween.tween_callback(func():
-			# Damage all enemies in radius
+			# Damage hero in radius + apply slow
 			var hero = GameManager.hero
 			if is_instance_valid(hero) and hero.has_method("take_damage"):
 				var dist = global_position.distance_to(hero.global_position)
 				if dist <= SLAM_RADIUS:
 					hero.take_damage(SLAM_DAMAGE)
+					StatusEffectManager.apply_slow(hero, 2.5, 0.5)
+					if is_enraged:
+						StatusEffectManager.apply_stun(hero, 0.8)
 			GameManager.request_screen_shake(6.0, 0.4)
 			_spawn_slam_vfx()
 		)
@@ -380,3 +394,21 @@ func _flash_color(color: Color, duration: float) -> void:
 	await get_tree().create_timer(duration).timeout
 	if not is_dead and not is_enraged:
 		_restore_model_materials()
+
+# ---------- STATUS EFFECTS ----------
+
+func _apply_status_slow(slow_pct: float) -> void:
+	_slow_amount = slow_pct
+	move_speed = _base_move_speed * (1.0 - _slow_amount)
+	nav_agent.max_speed = move_speed
+
+func _remove_status_slow() -> void:
+	_slow_amount = 0.0
+	move_speed = _base_move_speed
+	nav_agent.max_speed = move_speed
+
+func _apply_status_stun(stunned: bool) -> void:
+	_is_stunned = stunned
+	if stunned:
+		velocity = Vector3.ZERO
+		current_speed = 0.0
