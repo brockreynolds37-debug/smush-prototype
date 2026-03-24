@@ -58,6 +58,12 @@ func _ready() -> void:
 		max_health = int(max_health * pow(BalanceConfig.ENEMY_HP_SCALE_PER_FLOOR, floor_num - 1))
 		attack_damage = int(attack_damage * pow(BalanceConfig.ENEMY_DAMAGE_SCALE_PER_FLOOR, floor_num - 1))
 
+	# Apply difficulty multiplier
+	var diff_mult := GameManager.get_difficulty_multiplier()
+	if diff_mult != 1.0:
+		max_health = int(max_health * diff_mult)
+		attack_damage = int(attack_damage * diff_mult)
+
 	current_health = max_health
 
 	# Load model based on enemy type

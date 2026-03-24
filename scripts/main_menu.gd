@@ -8,6 +8,7 @@ var cam_angle: float = 0.0
 var is_transitioning: bool = false
 var _settings_menu: Node = null
 var _continue_btn: Button = null
+var _difficulty_label: Label = null
 
 func _ready() -> void:
 	_build_3d_scene()
@@ -170,6 +171,27 @@ func _build_ui() -> void:
 	new_game_btn.pressed.connect(_on_new_game)
 	btn_box.add_child(new_game_btn)
 
+	# Difficulty selector row
+	var diff_row = HBoxContainer.new()
+	diff_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	diff_row.add_theme_constant_override("separation", 8)
+	btn_box.add_child(diff_row)
+
+	var diff_left = _make_small_button("<")
+	diff_left.pressed.connect(_cycle_difficulty.bind(-1))
+	diff_row.add_child(diff_left)
+
+	_difficulty_label = Label.new()
+	_difficulty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_difficulty_label.add_theme_font_size_override("font_size", 20)
+	_difficulty_label.custom_minimum_size = Vector2(200, 0)
+	diff_row.add_child(_difficulty_label)
+	_update_difficulty_label()
+
+	var diff_right = _make_small_button(">")
+	diff_right.pressed.connect(_cycle_difficulty.bind(1))
+	diff_row.add_child(diff_right)
+
 	# Settings button
 	var settings_btn = _make_button("SETTINGS", true)
 	settings_btn.pressed.connect(_on_settings)
@@ -232,6 +254,47 @@ func _make_button(text: String, subdued: bool = false) -> Button:
 	btn.add_theme_color_override("font_hover_color", font_color.lightened(0.2))
 
 	return btn
+
+func _make_small_button(text: String) -> Button:
+	var btn = Button.new()
+	btn.text = text
+	btn.add_theme_font_size_override("font_size", 22)
+	btn.custom_minimum_size = Vector2(44, 44)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.15, 0.12, 0.2, 0.85)
+	style.border_color = Color(0.4, 0.35, 0.5, 0.6)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", style)
+	var hover = style.duplicate()
+	hover.bg_color = Color(0.25, 0.2, 0.3, 0.9)
+	hover.border_color = Color(0.6, 0.5, 0.7)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_color_override("font_color", Color(0.8, 0.75, 0.9))
+	return btn
+
+func _cycle_difficulty(direction: int) -> void:
+	var current := int(GameManager.difficulty)
+	var count := GameManager.DIFFICULTY_NAMES.size()
+	current = (current + direction + count) % count
+	GameManager.difficulty = current as GameManager.Difficulty
+	_update_difficulty_label()
+
+func _update_difficulty_label() -> void:
+	if not _difficulty_label:
+		return
+	var name := GameManager.get_difficulty_name()
+	var colors := {
+		"Easy": Color(0.4, 0.9, 0.4),
+		"Normal": Color(0.9, 0.85, 0.5),
+		"Hard": Color(1.0, 0.5, 0.2),
+		"Insane": Color(1.0, 0.15, 0.15),
+	}
+	var suffix := ""
+	if GameManager.is_permadeath():
+		suffix = " (Permadeath)"
+	_difficulty_label.text = name + suffix
+	_difficulty_label.add_theme_color_override("font_color", colors.get(name, Color.WHITE))
 
 func _on_continue() -> void:
 	if is_transitioning:

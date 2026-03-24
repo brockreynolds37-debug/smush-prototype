@@ -13,6 +13,9 @@ func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
 func save_game() -> void:
+	# INSANE difficulty = permadeath, no auto-saving
+	if GameManager.is_permadeath():
+		return
 	var data := _gather_save_data()
 	var json_string := JSON.stringify(data, "\t")
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -64,6 +67,7 @@ func _gather_save_data() -> Dictionary:
 
 	return {
 		"version": 1,
+		"difficulty": GameManager.difficulty,
 		"character_id": CharacterData.selected_character,
 		"floor": FloorManager.current_floor,
 		"hero": hero_data,
@@ -94,6 +98,9 @@ func _gather_save_data() -> Dictionary:
 func apply_save_data(data: Dictionary) -> void:
 	if data.is_empty():
 		return
+
+	# Restore difficulty
+	GameManager.difficulty = int(data.get("difficulty", GameManager.Difficulty.NORMAL))
 
 	# Restore character selection
 	CharacterData.selected_character = data.get("character_id", "fat_nate")

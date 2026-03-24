@@ -12,7 +12,10 @@ signal hero_target_changed(target: Node3D)
 signal game_over(won: bool)
 
 enum GameState { PLAYING, WON, LOST }
+enum Difficulty { EASY, NORMAL, HARD, INSANE }
+
 var game_state: GameState = GameState.PLAYING
+var difficulty: Difficulty = Difficulty.NORMAL
 
 var hero: Node3D = null
 var enemies: Array[Node3D] = []
@@ -139,3 +142,28 @@ func get_enemies_in_range(from_pos: Vector3, radius: float) -> Array[Node3D]:
 		if from_pos.distance_to(e.global_position) <= radius:
 			result.append(e)
 	return result
+
+# ---------- DIFFICULTY ----------
+
+const DIFFICULTY_NAMES := {
+	Difficulty.EASY: "Easy",
+	Difficulty.NORMAL: "Normal",
+	Difficulty.HARD: "Hard",
+	Difficulty.INSANE: "Insane",
+}
+
+const DIFFICULTY_MULT := {
+	Difficulty.EASY: 0.7,
+	Difficulty.NORMAL: 1.0,
+	Difficulty.HARD: 1.5,
+	Difficulty.INSANE: 2.0,
+}
+
+func get_difficulty_multiplier() -> float:
+	return DIFFICULTY_MULT.get(difficulty, 1.0)
+
+func get_difficulty_name() -> String:
+	return DIFFICULTY_NAMES.get(difficulty, "Normal")
+
+func is_permadeath() -> bool:
+	return difficulty == Difficulty.INSANE
