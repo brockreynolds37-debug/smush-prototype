@@ -66,6 +66,7 @@ func _on_hero_died() -> void:
 	if game_state != GameState.PLAYING:
 		return
 	game_state = GameState.LOST
+	SaveManager.delete_save()
 	game_over.emit(false)
 
 signal all_enemies_cleared  # Emitted when floor is cleared (enemies dead)
@@ -75,6 +76,7 @@ func on_boss_defeated(_boss_type: String) -> void:
 	if FloorManager.current_floor >= MAX_FLOOR:
 		if game_state == GameState.PLAYING:
 			game_state = GameState.WON
+			SaveManager.delete_save()
 			game_over.emit(true)
 			return
 
@@ -100,6 +102,9 @@ func reset_game_state() -> void:
 	FloorManager.reset()
 	RunStats.reset()
 	Narrator.reset()
+	LootManager.gold = 0
+	LootManager.inventory.clear()
+	LootManager.equipped.clear()
 
 func register_camera(c: Node3D) -> void:
 	camera = c

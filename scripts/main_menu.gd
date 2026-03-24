@@ -7,6 +7,7 @@ var cam: Camera3D = null
 var cam_angle: float = 0.0
 var is_transitioning: bool = false
 var _settings_menu: Node = null
+var _continue_btn: Button = null
 
 func _ready() -> void:
 	_build_3d_scene()
@@ -158,8 +159,14 @@ func _build_ui() -> void:
 	btn_box.add_theme_constant_override("separation", 16)
 	canvas.add_child(btn_box)
 
+	# Continue button (only if save exists)
+	if SaveManager.has_save():
+		_continue_btn = _make_button("CONTINUE")
+		_continue_btn.pressed.connect(_on_continue)
+		btn_box.add_child(_continue_btn)
+
 	# New Game button
-	var new_game_btn = _make_button("NEW GAME")
+	var new_game_btn = _make_button("NEW GAME", SaveManager.has_save())
 	new_game_btn.pressed.connect(_on_new_game)
 	btn_box.add_child(new_game_btn)
 
@@ -226,11 +233,31 @@ func _make_button(text: String, subdued: bool = false) -> Button:
 
 	return btn
 
-func _on_new_game() -> void:
+func _on_continue() -> void:
 	if is_transitioning:
 		return
 	is_transitioning = true
 
+	# Load saved data and restore state before scene transition
+	var save_data := SaveManager.load_game()
+	if save_data.is_empty():
+		_on_new_game()
+		return
+	SaveManager.apply_save_data(save_data)
+
+	# Store save data in GameManager meta so scene script can apply hero state after spawn
+	GameManager.set_meta("pending_save_data", save_data)
+
+	_fade_to_scene("res://scenes/dungeon_floor1_scene.tscn")
+
+func _on_new_game() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
+	SaveManager.delete_save()
+	_fade_to_scene("res://scenes/character_select.tscn")
+
+func _fade_to_scene(scene_path: String) -> void:
 	var overlay = ColorRect.new()
 	overlay.color = Color(0, 0, 0, 0)
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -244,7 +271,7 @@ func _on_new_game() -> void:
 	var tween = create_tween()
 	tween.tween_property(overlay, "color:a", 1.0, 0.6)
 	tween.tween_callback(func():
-		get_tree().change_scene_to_file("res://scenes/character_select.tscn")
+		get_tree().change_scene_to_file(scene_path)
 	)
 
 func _on_settings() -> void:
@@ -260,6 +287,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_ENTER, KEY_SPACE:
-				_on_new_game()
+				if SaveManager.has_save():
+					_on_continue()
+				else:
+					_on_new_game()
 			KEY_ESCAPE:
 				_on_quit()

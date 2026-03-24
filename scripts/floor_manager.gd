@@ -62,6 +62,9 @@ func _transition_to_floor(floor_number: int) -> void:
 
 	floor_changed.emit(current_floor)
 
+	# Auto-save after floor transition
+	SaveManager.save_game()
+
 	# Fade back in
 	if _overlay:
 		var fade_in = create_tween()
