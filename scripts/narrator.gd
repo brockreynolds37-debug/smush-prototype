@@ -134,7 +134,261 @@ const OVERTIME := [
 	"RUN. NOW. The floor collapses!",
 ]
 
+# ----- PATH-AWARE REACTIONS -----
+# Keyed by "archetype:path" or "any:path" for generic fallbacks.
+# Minimum 5 lines per path per archetype as specified.
+
+const PATH_REACTIONS := {
+	# ── CRAWL ──
+	"Dungeon Crawl:combat": [
+		"A straightforward warrior. The arena appreciates simplicity.",
+		"Kill everything. Classic approach. The crowd loves it.",
+		"Blood and steel — the old-fashioned way.",
+		"The champion paints the walls red. Efficient.",
+		"No subtlety, all power. The audience approves.",
+	],
+	"Dungeon Crawl:speed": [
+		"They sprint past danger. Bold or foolish?",
+		"The speedrunner ignores the carnage. Risky.",
+		"Not a single unnecessary step. Pure efficiency.",
+		"The Collective watches a record attempt unfold.",
+		"Less killing, more running. Unusual. Intriguing.",
+	],
+	"Dungeon Crawl:clever": [
+		"Using traps against their makers. Poetic.",
+		"The clever ones survive longer. Usually.",
+		"Environment as weapon — a thinking warrior.",
+		"Resourceful. The Collective admires creativity.",
+		"Why fight when the dungeon fights for you?",
+	],
+
+	# ── STEALTH ──
+	"Stealth:combat": [
+		"A berserker in a stealth floor. The audience is... surprised.",
+		"Stealth? What stealth? They chose violence.",
+		"Fighting through patrols. Bold. Loud. Entertaining.",
+		"The guards never expected a frontal assault. Neither did we.",
+		"All that sneaking infrastructure, wasted on a brute.",
+	],
+	"Stealth:speed": [
+		"A ghost. They passed through without a trace.",
+		"The guards never saw them. Perfect speed.",
+		"Sprint, slide, gone. The audience barely blinked.",
+		"Too fast for the patrols. Too fast for the cameras.",
+		"A phantom in the shadows. Poetry in motion.",
+	],
+	"Stealth:clever": [
+		"Backstabs and distractions. A true operative.",
+		"They turned the guards against themselves. Brilliant.",
+		"Every distraction placed with surgical precision.",
+		"A shadow that thinks. The Collective is impressed.",
+		"Clever use of the environment. Silent and deadly.",
+	],
+	"Stealth:social": [
+		"They walked right past the guards. In disguise. Audacious.",
+		"Hidden in plain sight. The Collective approves.",
+		"A silver tongue among the patrols. Unexpected.",
+		"Blending in beats sneaking past. Sometimes.",
+		"The disguise holds. For now.",
+	],
+
+	# ── ECONOMY ──
+	"Economy:social": [
+		"You conned the merchant. The Collective approves. The merchant does not.",
+		"Trade, haggle, profit. A merchant warrior.",
+		"The Merchant King has met their match.",
+		"Silver tongue buys more than steel can take.",
+		"An empire built on handshakes. For now.",
+	],
+	"Economy:combat": [
+		"Rob the merchants? Bold. And very loud.",
+		"Why pay when you can plunder?",
+		"The guards fall. The prices don't matter to the dead.",
+		"A hostile takeover in the most literal sense.",
+		"The economy collapses. But you got what you needed.",
+	],
+	"Economy:clever": [
+		"A gambler and a cheat. The audience loves it.",
+		"They exploited every loophole in the market.",
+		"Con artist supreme. The Collective takes notes.",
+		"Price manipulation as an art form.",
+		"The system was designed to be fair. You disagreed.",
+	],
+	"Economy:speed": [
+		"Buy low, sell high, get out fast. Market speed.",
+		"The fastest flipper in the dungeon.",
+		"Gold changes hands so quickly the NPCs are dizzy.",
+		"A flash trade. In and out before prices rose.",
+		"Speed trader. The Collective is timing this.",
+	],
+
+	# ── POLITICAL ──
+	"Political:social": [
+		"A born politician. The factions fall in line.",
+		"Alliances forged. Votes secured. Democracy in action.",
+		"The champion rules by charisma, not force.",
+		"Every handshake is a weapon in this one's arsenal.",
+		"The election approaches. The polls look favorable.",
+	],
+	"Political:combat": [
+		"Assassination. Direct and permanent.",
+		"Why campaign when you can eliminate the competition?",
+		"The guards fall. The mayor trembles.",
+		"Politics through violence. Historically accurate.",
+		"A coup d'état on the dungeon floor.",
+	],
+	"Political:clever": [
+		"Puppet strings everywhere. Who really rules here?",
+		"Bribery and blackmail — the invisible hand.",
+		"The shadows move. The factions don't know who to trust.",
+		"A manipulator behind every faction shift.",
+		"The Collective recognizes a fellow puppeteer.",
+	],
+
+	# ── BOSS RUSH ──
+	"Boss Rush:combat": [
+		"Gladiator-born. Boss after boss falls.",
+		"Pure combat mastery on display.",
+		"Steel meets scale. Steel wins.",
+		"The champion treats bosses like warmups.",
+		"An arena legend in the making.",
+	],
+	"Boss Rush:clever": [
+		"Using the arena against the bosses. Smart.",
+		"Summons and traps versus titans. Clever.",
+		"The tactician exploits every boss weakness.",
+		"Why trade blows when you can trade strategies?",
+		"A thinking fighter. Rare and effective.",
+	],
+	"Boss Rush:speed": [
+		"Speedkilling bosses. The timer is the real opponent.",
+		"Each boss falls faster than the last.",
+		"A blur of violence. Incredible pace.",
+		"The audience barely has time to cheer between kills.",
+		"New record? The Collective starts the clock.",
+	],
+
+	# ── SURVIVAL ARENA ──
+	"Survival Arena:combat": [
+		"Wave after wave, they stand their ground.",
+		"The slayer approach. No wave survives.",
+		"Aggressive. Relentless. Every wave ends fast.",
+		"The arena was designed to overwhelm. It failed.",
+		"Steel and fury solve every wave.",
+	],
+	"Survival Arena:clever": [
+		"Kiting the waves into traps. Survivor mentality.",
+		"They outlast rather than overpower. Patience.",
+		"The clever ones survive longest in the arena.",
+		"Environment, positioning, timing. A survivor's toolkit.",
+		"The waves break against tactical brilliance.",
+	],
+	"Survival Arena:speed": [
+		"Clearing waves before they even form up.",
+		"Wave rushing. The timer thanks you.",
+		"Each wave melts faster than the last.",
+		"Speed between waves. No rest needed.",
+		"The fastest arena clear the Collective has witnessed.",
+	],
+
+	# ── ESCAPE ──
+	"Escape:speed": [
+		"Born to run. The wall can't keep up.",
+		"A sprinter's dream. Not a scratch.",
+		"Speed incarnate. The danger wall fades behind.",
+		"They make escaping look effortless.",
+		"The Collective clocks a record pace.",
+	],
+	"Escape:combat": [
+		"Fighting through the escape. Unusual but entertaining.",
+		"The wall advances. They stop to fight. BOLD.",
+		"Bulldozing through obstacles instead of dodging.",
+		"Dangerous approach on an escape floor.",
+		"The audience loves a fighter who ignores the rules.",
+	],
+	"Escape:clever": [
+		"Shortcuts found. The wall outmaneuvered.",
+		"A pathfinder through chaos. Impressive.",
+		"They know routes the builders didn't intend.",
+		"Clever routing turns danger into a brisk walk.",
+		"Every shortcut is a gift. This one found them all.",
+	],
+
+	# ── INVERSION ──
+	"Inversion:combat": [
+		"Defending from the front line. Hands-on management.",
+		"The boss fights their own battles. Respect.",
+		"Personal combat while the dungeon watches.",
+		"A boss who leads from the front. Unusual.",
+		"Traps? Minions? No. Just fists.",
+	],
+	"Inversion:clever": [
+		"Traps and minions do the work. Perfect architecture.",
+		"A dungeon mastermind. The crawlers never stood a chance.",
+		"Every kill zone placed with surgical precision.",
+		"The architect approach. Build it and they will die.",
+		"The Collective recognizes dungeon design talent.",
+	],
+
+	# ── RACE ──
+	"Race:speed": [
+		"First place! A born racer.",
+		"The ghosts eat dust. Pure speed.",
+		"Every checkpoint hit with perfect momentum.",
+		"The track belongs to the champion.",
+		"A speed record that ghosts envy.",
+	],
+	"Race:clever": [
+		"Shortcuts the ghosts don't know about.",
+		"Boost pads chained together. Genius routing.",
+		"The clever path is the fastest path.",
+		"Route optimization at its finest.",
+		"Finding the line the builders hid.",
+	],
+	"Race:combat": [
+		"Smashing through obstacles instead of dodging.",
+		"The enforcer approach. Obstacles fear this racer.",
+		"Why dodge when you can destroy?",
+		"A wrecking ball on a race track.",
+		"The obstacles are the real losers here.",
+	],
+}
+
+# Generic fallbacks when no archetype-specific reaction exists
+const PATH_GENERIC := {
+	"combat": [
+		"The way of the warrior. Direct and effective.",
+		"Blood and glory. The audience approves.",
+		"Violence chosen where subtlety was available.",
+		"A fighter's answer to every question.",
+		"The path of most resistance, willingly taken.",
+	],
+	"speed": [
+		"Speed over everything. An unusual priority.",
+		"They chose velocity over violence.",
+		"Fast feet, faster thinking.",
+		"No time wasted. The Collective is timing.",
+		"A blur through the dungeon.",
+	],
+	"social": [
+		"Words instead of weapons. A rarity down here.",
+		"The silver tongue finds a way.",
+		"Charm as armor. Unusual in a dungeon.",
+		"Social finesse in a world of steel.",
+		"Talking their way through. The Collective is amused.",
+	],
+	"clever": [
+		"Resourceful. Creative. The Collective takes notice.",
+		"Using everything but brute force.",
+		"The trickster approach. Entertaining.",
+		"Unconventional methods yield unconventional results.",
+		"Why fight fair when you can fight smart?",
+	],
+}
+
 # ----- Core -----
+
+var _last_path_announced: String = ""
 
 func _ready() -> void:
 	_rng.randomize()
@@ -145,6 +399,7 @@ func _ready() -> void:
 	AudienceManager.boredom_started.connect(_on_boredom)
 	AudienceManager.mood_changed.connect(_on_mood_changed)
 	SmusherTimer.overtime_started.connect(_on_overtime)
+	SolutionPathTracker.path_changed.connect(_on_path_changed)
 
 func _process(delta: float) -> void:
 	if _cooldown > 0:
@@ -235,6 +490,7 @@ func _on_floor_changed(floor_num: int) -> void:
 	_near_death_announced = false
 	_boss_active = false
 	_floor_start_time = Time.get_ticks_msec() / 1000.0
+	_last_path_announced = ""
 	if floor_num > 1:
 		_say_line(FLOOR_ENTER, Color(0.6, 0.7, 1.0), 26, true)
 
@@ -252,6 +508,32 @@ func _on_overtime() -> void:
 
 func _on_game_over(won: bool) -> void:
 	_cooldown = 0.0  # Reset for final line
+
+# ----- Solution Path Reactions -----
+
+func _on_path_changed(new_path: String, _old_path: String) -> void:
+	if new_path == _last_path_announced:
+		return
+	_last_path_announced = new_path
+	# 60% chance to comment on path shift (avoid spam)
+	if _rng.randf() > 0.6:
+		return
+	var pool := _get_path_lines(new_path)
+	if pool.size() > 0:
+		var color := SolutionPathTracker.get_path_color()
+		_say_line(pool, color, 24)
+
+func _get_path_lines(path: String) -> Array:
+	## Get archetype-specific path lines, fall back to generic.
+	var archetype_name := ""
+	if FloorManager.current_archetype:
+		archetype_name = FloorManager.current_archetype.archetype_name
+	var key := "%s:%s" % [archetype_name, path]
+	if PATH_REACTIONS.has(key):
+		return PATH_REACTIONS[key]
+	if PATH_GENERIC.has(path):
+		return PATH_GENERIC[path]
+	return []
 
 # ----- Boss Entrance (called externally by boss_enemy.gd) -----
 
@@ -288,3 +570,4 @@ func reset() -> void:
 	_first_kill_announced = false
 	_boss_active = false
 	_floor_start_time = 0.0
+	_last_path_announced = ""
