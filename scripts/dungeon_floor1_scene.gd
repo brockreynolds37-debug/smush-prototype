@@ -13,6 +13,7 @@ var _enemy_sync: Node = null
 var _loot_sync: Node = null
 var _floor_transition_sync: Node = null
 var _combat_sync: Node = null
+var _archetype_adapter: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -164,6 +165,14 @@ func _ready() -> void:
 		chat.set_script(chat_script)
 		chat.name = "MultiplayerChat"
 		add_child(chat)
+
+	# Multiplayer: archetype adapter (scales archetypes for player count)
+	if NetworkManager.is_multiplayer_active():
+		var adapter_script := preload("res://scripts/multiplayer_archetype_adapter.gd")
+		_archetype_adapter = Node.new()
+		_archetype_adapter.set_script(adapter_script)
+		_archetype_adapter.name = "ArchetypeAdapter"
+		add_child(_archetype_adapter)
 
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):
@@ -523,6 +532,8 @@ func _process(delta: float) -> void:
 	# Update active floor archetype each frame
 	if FloorManager.current_archetype and FloorManager.current_archetype._is_active:
 		FloorManager.current_archetype.update(delta)
+		if _archetype_adapter and _archetype_adapter.has_method("update_mp"):
+			_archetype_adapter.update_mp(FloorManager.current_archetype, delta)
 
 func _setup_archetype(floor_num: int) -> void:
 	# Tear down previous archetype
@@ -554,6 +565,10 @@ func _setup_archetype(floor_num: int) -> void:
 
 	# Start the archetype
 	archetype.start()
+
+	# Multiplayer: adapt archetype for player count (scaling, shared state)
+	if _archetype_adapter and _archetype_adapter.has_method("adapt"):
+		_archetype_adapter.adapt(archetype)
 
 func _teardown_archetype() -> void:
 	if FloorManager.current_archetype:
