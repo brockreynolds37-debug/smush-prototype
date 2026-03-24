@@ -15,6 +15,8 @@ extends CanvasLayer
 @onready var cooldown_r: ColorRect = %CooldownR
 @onready var minimap_frame: ColorRect = %MinimapFrame
 @onready var floor_label: Label = %FloorLabel
+@onready var gold_label: Label = %GoldLabel
+@onready var loot_feed: VBoxContainer = %LootFeed
 @onready var game_over_overlay: ColorRect = $GameOverOverlay
 @onready var game_over_label: Label = $GameOverOverlay/GameOverLabel
 @onready var restart_label: Label = $GameOverOverlay/RestartLabel
@@ -37,6 +39,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_connect_hero()
 	GameManager.game_over.connect(_on_game_over)
+	LootManager.item_picked_up.connect(_on_item_picked_up)
+	LootManager.gold_changed.connect(_on_gold_changed)
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -90,6 +94,32 @@ func _on_game_over(won: bool) -> void:
 		game_over_overlay.modulate = Color(1, 1, 1, 0)
 		var tween = create_tween()
 		tween.tween_property(game_over_overlay, "modulate", Color(1, 1, 1, 1), 1.0)
+
+func _on_gold_changed(amount: int) -> void:
+	if gold_label:
+		gold_label.text = "Gold: %d" % amount
+
+func _on_item_picked_up(item: Dictionary) -> void:
+	if loot_feed == null:
+		return
+	var label := Label.new()
+	var item_name: String = item.get("name", "Item")
+	var rarity: int = item.get("rarity", 0)
+	var color: Color = LootManager.RARITY_COLORS.get(rarity, Color.WHITE)
+	label.text = "+ %s" % item_name
+	label.add_theme_color_override("font_color", color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	loot_feed.add_child(label)
+	# Fade out and remove after 3 seconds
+	var tween := create_tween()
+	tween.tween_interval(2.5)
+	tween.tween_property(label, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(label.queue_free)
+	# Cap feed to 6 visible entries
+	while loot_feed.get_child_count() > 6:
+		var oldest := loot_feed.get_child(0)
+		loot_feed.remove_child(oldest)
+		oldest.queue_free()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
