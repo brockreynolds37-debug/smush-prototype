@@ -11,6 +11,61 @@ const TILE_SIZE := 2.0  # World units per grid cell
 
 @export var floor_number: int = 1
 
+# ---------- FLOOR THEMES ----------
+# Tier 1 "The Sift" = grey stone dungeon (Floor 1)
+# Tier 2 "The Spectacle" = arena gold/red (Floor 2)
+# Tier 3 "The Crush" = corrupted glitch purple (Floor 3+)
+
+var _theme: Dictionary = {}
+
+static func _get_theme_for_floor(floor_num: int) -> Dictionary:
+	match floor_num:
+		1:
+			return {
+				"name": "The Sift",
+				"floor_color": Color(0.30, 0.28, 0.25),
+				"floor_roughness": 0.85,
+				"wall_color": Color(0.40, 0.37, 0.33),
+				"wall_roughness": 0.80,
+				"accent_color": Color(0.55, 0.50, 0.42),
+				"ambient_color": Color(0.6, 0.55, 0.45),
+				"ambient_energy": 0.15,
+				"fog_color": Color(0.15, 0.13, 0.10),
+				"fog_density": 0.02,
+				"light_color": Color(1.0, 0.85, 0.6),
+				"light_energy": 0.8,
+			}
+		2:
+			return {
+				"name": "The Spectacle",
+				"floor_color": Color(0.35, 0.22, 0.12),
+				"floor_roughness": 0.70,
+				"wall_color": Color(0.50, 0.30, 0.15),
+				"wall_roughness": 0.65,
+				"accent_color": Color(0.85, 0.65, 0.20),
+				"ambient_color": Color(0.8, 0.5, 0.2),
+				"ambient_energy": 0.20,
+				"fog_color": Color(0.20, 0.10, 0.05),
+				"fog_density": 0.015,
+				"light_color": Color(1.0, 0.75, 0.4),
+				"light_energy": 1.0,
+			}
+		_:
+			return {
+				"name": "The Crush",
+				"floor_color": Color(0.18, 0.12, 0.22),
+				"floor_roughness": 0.60,
+				"wall_color": Color(0.25, 0.15, 0.30),
+				"wall_roughness": 0.55,
+				"accent_color": Color(0.60, 0.20, 0.80),
+				"ambient_color": Color(0.5, 0.2, 0.7),
+				"ambient_energy": 0.25,
+				"fog_color": Color(0.10, 0.05, 0.15),
+				"fog_density": 0.025,
+				"light_color": Color(0.8, 0.5, 1.0),
+				"light_energy": 0.9,
+			}
+
 # Tile types for the grid map
 enum Tile {
 	EMPTY = 0,
@@ -61,6 +116,7 @@ var _prop_container: Node3D
 var _nav_region: NavigationRegion3D
 
 func _ready() -> void:
+	_theme = _get_theme_for_floor(floor_number)
 	_load_assets()
 	match floor_number:
 		1: _define_floor1_layout()
@@ -69,6 +125,7 @@ func _ready() -> void:
 		_: _define_floor1_layout()
 	_build_grid_from_rooms()
 	_generate_geometry()
+	_apply_theme_lighting()
 	_bake_navigation()
 
 func _load_assets() -> void:
@@ -486,6 +543,31 @@ func _generate_geometry() -> void:
 func _cell_to_world(cell: Vector2i) -> Vector3:
 	return Vector3(cell.x * TILE_SIZE, 0.0, cell.y * TILE_SIZE)
 
+func _make_floor_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = _theme["floor_color"]
+	mat.roughness = _theme["floor_roughness"]
+	# Subtle variation per tile for visual interest
+	mat.albedo_color = mat.albedo_color.lerp(Color.WHITE, randf_range(-0.03, 0.03))
+	return mat
+
+func _make_wall_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = _theme["wall_color"]
+	mat.roughness = _theme["wall_roughness"]
+	mat.albedo_color = mat.albedo_color.lerp(Color.WHITE, randf_range(-0.02, 0.02))
+	return mat
+
+func _apply_material_recursive(node: Node, mat: StandardMaterial3D) -> void:
+	if node is MeshInstance3D:
+		for i in range(node.get_surface_override_material_count()):
+			node.set_surface_override_material(i, mat)
+		if node.mesh:
+			for i in range(node.mesh.get_surface_count()):
+				node.set_surface_override_material(i, mat)
+	for child in node.get_children():
+		_apply_material_recursive(child, mat)
+
 func _place_floor_tile(cell: Vector2i) -> void:
 	if _floor_scene == null:
 		# Fallback: use a simple plane mesh
@@ -493,17 +575,15 @@ func _place_floor_tile(cell: Vector2i) -> void:
 		var mesh := PlaneMesh.new()
 		mesh.size = Vector2(TILE_SIZE, TILE_SIZE)
 		mi.mesh = mesh
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.3, 0.28, 0.25)
-		mi.set_surface_override_material(0, mat)
+		mi.set_surface_override_material(0, _make_floor_material())
 		mi.position = _cell_to_world(cell)
 		_floor_container.add_child(mi)
 		return
 
 	var instance := _floor_scene.instantiate()
 	instance.position = _cell_to_world(cell)
-	# Scale to match TILE_SIZE (Kenney tiles are ~1 unit)
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
+	_apply_material_recursive(instance, _make_floor_material())
 	_floor_container.add_child(instance)
 
 func _is_floor(cell: Vector2i) -> bool:
@@ -535,9 +615,7 @@ func _place_wall_segment(cell: Vector2i, rotation_deg: float) -> void:
 		var mesh := BoxMesh.new()
 		mesh.size = Vector3(TILE_SIZE, 2.5, 0.3)
 		mi.mesh = mesh
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.45, 0.4, 0.35)
-		mi.set_surface_override_material(0, mat)
+		mi.set_surface_override_material(0, _make_wall_material())
 		body.add_child(mi)
 		var col := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
@@ -561,6 +639,7 @@ func _place_wall_segment(cell: Vector2i, rotation_deg: float) -> void:
 	var wall_root := Node3D.new()
 	var instance := scene.instantiate()
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
+	_apply_material_recursive(instance, _make_wall_material())
 	wall_root.add_child(instance)
 
 	# Add collision
@@ -617,6 +696,13 @@ func _place_prop(cell: Vector2i, prop_type: String) -> void:
 	var instance := scene.instantiate()
 	instance.position = _cell_to_world(cell) + Vector3.UP * y_offset
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
+
+	# Theme-tint structural props (columns, rocks) to match tier
+	if prop_type in ["column", "rocks"]:
+		var prop_mat := StandardMaterial3D.new()
+		prop_mat.albedo_color = _theme["accent_color"]
+		prop_mat.roughness = _theme["wall_roughness"]
+		_apply_material_recursive(instance, prop_mat)
 
 	# Add collision for blocking props
 	if prop_type in ["column", "rocks"]:
@@ -725,6 +811,64 @@ func _place_exit_stairs(cell: Vector2i) -> void:
 	exit_zone.add_child(col)
 
 	add_child(exit_zone)
+
+func _apply_theme_lighting() -> void:
+	# Ambient fill light colored to theme
+	var ambient := DirectionalLight3D.new()
+	ambient.name = "ThemeAmbient"
+	ambient.light_color = _theme["ambient_color"]
+	ambient.light_energy = _theme["ambient_energy"]
+	ambient.rotation_degrees = Vector3(-45, 30, 0)
+	ambient.shadow_enabled = false
+	add_child(ambient)
+
+	# Fog volume via WorldEnvironment
+	var env := Environment.new()
+	env.fog_enabled = true
+	env.fog_light_color = _theme["fog_color"]
+	env.fog_density = _theme["fog_density"]
+	env.fog_light_energy = 0.5
+	env.ambient_light_color = _theme["ambient_color"]
+	env.ambient_light_energy = _theme["ambient_energy"]
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+
+	# Tier-specific post-processing
+	match floor_number:
+		2:
+			# The Spectacle: warm glow
+			env.glow_enabled = true
+			env.glow_intensity = 0.6
+			env.glow_bloom = 0.3
+			env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+		3:
+			# The Crush: eerie purple glow + stronger bloom
+			env.glow_enabled = true
+			env.glow_intensity = 0.8
+			env.glow_bloom = 0.5
+			env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+			env.glow_hdr_threshold = 0.8
+
+	var world_env := WorldEnvironment.new()
+	world_env.name = "ThemeEnvironment"
+	world_env.environment = env
+	add_child(world_env)
+
+	# Accent lights at room centers for color wash
+	for room in rooms:
+		if room["name"].begins_with("corridor"):
+			continue
+		var rpos: Vector2i = room["pos"]
+		var rsize: Vector2i = room["size"]
+		var center_cell := Vector2i(rpos.x + rsize.x / 2, rpos.y + rsize.y / 2)
+		var light := OmniLight3D.new()
+		light.position = _cell_to_world(center_cell) + Vector3.UP * 4.0
+		light.light_color = _theme["light_color"]
+		light.light_energy = _theme["light_energy"]
+		# Scale range to room size
+		light.omni_range = maxf(rsize.x, rsize.y) * TILE_SIZE * 0.6
+		light.omni_attenuation = 1.5
+		light.shadow_enabled = false
+		add_child(light)
 
 func _bake_navigation() -> void:
 	var nav_mesh := NavigationMesh.new()
