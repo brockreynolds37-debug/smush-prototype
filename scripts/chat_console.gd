@@ -137,6 +137,8 @@ func _execute(cmd: String) -> void:
 			_cmd_audience()
 		"archetype":
 			_cmd_archetype()
+		"path", "paths":
+			_cmd_path()
 		"replays":
 			_cmd_replays()
 		"clear", "cls":
@@ -172,6 +174,7 @@ func _cmd_help() -> void:
 	_print_line("-kills    Show kill count")
 	_print_line("-vp       Show audience VP and mood")
 	_print_line("-archetype  Show current floor archetype")
+	_print_line("-path       Show current solution path")
 	_print_line("-replays  List saved replays")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
@@ -255,6 +258,22 @@ func _cmd_archetype() -> void:
 		_print_line("\"%s\"" % a.flavor_text)
 	else:
 		_print_line("No archetype active.")
+
+func _cmd_path() -> void:
+	var path := SolutionPathTracker.get_dominant_path()
+	var label := SolutionPathTracker.get_path_label()
+	var scores := SolutionPathTracker.get_scores()
+	_print_line("[color=cyan]── Solution Path ──[/color]")
+	_print_line("Current: %s (%s)" % [label, path])
+	_print_line("Scores: combat=%d speed=%d social=%d clever=%d" % [
+		scores.get("combat", 0), scores.get("speed", 0),
+		scores.get("social", 0), scores.get("clever", 0),
+	])
+	if SolutionPathTracker.is_audience_favorite_path():
+		_print_line("[color=green]Audience loves this approach![/color]")
+	var history := SolutionPathTracker.floor_history
+	if not history.is_empty():
+		_print_line("History: %s" % ", ".join(SolutionPathTracker.last_three_paths))
 
 func _cmd_replays() -> void:
 	var replays := ReplayManager.list_replays()
