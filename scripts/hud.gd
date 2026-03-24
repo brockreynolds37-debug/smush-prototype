@@ -30,6 +30,8 @@ extends CanvasLayer
 @onready var vp_label: Label = %VpLabel
 @onready var mood_label: Label = %MoodLabel
 @onready var audience_chat: VBoxContainer = %AudienceChat
+@onready var lock_e: ColorRect = %LockE
+@onready var lock_r: ColorRect = %LockR
 
 var _active_boss: Node3D = null
 var _edge_pulse_tween: Tween = null
@@ -96,6 +98,8 @@ func _connect_hero() -> void:
 		hero.health_changed.connect(_on_health_changed)
 		hero.mana_changed.connect(_on_mana_changed)
 		hero.spell_cooldown_updated.connect(_on_cooldown_updated)
+		hero.spell_unlocked.connect(_on_spell_unlocked)
+		_refresh_spell_locks()
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	health_bar.max_value = maximum
@@ -116,6 +120,38 @@ func _on_cooldown_updated(spell_index: int, remaining: float, total: float) -> v
 			cd_rect.size.y = 60 * ratio
 		else:
 			cd_rect.visible = false
+
+# ---------- SPELL LOCKS ----------
+
+func _refresh_spell_locks() -> void:
+	var hero = GameManager.hero
+	if hero == null:
+		return
+	if lock_e:
+		lock_e.visible = not hero.is_spell_unlocked(2)
+	if lock_r:
+		lock_r.visible = not hero.is_spell_unlocked(3)
+
+func _on_spell_unlocked(spell_index: int) -> void:
+	var lock_node: ColorRect = null
+	var spell_name: String = ""
+	match spell_index:
+		2:
+			lock_node = lock_e
+			spell_name = "Heal"
+		3:
+			lock_node = lock_r
+			spell_name = "Ground Slam"
+
+	if lock_node and lock_node.visible:
+		# Animate lock removal: flash gold then hide
+		var tween = create_tween()
+		tween.tween_property(lock_node, "color", Color(1.0, 0.85, 0.2, 0.9), 0.15)
+		tween.tween_property(lock_node, "color", Color(1.0, 0.85, 0.2, 0.0), 0.4)
+		tween.tween_callback(func(): lock_node.visible = false)
+		# Center message
+		_show_center_message_colored("%s UNLOCKED!" % spell_name.to_upper(), Color(1.0, 0.85, 0.2))
+		AudioManager.play_sfx("level_up")
 
 func _on_floor_changed(floor_num: int) -> void:
 	_update_floor_label(floor_num)

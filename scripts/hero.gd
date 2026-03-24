@@ -7,6 +7,7 @@ signal health_changed(current: int, maximum: int)
 signal mana_changed(current: int, maximum: int)
 signal spell_cast(spell_index: int)
 signal spell_cooldown_updated(spell_index: int, remaining: float, total: float)
+signal spell_unlocked(spell_index: int)
 signal hero_died()
 
 @export var move_speed: float = 8.0
@@ -39,6 +40,10 @@ var spell_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var spell_max_cooldowns: Array[float] = [1.5, 5.0, 8.0, 15.0]
 var spell_mana_costs: Array[int] = [0, 30, 40, 60]
 var spell_names: Array[String] = ["Strike", "Fireball", "Heal", "Ground Slam"]
+
+# Spell unlock levels: spells 0-1 at start, spell 2 at level 5, spell 3 at level 10
+var spell_unlock_levels: Array[int] = [1, 1, 5, 10]
+var spells_unlocked: Array[bool] = [true, true, false, false]
 
 # Animation state
 enum AnimState { IDLE, WALK, ATTACK, CAST, DEATH }
@@ -139,6 +144,10 @@ func _ready() -> void:
 		GameManager.enemy_died.connect(_on_trait_enemy_died)
 	if _trait_id == "adaptable" or _trait_id == "phase_walk":
 		FloorManager.floor_changed.connect(_on_trait_floor_changed)
+
+	# Spell unlock check (in case starting level > 1 from save)
+	_refresh_spell_unlocks()
+	XpManager.level_up.connect(_on_level_up_spell_check)
 
 	# Mana regen timer
 	var mana_timer = Timer.new()
@@ -397,8 +406,13 @@ func set_attack_target(target: Node3D) -> void:
 
 # ---------- SPELL SYSTEM ----------
 
+func is_spell_unlocked(index: int) -> bool:
+	return index >= 0 and index < spells_unlocked.size() and spells_unlocked[index]
+
 func cast_spell(index: int) -> void:
 	if is_dead or is_casting:
+		return
+	if not is_spell_unlocked(index):
 		return
 	if spell_cooldowns[index] > 0:
 		return
@@ -822,3 +836,14 @@ func _on_trait_floor_changed(_floor_number: int) -> void:
 		"phase_walk":
 			# Refresh dodge charges each floor
 			_phase_walk_charges = _phase_walk_max
+
+# ---------- SPELL UNLOCKS ----------
+
+func _refresh_spell_unlocks() -> void:
+	for i in range(spells_unlocked.size()):
+		if not spells_unlocked[i] and XpManager.current_level >= spell_unlock_levels[i]:
+			spells_unlocked[i] = true
+			spell_unlocked.emit(i)
+
+func _on_level_up_spell_check(_new_level: int) -> void:
+	_refresh_spell_unlocks()

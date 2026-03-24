@@ -140,6 +140,28 @@ grow_horizontal = 2
 grow_vertical = 0
 color = Color(0.0, 0.0, 0.0, 0.6)
 
+[node name="LockE" type="ColorRect" parent="BottomPanel/HBox/AbilityContainer/AbilityE"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.08, 0.12, 0.85)
+mouse_filter = 2
+
+[node name="LockLabelE" type="Label" parent="BottomPanel/HBox/AbilityContainer/AbilityE/LockE"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Lv.5"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="AbilityR" type="Button" parent="BottomPanel/HBox/AbilityContainer"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -159,6 +181,28 @@ offset_top = -60.0
 grow_horizontal = 2
 grow_vertical = 0
 color = Color(0.0, 0.0, 0.0, 0.6)
+
+[node name="LockR" type="ColorRect" parent="BottomPanel/HBox/AbilityContainer/AbilityR"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.08, 0.12, 0.85)
+mouse_filter = 2
+
+[node name="LockLabelR" type="Label" parent="BottomPanel/HBox/AbilityContainer/AbilityR/LockR"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Lv.10"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="MinimapFrame" type="ColorRect" parent="BottomPanel/HBox"]
 unique_name_in_owner = true
