@@ -254,6 +254,7 @@ func take_damage(amount: int) -> void:
 	is_aggroed = true
 
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.0, amount, amount > 50)
+	AudioManager.on_enemy_take_damage()
 
 	_flash_color(Color.WHITE, 0.08)
 

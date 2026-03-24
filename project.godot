@@ -24,6 +24,7 @@ config/icon="res://icon.svg"
 GameManager="*res://scripts/game_manager.gd"
 FloorManager="*res://scripts/floor_manager.gd"
 LootManager="*res://scripts/loot_manager.gd"
+AudioManager="*res://scripts/audio_manager.gd"
 
 [display]
 

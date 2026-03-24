@@ -49,6 +49,8 @@ func strike(origin_pos: Vector3) -> void:
 
 	_play_impact_vfx()
 
+	# Lightning crack
+	AudioManager.on_hero_cast_lightning()
 	# Screen shake
 	GameManager.request_screen_shake(4.0, 0.2)
 

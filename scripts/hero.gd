@@ -258,6 +258,7 @@ func _perform_melee_attack() -> void:
 
 	# Swap to sword_slash animation model
 	_swap_model(AnimState.ATTACK, true)
+	AudioManager.on_hero_attack()
 
 	# Squash/stretch juice on top of the animation
 	var tween = create_tween()
@@ -325,6 +326,7 @@ func cast_fireball_at(target_pos: Vector3) -> void:
 	spell_cast.emit(1)
 
 	anim_state = AnimState.CAST
+	AudioManager.on_hero_cast_fireball()
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * Vector3(0.8, 1.3, 0.8), 0.2)
 	tween.tween_callback(func(): _spawn_fireball(target_pos))
@@ -356,6 +358,7 @@ func _cast_heal() -> void:
 
 	anim_state = AnimState.CAST
 	_set_model_color(Color(0.2, 1.0, 0.3))
+	AudioManager.on_hero_cast_heal()
 
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * 1.2, 0.3)
@@ -393,6 +396,7 @@ func _cast_ground_slam() -> void:
 	spell_cast.emit(3)
 
 	anim_state = AnimState.CAST
+	AudioManager.on_hero_cast_ground_slam()
 
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * Vector3(0.7, 1.5, 0.7), 0.4)
@@ -429,6 +433,7 @@ func take_damage(amount: int) -> void:
 	current_health -= amount
 	health_changed.emit(current_health, max_health)
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.5, amount, false)
+	AudioManager.on_hero_take_damage()
 
 	_flash_color(Color.WHITE, 0.08)
 

@@ -38,6 +38,9 @@ func _ready() -> void:
 	FloorManager.transition_fade_midpoint.connect(_on_floor_transition_midpoint)
 	FloorManager.floor_changed.connect(_on_floor_changed)
 
+	# Start dungeon ambience
+	AudioManager.start_ambience()
+
 func _setup_transition_overlay() -> void:
 	var canvas = CanvasLayer.new()
 	canvas.layer = 100  # Above everything

@@ -67,6 +67,8 @@ func _impact() -> void:
 					e.move_speed = original_speed
 			)
 
+	# Impact sound
+	AudioManager.on_hero_cast_ice_shard()
 	# Screen shake (lighter than fireball)
 	GameManager.request_screen_shake(3.0, 0.15)
 

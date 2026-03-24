@@ -56,6 +56,8 @@ func _explode() -> void:
 		if e.has_method("take_damage"):
 			e.take_damage(damage)
 
+	# Explosion sound
+	AudioManager.on_fireball_explode()
 	# Screen shake
 	GameManager.request_screen_shake(5.0, 0.25)
 

@@ -137,6 +137,8 @@ func _pickup() -> void:
 	_picked_up = true
 
 	LootManager.pickup_item(item_data)
+	var rarity_name: String = LootManager.RARITY_NAMES.get(item_data.get("rarity", 0), "Common").to_lower()
+	AudioManager.on_loot_pickup(rarity_name)
 
 	# Pickup animation — fly up and shrink
 	var tween := create_tween()
