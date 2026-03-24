@@ -42,6 +42,13 @@ func _ready() -> void:
 	SmusherTimer.dungeon_builder = $DungeonBuilder
 	SmusherTimer.start_timer()
 
+	# Pause menu (ESC to toggle)
+	var pause_menu_script = preload("res://scripts/pause_menu.gd")
+	var pause_menu = CanvasLayer.new()
+	pause_menu.set_script(pause_menu_script)
+	pause_menu.name = "PauseMenu"
+	add_child(pause_menu)
+
 	# Start dungeon ambience
 	AudioManager.start_ambience()
 
