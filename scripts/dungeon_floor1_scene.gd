@@ -11,6 +11,7 @@ var _loading_screen: CanvasLayer = null
 var _player_spawner: Node = null
 var _enemy_sync: Node = null
 var _loot_sync: Node = null
+var _floor_transition_sync: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -132,6 +133,17 @@ func _ready() -> void:
 		_loot_sync.name = "LootSync"
 		add_child(_loot_sync)
 		_loot_sync.setup()
+
+	# Multiplayer: floor transition sync (exit portal HUD, spectator mode)
+	if NetworkManager.is_multiplayer_active():
+		var fts_script := preload("res://scripts/floor_transition_sync.gd")
+		_floor_transition_sync = Node.new()
+		_floor_transition_sync.set_script(fts_script)
+		_floor_transition_sync.name = "FloorTransitionSync"
+		add_child(_floor_transition_sync)
+		var hud := get_node_or_null("HUD")
+		if hud:
+			_floor_transition_sync.setup_exit_hud(hud)
 
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):
