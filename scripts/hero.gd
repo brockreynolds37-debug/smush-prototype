@@ -87,6 +87,7 @@ var equipment_hp_bonus: int = 0
 var equipment_speed_bonus: int = 0
 var _base_max_health: int = 500
 var _last_hit_was_crit: bool = false
+var _walk_bob_time: float = 0.0
 
 func _ready() -> void:
 	GameManager.register_hero(self)
@@ -629,6 +630,10 @@ func _update_animation_state() -> void:
 		prev_anim_state = new_state
 		anim_state = new_state
 
+		# Blend transition: brief scale squeeze before state change
+		if new_state == AnimState.WALK and anim_state != AnimState.DEATH:
+			_transition_blend(0.06)
+
 		match new_state:
 			AnimState.IDLE:
 				_swap_model(AnimState.IDLE, false)  # Slow walk as idle
@@ -644,6 +649,28 @@ func _update_animation_state() -> void:
 				pass  # Handled in _die()
 	else:
 		anim_state = new_state
+
+	# Procedural walk bob (subtle Y oscillation while moving)
+	if anim_state == AnimState.WALK and current_speed > 0.5:
+		_walk_bob_time += current_speed * 0.8 * get_physics_process_delta_time()
+		var bob_y := sin(_walk_bob_time * 8.0) * 0.06
+		var lean := sin(_walk_bob_time * 4.0) * 0.03
+		model.position.y = bob_y
+		model.rotation.z = lean
+	elif anim_state == AnimState.IDLE:
+		# Gentle idle breathing
+		_walk_bob_time += get_physics_process_delta_time() * 0.5
+		model.position.y = sin(_walk_bob_time * 2.0) * 0.02
+		model.rotation.z = lerp(model.rotation.z, 0.0, 8.0 * get_physics_process_delta_time())
+	else:
+		model.position.y = lerp(model.position.y, 0.0, 10.0 * get_physics_process_delta_time())
+		model.rotation.z = lerp(model.rotation.z, 0.0, 10.0 * get_physics_process_delta_time())
+
+func _transition_blend(duration: float) -> void:
+	# Quick squash-stretch transition between animation states
+	var tw = create_tween()
+	tw.tween_property(model, "scale", original_scale * Vector3(1.05, 0.92, 1.05), duration * 0.5)
+	tw.tween_property(model, "scale", original_scale, duration * 0.5)
 
 # ---------- UTILITIES ----------
 

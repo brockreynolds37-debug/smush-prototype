@@ -29,6 +29,7 @@ var _cached_mesh_instances: Array[MeshInstance3D] = []
 var _base_move_speed: float = 5.0
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0
+var _walk_bob_time: float = 0.0
 
 # Animation
 enum AnimState { IDLE, WALK, ATTACK, DEATH }
@@ -210,6 +211,19 @@ func _physics_process(delta: float) -> void:
 		prev_anim_state = new_state
 		anim_state = new_state
 		_swap_model(new_state)
+
+	# Procedural walk bob
+	if anim_state == AnimState.WALK and current_speed > 0.3:
+		_walk_bob_time += current_speed * 0.9 * delta
+		model.position.y = sin(_walk_bob_time * 8.0) * 0.04
+		model.rotation.z = sin(_walk_bob_time * 4.0) * 0.02
+	elif anim_state == AnimState.IDLE:
+		_walk_bob_time += delta * 0.4
+		model.position.y = sin(_walk_bob_time * 2.0) * 0.015
+		model.rotation.z = lerp(model.rotation.z, 0.0, 6.0 * delta)
+	else:
+		model.position.y = lerp(model.position.y, 0.0, 8.0 * delta)
+		model.rotation.z = lerp(model.rotation.z, 0.0, 8.0 * delta)
 
 	move_and_slide()
 
