@@ -41,6 +41,9 @@ var _timer_flash_tween: Tween = null
 var _status_container: HBoxContainer = null
 var _status_icons: Dictionary = {}  # EffectType -> Panel
 
+# Summon counter label (built in code, no scene node needed)
+var _summon_label: Label = null
+
 const FLOOR_NAMES := {
 	0: "Training Grounds",
 	1: "The Sift",
@@ -94,6 +97,8 @@ func _ready() -> void:
 	StatusEffectManager.effect_removed.connect(_on_status_effect_removed)
 	# Narrator
 	Narrator.narrator_says.connect(_on_narrator_says)
+	# Summon counter
+	_setup_summon_label()
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -500,6 +505,42 @@ func _update_vp_display() -> void:
 		vp_label.text = "VP: %d" % AudienceManager.total_vp
 		# Brief flash on VP gain
 		vp_label.add_theme_color_override("font_color", AudienceManager.get_mood_color())
+
+# ---------- SUMMON COUNTER ----------
+
+func _setup_summon_label() -> void:
+	_summon_label = Label.new()
+	_summon_label.name = "SummonCounter"
+	_summon_label.text = ""
+	_summon_label.anchors_preset = Control.PRESET_BOTTOM_LEFT
+	_summon_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_summon_label.offset_left = 12.0
+	_summon_label.offset_bottom = -120.0
+	_summon_label.offset_right = 200.0
+	_summon_label.offset_top = -148.0
+	_summon_label.add_theme_font_size_override("font_size", 20)
+	_summon_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	_summon_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_summon_label.add_theme_constant_override("shadow_offset_x", 1)
+	_summon_label.add_theme_constant_override("shadow_offset_y", 1)
+	_summon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_summon_label)
+
+func _process(_delta: float) -> void:
+	_update_summon_counter()
+
+func _update_summon_counter() -> void:
+	if _summon_label == null:
+		return
+	var hero = GameManager.hero
+	if hero == null or not is_instance_valid(hero):
+		_summon_label.text = ""
+		return
+	var count: int = hero.get("summon_count") if hero.get("summon_count") != null else 0
+	if count <= 0:
+		_summon_label.text = ""
+	else:
+		_summon_label.text = "⚔ Summons: %d/2" % count
 
 # ---------- STATUS EFFECTS ----------
 
