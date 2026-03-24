@@ -224,7 +224,8 @@ func _physics_process(delta: float) -> void:
 		else:
 			nav_agent.target_position = target_unit.global_position
 			var next_pos = nav_agent.get_next_path_position()
-			var direction = (next_pos - global_position).normalized()
+			var diff = next_pos - global_position
+			var direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 			direction.y = 0
 			current_speed = move_toward(current_speed, move_speed, 15.0 * delta)
 			velocity = direction * current_speed
@@ -260,7 +261,8 @@ func _return_to_spawn(delta: float) -> void:
 	if global_position.distance_to(spawn_position) > 1.0:
 		nav_agent.target_position = spawn_position
 		var next_pos = nav_agent.get_next_path_position()
-		var direction = (next_pos - global_position).normalized()
+		var diff = next_pos - global_position
+		var direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 		direction.y = 0
 		current_speed = move_toward(current_speed, move_speed * 0.5, 10.0 * delta)
 		velocity = direction * current_speed

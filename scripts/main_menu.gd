@@ -38,17 +38,17 @@ func _build_3d_scene() -> void:
 	var world_env = WorldEnvironment.new()
 	var environment = Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.02, 0.02, 0.04)
+	environment.background_color = Color(0.15, 0.18, 0.28)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.08, 0.06, 0.12)
-	environment.ambient_light_energy = 0.2
+	environment.ambient_light_color = Color(0.45, 0.40, 0.35)
+	environment.ambient_light_energy = 0.6
 	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.6
-	environment.glow_bloom = 0.15
+	environment.glow_intensity = 0.5
+	environment.glow_bloom = 0.1
 	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.05, 0.03, 0.08)
-	environment.fog_density = 0.02
+	environment.fog_light_color = Color(0.20, 0.18, 0.25)
+	environment.fog_density = 0.004
 	world_env.environment = environment
 	add_child(world_env)
 
@@ -58,7 +58,7 @@ func _build_3d_scene() -> void:
 	plane.size = Vector2(30, 30)
 	ground.mesh = plane
 	var ground_mat = StandardMaterial3D.new()
-	ground_mat.albedo_color = Color(0.06, 0.05, 0.08)
+	ground_mat.albedo_color = Color(0.25, 0.22, 0.20)
 	ground_mat.roughness = 0.95
 	ground.set_surface_override_material(0, ground_mat)
 	add_child(ground)
@@ -75,7 +75,7 @@ func _build_3d_scene() -> void:
 		pillar.mesh = cyl
 		pillar.position = Vector3(cos(angle) * 5.0, 2.5, sin(angle) * 5.0)
 		var pillar_mat = StandardMaterial3D.new()
-		pillar_mat.albedo_color = Color(0.12, 0.1, 0.14)
+		pillar_mat.albedo_color = Color(0.35, 0.32, 0.30)
 		pillar_mat.roughness = 0.8
 		pillar.set_surface_override_material(0, pillar_mat)
 		add_child(pillar)
@@ -90,12 +90,12 @@ func _build_3d_scene() -> void:
 	pedestal.mesh = ped_mesh
 	pedestal.position = Vector3(0, 0.25, 0)
 	var ped_mat = StandardMaterial3D.new()
-	ped_mat.albedo_color = Color(0.15, 0.1, 0.2)
+	ped_mat.albedo_color = Color(0.40, 0.32, 0.22)
 	ped_mat.roughness = 0.3
 	ped_mat.metallic = 0.5
 	ped_mat.emission_enabled = true
-	ped_mat.emission = Color(0.3, 0.15, 0.4)
-	ped_mat.emission_energy_multiplier = 0.5
+	ped_mat.emission = Color(0.6, 0.45, 0.2)
+	ped_mat.emission_energy_multiplier = 0.6
 	pedestal.set_surface_override_material(0, ped_mat)
 	add_child(pedestal)
 
@@ -103,8 +103,8 @@ func _build_3d_scene() -> void:
 	var key_light = SpotLight3D.new()
 	key_light.position = Vector3(0, 8, 0)
 	key_light.rotation_degrees = Vector3(-90, 0, 0)
-	key_light.light_color = Color(0.9, 0.7, 0.4)
-	key_light.light_energy = 3.0
+	key_light.light_color = Color(1.0, 0.88, 0.6)
+	key_light.light_energy = 3.5
 	key_light.spot_range = 15.0
 	key_light.spot_angle = 40.0
 	key_light.shadow_enabled = true
@@ -146,7 +146,7 @@ func _build_ui() -> void:
 	subtitle.text = "Enter the Arena. Entertain the Crowd. Survive."
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_font_size_override("font_size", 18)
-	subtitle.add_theme_color_override("font_color", Color(0.55, 0.5, 0.65))
+	subtitle.add_theme_color_override("font_color", Color(0.75, 0.70, 0.60))
 	subtitle.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	subtitle.offset_top = 250
 	subtitle.offset_bottom = 280

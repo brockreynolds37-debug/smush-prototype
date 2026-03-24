@@ -2,7 +2,7 @@
 
 [sub_resource type="Gradient" id="SubResource_burst_gradient"]
 offsets = PackedFloat32Array(0, 0.3, 0.7, 1)
-colors = PackedColorArray(0.8, 0.95, 1, 1, 0.4, 0.7, 1, 0.9, 0.2, 0.4, 0.8, 0.5, 0.1, 0.2, 0.5, 0)
+colors = PackedColorArray(0.85, 1.0, 1.0, 1, 0.5, 0.85, 1.0, 0.95, 0.3, 0.6, 0.95, 0.6, 0.15, 0.35, 0.7, 0)
 
 [sub_resource type="GradientTexture1D" id="SubResource_burst_grad_tex"]
 gradient = SubResource("SubResource_burst_gradient")

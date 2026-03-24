@@ -217,21 +217,39 @@ func _swap_model(state: AnimState, play_anim: bool = true) -> void:
 	# Apply programmatic materials to Fat Nate (untextured GLB models)
 	_apply_hero_materials()
 
+var _toon_shader: Shader = null
+
+func _get_toon_shader() -> Shader:
+	if _toon_shader == null:
+		_toon_shader = load("res://shaders/toon.gdshader") as Shader
+	return _toon_shader
+
 func _apply_hero_materials() -> void:
+	var shader: Shader = _get_toon_shader()
 	for mi in _cached_mesh_instances:
 		for i in range(mi.mesh.get_surface_count() if mi.mesh else 0):
-			var mat = StandardMaterial3D.new()
-			var surface_name = mi.mesh.surface_get_material(i).resource_name if mi.mesh.surface_get_material(i) else ""
+			var surface_name: String = ""
+			var base_mat: Material = mi.mesh.surface_get_material(i)
+			if base_mat:
+				surface_name = base_mat.resource_name
+			var color: Color
 			if "Dots" in surface_name or i == 0:
-				mat.albedo_color = _char_primary_color
-				mat.roughness = 0.8
+				color = _char_primary_color
 			else:
-				mat.albedo_color = _char_secondary_color
-				mat.roughness = 0.7
-			mat.emission_enabled = true
-			mat.emission = mat.albedo_color * 0.15
-			mat.emission_energy_multiplier = 0.3
-			mi.set_surface_override_material(i, mat)
+				color = _char_secondary_color
+			if shader:
+				var mat := ShaderMaterial.new()
+				mat.shader = shader
+				mat.set_shader_parameter("albedo_color", color)
+				mat.set_shader_parameter("light_bands", 3.0)
+				mat.set_shader_parameter("shadow_brightness", 0.4)
+				mat.set_shader_parameter("rim_enabled", true)
+				mi.set_surface_override_material(i, mat)
+			else:
+				var mat := StandardMaterial3D.new()
+				mat.albedo_color = color
+				mat.roughness = 0.8
+				mi.set_surface_override_material(i, mat)
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
@@ -285,7 +303,7 @@ func _process_movement(delta: float) -> void:
 		# Smooth ease-out deceleration (faster at high speed, gentle at low)
 		var decel_factor := 1.0 + (current_speed / move_speed) * 2.0
 		current_speed = move_toward(current_speed, 0.0, deceleration * decel_factor * delta)
-		if current_speed > 0.1:
+		if current_speed > 0.1 and velocity.length_squared() > 0.001:
 			velocity = velocity.normalized() * current_speed
 		else:
 			current_speed = 0.0
@@ -308,7 +326,7 @@ func _process_movement(delta: float) -> void:
 		is_moving = false
 		var decel_factor := 1.0 + (current_speed / move_speed) * 2.0
 		current_speed = move_toward(current_speed, 0.0, deceleration * decel_factor * delta)
-		velocity = velocity.normalized() * current_speed if current_speed > 0.1 else Vector3.ZERO
+		velocity = velocity.normalized() * current_speed if current_speed > 0.1 and velocity.length_squared() > 0.001 else Vector3.ZERO
 		if current_speed < 0.1:
 			current_speed = 0.0
 			velocity = Vector3.ZERO
@@ -316,7 +334,8 @@ func _process_movement(delta: float) -> void:
 		return
 
 	var next_pos = nav_agent.get_next_path_position()
-	var direction = (next_pos - global_position).normalized()
+	var diff: Vector3 = next_pos - global_position
+	var direction: Vector3 = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 	direction.y = 0
 
 	# Approach slowdown — ease into target position
@@ -762,16 +781,18 @@ func _process_casting(_delta: float) -> void:
 func _set_model_color(color: Color) -> void:
 	for mi in _cached_mesh_instances:
 		for i in range(mi.get_surface_override_material_count()):
-			var mat = mi.get_surface_override_material(i)
+			var mat: Material = mi.get_surface_override_material(i)
 			if mat == null:
-				var base = mi.mesh.surface_get_material(i) if mi.mesh else null
+				var base: Material = mi.mesh.surface_get_material(i) if mi.mesh else null
 				if base:
 					mat = base.duplicate()
 				else:
 					mat = StandardMaterial3D.new()
 				mi.set_surface_override_material(i, mat)
-			if mat is StandardMaterial3D:
-				mat.albedo_color = color
+			if mat is ShaderMaterial:
+				(mat as ShaderMaterial).set_shader_parameter("albedo_color", color)
+			elif mat is StandardMaterial3D:
+				(mat as StandardMaterial3D).albedo_color = color
 
 func _restore_model_materials() -> void:
 	# Re-apply hero materials instead of clearing to null, since Fat Nate

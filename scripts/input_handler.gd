@@ -1,11 +1,17 @@
 extends Node
 
-## Handles mouse clicks for movement, targeting, and spell casting.
+## Handles mouse clicks for movement, targeting, selection, and spell casting.
+## Right click: move / attack / spell target
+## Left click: select unit or interact with objects
 
 var camera_rig: Node3D = null
 
+signal unit_selected(unit: Node3D)
+signal unit_deselected
+
+var selected_unit: Node3D = null
+
 func _ready() -> void:
-	# Will be set by main scene
 	pass
 
 func set_camera(cam: Node3D) -> void:
@@ -13,13 +19,10 @@ func set_camera(cam: Node3D) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			_handle_right_click()
+		elif event.button_index == MOUSE_BUTTON_LEFT:
 			_handle_left_click()
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			# Right click cancels targeting
-			if GameManager.is_targeting_spell:
-				GameManager.is_targeting_spell = false
-				GameManager.targeting_spell_id = -1
 
 	# Spell hotkeys (uses InputMap actions so rebinding works)
 	var hero = GameManager.hero
@@ -30,32 +33,32 @@ func _unhandled_input(event: InputEvent) -> void:
 				TutorialManager.notify_event("spell_cast")
 				break
 
-func _handle_left_click() -> void:
+func _handle_right_click() -> void:
+	## Right click: move, attack, spell targeting (action button)
 	if camera_rig == null:
 		return
 	var hero = GameManager.hero
 	if hero == null or hero.is_dead:
 		return
 
-	# Check if clicking on an enemy first
 	var camera = camera_rig.get_node("CameraArm/Camera3D")
 	var mouse_pos = get_viewport().get_mouse_position()
 	var from = camera.project_ray_origin(mouse_pos)
 	var dir = camera.project_ray_normal(mouse_pos)
 
-	# If we're in spell targeting mode
+	# Spell targeting mode — place spell on right click
 	if GameManager.is_targeting_spell:
 		var ground_pos = _get_ground_position(from, dir)
 		match GameManager.targeting_spell_id:
-			1:  # Fireball (default spell set)
+			1:
 				hero.cast_fireball_at(ground_pos)
-			100:  # Alt spell set targeted spells
+			100:
 				hero.cast_alt_targeted_at(ground_pos)
 		GameManager.is_targeting_spell = false
 		GameManager.targeting_spell_id = -1
 		return
 
-	# Raycast to check for enemy clicks
+	# Raycast for enemy — right click to attack
 	var space_state = hero.get_world_3d().direct_space_state
 	var query = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
 	query.collision_mask = 2  # Layer 2 = Units
@@ -66,37 +69,85 @@ func _handle_left_click() -> void:
 		TutorialManager.notify_event("enemy_hit")
 		return
 
-	# Check for interactable clicks (chests, barrels)
+	# Right click on interactable — walk to and interact
 	var query2 = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
 	query2.collision_mask = 4  # Layer 3 = Interactables
 	var result2 = space_state.intersect_ray(query2)
 
 	if result2 and result2.collider and result2.collider.is_in_group("interactables"):
-		var interactable = result2.collider
-		_interact_with(hero, interactable)
+		_interact_with(hero, result2.collider)
 		return
 
-	# Otherwise, click-to-move on ground
+	# Otherwise, right-click-to-move on ground
 	var ground_pos = _get_ground_position(from, dir)
 	if ground_pos != Vector3.ZERO:
 		hero.move_to(ground_pos)
 		TutorialManager.notify_event("hero_moved")
-
-		# Spawn click indicator
 		_spawn_click_indicator(ground_pos)
+
+func _handle_left_click() -> void:
+	## Left click: select units to inspect, or cancel spell targeting
+	if camera_rig == null:
+		return
+
+	# Cancel spell targeting with left click
+	if GameManager.is_targeting_spell:
+		GameManager.is_targeting_spell = false
+		GameManager.targeting_spell_id = -1
+		return
+
+	var camera = camera_rig.get_node("CameraArm/Camera3D")
+	var mouse_pos = get_viewport().get_mouse_position()
+	var from = camera.project_ray_origin(mouse_pos)
+	var dir = camera.project_ray_normal(mouse_pos)
+
+	var hero = GameManager.hero
+	if hero == null:
+		return
+	var space_state = hero.get_world_3d().direct_space_state
+
+	# Check for unit click (enemies or any selectable)
+	var query = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
+	query.collision_mask = 2  # Layer 2 = Units
+	var result = space_state.intersect_ray(query)
+
+	if result and result.collider:
+		_select_unit(result.collider)
+		return
+
+	# Check for interactable click (chests, barrels — left click also interacts)
+	var query2 = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
+	query2.collision_mask = 4  # Layer 3 = Interactables
+	var result2 = space_state.intersect_ray(query2)
+
+	if result2 and result2.collider:
+		_select_unit(result2.collider)
+		return
+
+	# Clicked empty ground — deselect
+	_deselect_unit()
+
+func _select_unit(unit: Node3D) -> void:
+	if selected_unit == unit:
+		return
+	_deselect_unit()
+	selected_unit = unit
+	unit_selected.emit(unit)
+
+func _deselect_unit() -> void:
+	if selected_unit != null:
+		selected_unit = null
+		unit_deselected.emit()
 
 func _interact_with(hero: Node3D, target: Node3D) -> void:
 	var dist := hero.global_position.distance_to(target.global_position)
 	if dist < 2.5:
-		# In range — interact immediately
 		if target.has_method("interact"):
 			target.interact()
 		elif target.has_method("take_damage"):
 			target.take_damage(hero._get_melee_damage())
 	else:
-		# Walk to it first, then interact
 		hero.move_to(target.global_position)
-		# Set a pending interaction (check distance each frame until close)
 		_pending_interactable = target
 
 var _pending_interactable: Node3D = null
@@ -125,7 +176,6 @@ func _get_ground_position(from: Vector3, dir: Vector3) -> Vector3:
 	return Vector3.ZERO
 
 func _spawn_click_indicator(pos: Vector3) -> void:
-	# Simple expanding ring at click position
 	var indicator = MeshInstance3D.new()
 	var torus = TorusMesh.new()
 	torus.inner_radius = 0.2

@@ -217,8 +217,9 @@ func _build_ui() -> void:
 
 	# Static bindings (non-rebindable)
 	var static_bindings = [
-		["Move", "Left Click"],
-		["Attack", "Left Click (on enemy)"],
+		["Move", "Right Click"],
+		["Attack", "Right Click (on enemy)"],
+		["Select Unit", "Left Click"],
 		["Camera Pan", "WASD / Arrow Keys"],
 		["Camera Zoom", "Scroll Wheel"],
 		["Inventory", "I / Tab"],
