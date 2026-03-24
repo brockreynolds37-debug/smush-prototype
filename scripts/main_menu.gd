@@ -9,6 +9,7 @@ var is_transitioning: bool = false
 var _settings_menu: Node = null
 var _continue_btn: Button = null
 var _difficulty_label: Label = null
+var _leaderboard_overlay: CanvasLayer = null
 
 func _ready() -> void:
 	_build_3d_scene()
@@ -197,6 +198,11 @@ func _build_ui() -> void:
 	settings_btn.pressed.connect(_on_settings)
 	btn_box.add_child(settings_btn)
 
+	# Leaderboard button
+	var lb_btn = _make_button("LEADERBOARD", true)
+	lb_btn.pressed.connect(_on_leaderboard)
+	btn_box.add_child(lb_btn)
+
 	# Quit button
 	var quit_btn = _make_button("QUIT", true)
 	quit_btn.pressed.connect(_on_quit)
@@ -347,6 +353,101 @@ func _fade_to_scene(scene_path: String) -> void:
 func _on_settings() -> void:
 	if _settings_menu:
 		_settings_menu.show_menu()
+
+func _on_leaderboard() -> void:
+	if _leaderboard_overlay and is_instance_valid(_leaderboard_overlay):
+		_leaderboard_overlay.queue_free()
+		_leaderboard_overlay = null
+		return
+
+	_leaderboard_overlay = CanvasLayer.new()
+	_leaderboard_overlay.layer = 50
+	add_child(_leaderboard_overlay)
+
+	# Background dim
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.8)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed:
+			_leaderboard_overlay.queue_free()
+			_leaderboard_overlay = null
+	)
+	_leaderboard_overlay.add_child(bg)
+
+	# Panel
+	var panel = PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.offset_left = -320
+	panel.offset_right = 320
+	panel.offset_top = -280
+	panel.offset_bottom = 280
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.06, 0.12, 0.95)
+	style.border_color = Color(0.5, 0.4, 0.2)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	panel.add_theme_stylebox_override("panel", style)
+	_leaderboard_overlay.add_child(panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	panel.add_child(vbox)
+
+	# Title
+	var title = Label.new()
+	title.text = "LEADERBOARD — TOP 10"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.95, 0.8, 0.4))
+	vbox.add_child(title)
+
+	# Header row
+	var header = Label.new()
+	header.text = "  #   Score    Floor  Kills  Character       Difficulty"
+	header.add_theme_font_size_override("font_size", 14)
+	header.add_theme_color_override("font_color", Color(0.6, 0.55, 0.7))
+	vbox.add_child(header)
+
+	# Entries
+	var lb_entries := Leaderboard.get_entries()
+	if lb_entries.is_empty():
+		var empty_label = Label.new()
+		empty_label.text = "\n  No runs recorded yet.\n  Complete a run to appear here!"
+		empty_label.add_theme_font_size_override("font_size", 16)
+		empty_label.add_theme_color_override("font_color", Color(0.5, 0.45, 0.55))
+		vbox.add_child(empty_label)
+	else:
+		for i in range(lb_entries.size()):
+			var e: Dictionary = lb_entries[i]
+			var row = Label.new()
+			var rank_str := "%2d." % (i + 1)
+			var score_str := "%7d" % e.get("score", 0)
+			var floor_str := "F%d" % e.get("floors", 0)
+			var kills_str := "%4d" % e.get("kills", 0)
+			var char_str: String = e.get("character", "?")
+			if char_str.length() > 14:
+				char_str = char_str.left(14)
+			char_str = char_str.rpad(14)
+			var diff_str: String = e.get("difficulty_name", "Normal")
+			var won: bool = e.get("won", false)
+			row.text = "  %s  %s    %s   %s  %s  %s%s" % [rank_str, score_str, floor_str, kills_str, char_str, diff_str, " *" if won else ""]
+			row.add_theme_font_size_override("font_size", 15)
+			var color := Color(0.85, 0.8, 0.7) if i > 0 else Color(1.0, 0.9, 0.4)
+			if i == 1:
+				color = Color(0.8, 0.8, 0.85)
+			elif i == 2:
+				color = Color(0.75, 0.55, 0.3)
+			row.add_theme_color_override("font_color", color)
+			vbox.add_child(row)
+
+	# Close hint
+	var hint = Label.new()
+	hint.text = "\nClick anywhere to close"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45))
+	vbox.add_child(hint)
 
 func _on_quit() -> void:
 	get_tree().quit()

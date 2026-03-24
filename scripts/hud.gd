@@ -248,6 +248,13 @@ func _on_game_over(won: bool) -> void:
 	if quip != "":
 		stats_text += "\n\"%s\"" % quip
 
+	# Submit to leaderboard
+	var rank := Leaderboard.submit_run()
+	if rank > 0:
+		stats_text += "\n\n— LEADERBOARD RANK #%d —" % rank
+	else:
+		stats_text += "\n\nDid not make the Top 10."
+
 	var stats_label = game_over_overlay.get_node_or_null("StatsLabel")
 	if stats_label:
 		stats_label.text = stats_text
