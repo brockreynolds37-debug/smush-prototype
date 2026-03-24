@@ -634,7 +634,7 @@ func uses_default_enemy_spawning() -> bool:
 func create_hud_overlay() -> Control:
 	_hud_overlay = Control.new()
 	_hud_overlay.name = "EconomyHUD"
-	_hud_overlay.set_anchors_preset(Control.PRESET_TOP_CENTER)
+	_hud_overlay.set_anchors_preset(Control.PRESET_CENTER_TOP)
 
 	var title = Label.new()
 	title.name = "ArchetypeLabel"

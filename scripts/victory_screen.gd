@@ -363,7 +363,7 @@ func _gather_stats() -> Dictionary:
 
 	# Character from CharacterData
 	if get_node_or_null("/root/CharacterData"):
-		stats.char_name = CharacterData.get_selected_name() if CharacterData.has_method("get_selected_name") else "Adventurer"
+		stats.char_name = CharacterData.get_selected().get("name", "Adventurer")
 
 	# Override with pending_stats if populated (for cutscene transitions)
 	for key in pending_stats:

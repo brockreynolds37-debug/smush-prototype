@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://victory_screen"]
+
+[ext_resource type="Script" path="res://scripts/victory_screen.gd" id="1_victory"]
+
+[node name="VictoryScreen" type="Node3D"]
+script = ExtResource("1_victory")

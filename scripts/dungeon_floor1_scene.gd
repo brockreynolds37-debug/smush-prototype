@@ -550,7 +550,7 @@ func _setup_archetype(floor_num: int) -> void:
 	_teardown_archetype()
 
 	# Pick new archetype
-	var archetype = FloorManager.pick_archetype(floor_num)
+	var archetype = FloorArchetypeManager.get_archetype_for_floor(floor_num)
 	FloorManager.current_archetype = archetype
 
 	# Set up with dungeon references

@@ -561,6 +561,24 @@ func on_summon_spawned() -> void:
 
 # ----- Reset -----
 
+## Public API — used by other scripts to trigger narrator lines.
+
+func speak(text: String, color: Color = Color(0.85, 0.8, 0.7), size: int = 24) -> void:
+	## Say a specific line directly (not from a pool).
+	if _cooldown > 0:
+		return
+	narrator_says.emit(text, color, size)
+	_cooldown = MIN_COOLDOWN
+
+func queue_line(text: String, color: Color = Color.WHITE, size: int = 24) -> void:
+	## Queue a specific line (alias for speak, overrides cooldown for important messages).
+	narrator_says.emit(text, color, size)
+	_cooldown = MIN_COOLDOWN
+
+func show_commentary(text: String) -> void:
+	## Show a commentary line (archetype messages, etc.)
+	speak(text, Color(0.7, 0.65, 0.8), 22)
+
 func reset() -> void:
 	_cooldown = 0.0
 	_kill_count_since_last = 0

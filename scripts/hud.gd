@@ -78,6 +78,9 @@ func _ready() -> void:
 	AccessibilitySettings.settings_changed.connect(_apply_text_scale)
 	# Smusher Timer
 	SmusherTimer.time_updated.connect(_on_smusher_time_updated)
+	# Tutorial hints
+	if TutorialOverlay:
+		SmusherTimer.time_updated.connect(func(_t): TutorialOverlay.on_timer_started(), CONNECT_ONE_SHOT)
 	SmusherTimer.warning_phase_entered.connect(_on_smusher_warning)
 	SmusherTimer.critical_phase_entered.connect(_on_smusher_critical)
 	SmusherTimer.overtime_started.connect(_on_smusher_overtime)
@@ -174,6 +177,8 @@ func _on_spell_unlocked(spell_index: int) -> void:
 		AudioManager.play_sfx("level_up")
 
 func _on_floor_changed(floor_num: int) -> void:
+	if TutorialOverlay and floor_num == 1:
+		TutorialOverlay.on_exit_visible()
 	_update_floor_label(floor_num)
 	hide_boss_bar()
 	_reset_smusher_visuals()
@@ -205,15 +210,16 @@ func _update_floor_label(floor_num: int) -> void:
 		tween.tween_property(floor_label, "modulate", Color(1, 1, 1, 1), 0.5)
 
 func _on_game_over(won: bool) -> void:
+	if won:
+		# Transition to dedicated victory screen with a short delay for fanfare
+		await get_tree().create_timer(1.5).timeout
+		get_tree().change_scene_to_file("res://scenes/victory_screen.tscn")
+		return
 	if game_over_overlay == null:
 		return
 	game_over_overlay.visible = true
-	if won:
-		game_over_label.text = "VICTORY!"
-		game_over_overlay.color = Color(0.0, 0.08, 0.0, 0.85)
-	else:
-		game_over_label.text = "DEFEATED"
-		game_over_overlay.color = Color(0.12, 0.0, 0.0, 0.85)
+	game_over_label.text = "DEFEATED"
+	game_over_overlay.color = Color(0.12, 0.0, 0.0, 0.85)
 
 	# Build stats text from RunStats
 	var char_name = CharacterData.get_selected().get("name", "Hero")

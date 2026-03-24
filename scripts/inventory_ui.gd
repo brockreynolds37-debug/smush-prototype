@@ -72,6 +72,8 @@ func _ready() -> void:
 	# Connect to LootManager
 	LootManager.inventory_changed.connect(_refresh_bag)
 	_refresh_bag()
+			if TutorialOverlay:
+				TutorialOverlay.on_inventory_opened()
 
 func _build_equipment_panel() -> VBoxContainer:
 	var vbox := VBoxContainer.new()
@@ -140,7 +142,9 @@ func _build_bag_grid() -> VBoxContainer:
 
 	return vbox
 
-func _refresh_bag() -> void:
+func _refresh_bag()
+			if TutorialOverlay:
+				TutorialOverlay.on_inventory_opened() -> void:
 	var inv: Array = LootManager.inventory
 	for i in range(bag_slots.size()):
 		if i < inv.size():
@@ -369,4 +373,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_item_tooltip.hide_tooltip()
 			if visible:
 				_refresh_bag()
+			if TutorialOverlay:
+				TutorialOverlay.on_inventory_opened()
 			get_viewport().set_input_as_handled()

@@ -15,7 +15,7 @@ func _ready() -> void:
 	_build_3d_scene()
 	_build_ui()
 	if AudioManager:
-		AudioManager.play_ambient()
+		AudioManager.start_ambience()
 
 func _process(delta: float) -> void:
 	# Slow camera orbit around center

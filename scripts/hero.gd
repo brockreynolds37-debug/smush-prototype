@@ -357,6 +357,8 @@ func move_to(world_pos: Vector3) -> void:
 	attack_target = null
 	_play_acknowledge_bounce()
 	TutorialManager.notify_event("hero_moved")
+	if TutorialOverlay:
+		TutorialOverlay.on_hero_moved()
 
 func _play_acknowledge_bounce() -> void:
 	var tween = create_tween()
@@ -420,6 +422,8 @@ func _apply_melee_damage() -> void:
 		attack_target.take_damage(dmg)
 		RunStats.record_damage_dealt(dmg)
 		TutorialManager.notify_event("enemy_hit")
+		if TutorialOverlay:
+			TutorialOverlay.on_enemy_visible()
 		if _last_hit_was_crit:
 			GameManager.request_screen_shake(6.0, 0.25)
 			GameManager.request_hitstop(0.08)
@@ -452,6 +456,8 @@ func cast_spell(index: int) -> void:
 		return
 
 	TutorialManager.notify_event("spell_cast")
+	if TutorialOverlay:
+		TutorialOverlay.on_spell_bar_visible()
 	if _spell_set_index == 0:
 		match index:
 			0: _cast_strike()

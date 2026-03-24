@@ -17,6 +17,9 @@ var screen_shake_scale: float = 1.0
 ## Screen flash intensity (1.0 = full, 0.0 = off)
 var screen_flash_scale: float = 1.0
 
+## Show tutorial hints (true = show on first encounter)
+var hints_enabled: bool = true
+
 const SETTINGS_PATH := "user://settings.cfg"
 
 # ---------- COLORBLIND PALETTES ----------
@@ -99,6 +102,7 @@ func save_settings() -> void:
 	config.set_value("accessibility", "ui_text_scale", ui_text_scale)
 	config.set_value("accessibility", "screen_shake_scale", screen_shake_scale)
 	config.set_value("accessibility", "screen_flash_scale", screen_flash_scale)
+	config.set_value("accessibility", "hints_enabled", hints_enabled)
 	config.save(SETTINGS_PATH)
 
 func load_settings() -> void:
@@ -109,3 +113,4 @@ func load_settings() -> void:
 	ui_text_scale = config.get_value("accessibility", "ui_text_scale", 1.0)
 	screen_shake_scale = config.get_value("accessibility", "screen_shake_scale", 1.0)
 	screen_flash_scale = config.get_value("accessibility", "screen_flash_scale", 1.0)
+	hints_enabled = config.get_value("accessibility", "hints_enabled", true)
