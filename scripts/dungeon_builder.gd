@@ -163,6 +163,8 @@ func _ready() -> void:
 	_apply_theme_lighting()
 	_bake_navigation()
 	_place_forge_station()
+	_place_secret_triggers()
+	_place_easter_egg_pillar()
 
 func _load_assets() -> void:
 	_floor_scene = load("res://assets/models/dungeon/kenney_floor.glb")
@@ -1243,3 +1245,56 @@ func _place_forge_station() -> void:
 	var spawn_pos = get_spawn_position()
 	forge.position = spawn_pos + Vector3(4.0, 0.0, 2.0)
 	add_child(forge)
+
+# ---------- SECRET ROOMS ----------
+
+func _place_secret_triggers() -> void:
+	if floor_number <= 0:
+		return
+	# 20% chance per room to get a secret trigger
+	for room in rooms:
+		if room["name"].begins_with("corridor") or room["name"] == "spawn":
+			continue
+		if randf() > 0.20:
+			continue
+		var rpos: Vector2i = room["pos"]
+		var rsize: Vector2i = room["size"]
+		# Place trigger near a wall edge
+		var edge_cell = Vector2i(rpos.x + rsize.x - 1, rpos.y + rsize.y / 2)
+		var trigger = SecretRoomTrigger.new()
+		trigger.name = "Secret_%s" % room["name"]
+		trigger.position = _cell_to_world(edge_cell)
+		add_child(trigger)
+
+# ---------- EASTER EGG PILLAR ----------
+
+func _place_easter_egg_pillar() -> void:
+	if floor_number <= 0:
+		return
+	var pillar = EasterEggPillar.new()
+	pillar.name = "EasterEggPillar"
+
+	var mesh = MeshInstance3D.new()
+	mesh.name = "PillarMesh"
+	var cylinder = CylinderMesh.new()
+	cylinder.top_radius = 0.4
+	cylinder.bottom_radius = 0.5
+	cylinder.height = 2.0
+	mesh.mesh = cylinder
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.5, 0.45, 0.4)
+	mesh.material_override = mat
+	mesh.position.y = 1.0
+	pillar.add_child(mesh)
+
+	var col = CollisionShape3D.new()
+	var shape = CylinderShape3D.new()
+	shape.radius = 0.5
+	shape.height = 2.0
+	col.shape = shape
+	col.position.y = 1.0
+	pillar.add_child(col)
+
+	var spawn_pos = get_spawn_position()
+	pillar.position = spawn_pos + Vector3(-3.0, 0.0, 0.0)
+	add_child(pillar)
