@@ -22,6 +22,7 @@ var total_spells: int = 0
 
 # Economy tracking
 var gold_earned: int = 0
+var gold_spent: int = 0
 var items_collected: int = 0
 var potions_used: int = 0
 
@@ -76,6 +77,10 @@ func record_spell_cast(spell_index: int) -> void:
 func record_potion_used() -> void:
 	potions_used += 1
 	stat_updated.emit("potions_used", potions_used)
+
+func record_gold_spent(amount: int) -> void:
+	gold_spent += amount
+	stat_updated.emit("gold_spent", gold_spent)
 
 # ----- Signal Handlers -----
 
@@ -135,6 +140,7 @@ func get_summary() -> Dictionary:
 		"total_spells": total_spells,
 		"spells_cast": spells_cast.duplicate(),
 		"gold_earned": gold_earned,
+		"gold_spent": gold_spent,
 		"items_collected": items_collected,
 		"potions_used": potions_used,
 		"floors_cleared": floors_cleared,
@@ -164,6 +170,7 @@ func reset() -> void:
 	spells_cast = [0, 0, 0, 0]
 	total_spells = 0
 	gold_earned = 0
+	gold_spent = 0
 	_last_gold = 0
 	items_collected = 0
 	potions_used = 0

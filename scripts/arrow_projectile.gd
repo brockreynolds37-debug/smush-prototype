@@ -44,6 +44,9 @@ func _hit_hero(hero: Node3D) -> void:
 	has_hit = true
 	if hero.has_method("take_damage"):
 		hero.take_damage(damage)
+	# Goblin arrows apply poison (30% chance)
+	if randf() < 0.3:
+		StatusEffectManager.apply_poison(hero, 4.0, 5, 1.0)
 	GameManager.request_screen_shake(1.5, 0.1)
 	AudioManager.play_sfx("melee_hit", 0.6)
 

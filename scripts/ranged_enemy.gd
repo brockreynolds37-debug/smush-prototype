@@ -26,6 +26,11 @@ var leash_range: float = 25.0
 var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
+# Status effects
+var _base_move_speed: float = 4.5
+var _is_stunned: bool = false
+var _slow_amount: float = 0.0
+
 # Animation
 enum AnimState { IDLE, WALK, ATTACK, DEATH }
 var anim_state: AnimState = AnimState.IDLE
@@ -51,6 +56,7 @@ func _ready() -> void:
 	GameManager.register_enemy(self)
 	spawn_position = global_position
 	current_health = max_health
+	_base_move_speed = move_speed
 
 	_arrow_scene = preload("res://scenes/arrow_projectile.tscn")
 
@@ -95,6 +101,12 @@ func _find_mesh_instances(node: Node) -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_dead:
+		return
+
+	if _is_stunned:
+		velocity = Vector3.ZERO
+		current_speed = 0.0
+		move_and_slide()
 		return
 
 	var hero = GameManager.hero
@@ -309,3 +321,18 @@ func _flash_color(color: Color, duration: float) -> void:
 	await get_tree().create_timer(duration).timeout
 	if not is_dead:
 		_restore_model_materials()
+
+# ---------- STATUS EFFECTS ----------
+
+func _apply_status_slow(slow_pct: float) -> void:
+	_slow_amount = slow_pct
+	move_speed = _base_move_speed * (1.0 - _slow_amount)
+	nav_agent.max_speed = move_speed
+
+func _remove_status_slow() -> void:
+	_slow_amount = 0.0
+	move_speed = _base_move_speed
+	nav_agent.max_speed = move_speed
+
+func _apply_status_stun(stunned: bool) -> void:
+	_is_stunned = stunned

@@ -6,10 +6,12 @@ extends Node
 signal floor_changing(from_floor: int, to_floor: int)
 signal floor_changed(floor_number: int)
 signal transition_fade_midpoint  # Emitted when screen is fully black (time to swap level)
+signal show_merchant(floor_number: int)  # Emitted to show merchant UI between floors
 
 var current_floor: int = 1
 var max_floor_reached: int = 1
 var is_transitioning: bool = false
+var _waiting_for_merchant: bool = false
 
 # Transition overlay (injected by scene script or HUD)
 var _overlay: ColorRect = null
@@ -43,6 +45,13 @@ func _transition_to_floor(floor_number: int) -> void:
 		fade_out.tween_property(_overlay, "modulate", Color(1, 1, 1, 1), 0.6)
 		await fade_out.finished
 
+	# Show merchant shop between floors
+	_waiting_for_merchant = true
+	show_merchant.emit(floor_number)
+	# Wait until merchant UI is dismissed
+	while _waiting_for_merchant:
+		await get_tree().process_frame
+
 	# Midpoint — screen is black, swap level content
 	current_floor = floor_number
 	max_floor_reached = maxi(max_floor_reached, floor_number)
@@ -62,7 +71,11 @@ func _transition_to_floor(floor_number: int) -> void:
 
 	is_transitioning = false
 
+func on_merchant_closed() -> void:
+	_waiting_for_merchant = false
+
 func reset() -> void:
 	current_floor = 1
 	max_floor_reached = 1
 	is_transitioning = false
+	_waiting_for_merchant = false

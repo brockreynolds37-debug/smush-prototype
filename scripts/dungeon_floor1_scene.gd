@@ -4,6 +4,7 @@ extends Node3D
 ## and floor transition system.
 
 var _transition_overlay: ColorRect = null
+var _merchant_ui: CanvasLayer = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -38,6 +39,15 @@ func _ready() -> void:
 	FloorManager.transition_fade_midpoint.connect(_on_floor_transition_midpoint)
 	FloorManager.floor_changed.connect(_on_floor_changed)
 
+	# Merchant UI between floors
+	var merchant_script = preload("res://scripts/merchant_ui.gd")
+	_merchant_ui = CanvasLayer.new()
+	_merchant_ui.set_script(merchant_script)
+	_merchant_ui.name = "MerchantUI"
+	add_child(_merchant_ui)
+	FloorManager.show_merchant.connect(_on_show_merchant)
+	_merchant_ui.merchant_closed.connect(FloorManager.on_merchant_closed)
+
 	# Wire Smusher Timer to dungeon builder and start it
 	SmusherTimer.dungeon_builder = $DungeonBuilder
 	SmusherTimer.start_timer()
@@ -70,6 +80,10 @@ func _setup_transition_overlay() -> void:
 	canvas.add_child(_transition_overlay)
 
 	FloorManager.set_overlay(_transition_overlay)
+
+func _on_show_merchant(floor_number: int) -> void:
+	if _merchant_ui:
+		_merchant_ui.show_shop(floor_number)
 
 func _on_floor_transition_midpoint() -> void:
 	# Screen is black — rebuild the dungeon for the new floor
