@@ -40,9 +40,11 @@ var _status_container: HBoxContainer = null
 var _status_icons: Dictionary = {}  # EffectType -> Panel
 
 const FLOOR_NAMES := {
+	0: "Training Grounds",
 	1: "The Sift",
 	2: "The Crucible",
-	3: "The Deep",
+	3: "The Crush",
+	4: "The Deep",
 }
 
 var cooldown_labels: Array[ColorRect] = []

@@ -5,6 +5,7 @@ extends Node3D
 
 var _transition_overlay: ColorRect = null
 var _merchant_ui: CanvasLayer = null
+var _deep_effects: CanvasLayer = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -84,6 +85,17 @@ func _ready() -> void:
 	# Start run timer
 	GameManager.start_run()
 
+	# The Deep effects (Floor 4+) — reality distortion, camera flickers
+	var deep_script = preload("res://scripts/deep_effects.gd")
+	_deep_effects = CanvasLayer.new()
+	_deep_effects.set_script(deep_script)
+	_deep_effects.name = "DeepEffects"
+	add_child(_deep_effects)
+	if FloorManager.current_floor >= 4:
+		_deep_effects.activate()
+		# Narrator goes quiet in The Deep
+		Narrator.set_process(false)
+
 	# Tutorial floor — start guided walkthrough with skip button
 	if FloorManager.current_floor == 0 and TutorialManager.is_tutorial_active:
 		_setup_tutorial_skip_button()
@@ -143,7 +155,7 @@ func _on_floor_transition_midpoint() -> void:
 		1: builder._define_floor1_layout()
 		2: builder._define_floor2_layout()
 		3: builder._define_floor3_layout()
-		_: builder._define_floor1_layout()
+		_: builder._define_floor4_layout()
 	builder._build_grid_from_rooms()
 	builder._generate_geometry()
 	builder._bake_navigation()
@@ -165,6 +177,15 @@ func _on_floor_changed(floor_number: int) -> void:
 
 	# Re-add room lights
 	_add_room_lights()
+
+	# Toggle Deep effects on floor 4+
+	if _deep_effects:
+		if floor_number >= 4:
+			_deep_effects.activate()
+			Narrator.set_process(false)
+		else:
+			_deep_effects.deactivate()
+			Narrator.set_process(true)
 
 func _clear_enemies() -> void:
 	var units_node = $Units
@@ -206,7 +227,7 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 	# Scale difficulty with floor number
 	var enemy_count = 3 + floor_number * 2
 	var rooms_with_mobs = ["arena", "guard"]
-	# Floor 3 has a gauntlet room with extra enemies
+	# Floor 3+ has extra rooms with enemies
 	if floor_number >= 3:
 		rooms_with_mobs.append("gauntlet")
 
@@ -225,6 +246,14 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 		else:
 			enemy = skeleton_scene.instantiate()
 
+		# Floor 4+ "The Deep" shadow variants — boosted stats, dark tint
+		if floor_number >= 4:
+			enemy.max_health = int(enemy.max_health * 1.5)
+			enemy.current_health = enemy.max_health
+			enemy.attack_damage = int(enemy.attack_damage * 1.3)
+			enemy.move_speed *= 1.2
+			enemy.aggro_range *= 1.5
+
 		enemy.global_position = pos
 		units_node.add_child(enemy)
 
@@ -236,8 +265,21 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 		if boss_pos != Vector3.ZERO:
 			boss.global_position = boss_pos
 			units_node.add_child(boss)
-			# Connect boss health to HUD
 			_connect_boss_hud(boss)
+	elif floor_number >= 4:
+		# Floor 4+ uses slime lord boss with boosted stats as "Void Horror"
+		var deep_boss = preload("res://scenes/boss_slime_lord.tscn").instantiate()
+		var boss_pos = builder.get_room_center("boss")
+		if boss_pos != Vector3.ZERO:
+			deep_boss.global_position = boss_pos
+			if deep_boss.has_method("set_deep_variant"):
+				deep_boss.set_deep_variant()
+			else:
+				# Boost stats manually for deep variant
+				deep_boss.max_health = int(deep_boss.max_health * 2.0)
+				deep_boss.current_health = deep_boss.max_health
+			units_node.add_child(deep_boss)
+			_connect_boss_hud(deep_boss)
 
 func _connect_boss_hud(boss: Node3D) -> void:
 	# Find the HUD and tell it about the boss

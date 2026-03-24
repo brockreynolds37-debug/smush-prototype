@@ -65,7 +65,7 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"light_color": Color(1.0, 0.75, 0.4),
 				"light_energy": 1.0,
 			}
-		_:
+		3:
 			return {
 				"name": "The Crush",
 				"floor_color": Color(0.18, 0.12, 0.22),
@@ -79,6 +79,22 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"fog_density": 0.025,
 				"light_color": Color(0.8, 0.5, 1.0),
 				"light_energy": 0.9,
+			}
+		_:
+			# Floor 4+: "The Deep" — glitch/horror, reality distortion
+			return {
+				"name": "The Deep",
+				"floor_color": Color(0.06, 0.06, 0.08),
+				"floor_roughness": 0.40,
+				"wall_color": Color(0.10, 0.08, 0.14),
+				"wall_roughness": 0.35,
+				"accent_color": Color(0.0, 1.0, 0.6),
+				"ambient_color": Color(0.1, 0.3, 0.2),
+				"ambient_energy": 0.10,
+				"fog_color": Color(0.02, 0.04, 0.03),
+				"fog_density": 0.04,
+				"light_color": Color(0.3, 1.0, 0.6),
+				"light_energy": 0.6,
 			}
 
 # Tile types for the grid map
@@ -140,7 +156,7 @@ func _ready() -> void:
 		1: _define_floor1_layout()
 		2: _define_floor2_layout()
 		3: _define_floor3_layout()
-		_: _define_floor1_layout()
+		_: _define_floor4_layout()
 	_build_grid_from_rooms()
 	_generate_geometry()
 	_apply_theme_lighting()
@@ -511,6 +527,93 @@ func _define_tutorial_layout() -> void:
 			{"type": "candle", "offset": Vector2i(5, 5)},
 			{"type": "banner", "offset": Vector2i(2, 0)},
 			{"type": "banner", "offset": Vector2i(3, 0)},
+		]},
+	]
+
+func _define_floor4_layout() -> void:
+	# Floor 4: "The Deep" — disorienting, claustrophobic, glitch horror
+	#
+	#  [Spawn 6x6] --corridor-- [Void Hall 10x10] --corridor-- [Glitch Room 8x6]
+	#                                  |
+	#                              corridor
+	#                                  |
+	#                        [Shadow Den 10x8]
+	#                                  |
+	#                              corridor
+	#                                  |
+	#                       [Abyss (Boss) 14x12]
+	#
+	spawn_cell = Vector2i(3, 3)
+	exit_cell = Vector2i(6, 42)
+
+	rooms = [
+		{"pos": Vector2i(0, 0), "size": Vector2i(6, 6), "name": "spawn",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(5, 0)},
+		]},
+
+		{"pos": Vector2i(6, 2), "size": Vector2i(4, 2), "name": "corridor_1"},
+
+		{"pos": Vector2i(10, -2), "size": Vector2i(10, 10), "name": "arena",
+		 "props": [
+			{"type": "column", "offset": Vector2i(2, 2)},
+			{"type": "column", "offset": Vector2i(7, 2)},
+			{"type": "column", "offset": Vector2i(2, 7)},
+			{"type": "column", "offset": Vector2i(7, 7)},
+			{"type": "trap_spike", "offset": Vector2i(4, 4)},
+			{"type": "trap_spike", "offset": Vector2i(5, 5)},
+			{"type": "trap_poison", "offset": Vector2i(4, 6)},
+			{"type": "trap_fire", "offset": Vector2i(6, 3)},
+		]},
+
+		{"pos": Vector2i(20, 2), "size": Vector2i(4, 2), "name": "corridor_2"},
+
+		{"pos": Vector2i(24, 0), "size": Vector2i(8, 6), "name": "loot",
+		 "props": [
+			{"type": "chest", "offset": Vector2i(3, 3)},
+			{"type": "chest", "offset": Vector2i(4, 3)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(7, 0)},
+			{"type": "rocks", "offset": Vector2i(1, 4)},
+			{"type": "rocks", "offset": Vector2i(6, 4)},
+		]},
+
+		{"pos": Vector2i(14, 8), "size": Vector2i(2, 5), "name": "corridor_3"},
+
+		{"pos": Vector2i(10, 13), "size": Vector2i(10, 8), "name": "guard",
+		 "props": [
+			{"type": "column", "offset": Vector2i(2, 2)},
+			{"type": "column", "offset": Vector2i(7, 2)},
+			{"type": "column", "offset": Vector2i(2, 5)},
+			{"type": "column", "offset": Vector2i(7, 5)},
+			{"type": "trap_fire", "offset": Vector2i(4, 3)},
+			{"type": "trap_fire", "offset": Vector2i(5, 4)},
+			{"type": "trap_spike", "offset": Vector2i(3, 6)},
+			{"type": "barrel", "offset": Vector2i(0, 0)},
+			{"type": "barrel", "offset": Vector2i(9, 0)},
+		]},
+
+		{"pos": Vector2i(14, 21), "size": Vector2i(2, 5), "name": "corridor_4",
+		 "props": [
+			{"type": "trap_poison", "offset": Vector2i(0, 1)},
+			{"type": "trap_poison", "offset": Vector2i(1, 3)},
+		]},
+
+		{"pos": Vector2i(0, 26), "size": Vector2i(14, 12), "name": "boss",
+		 "props": [
+			{"type": "column", "offset": Vector2i(3, 2)},
+			{"type": "column", "offset": Vector2i(10, 2)},
+			{"type": "column", "offset": Vector2i(3, 9)},
+			{"type": "column", "offset": Vector2i(10, 9)},
+			{"type": "gate", "offset": Vector2i(6, 0)},
+			{"type": "gate", "offset": Vector2i(7, 0)},
+			{"type": "banner", "offset": Vector2i(6, 10)},
+			{"type": "banner", "offset": Vector2i(7, 10)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(13, 0)},
+			{"type": "candle", "offset": Vector2i(0, 11)},
+			{"type": "candle", "offset": Vector2i(13, 11)},
 		]},
 	]
 
