@@ -85,6 +85,7 @@ func _on_floor_transition_midpoint() -> void:
 	match builder.floor_number:
 		1: builder._define_floor1_layout()
 		2: builder._define_floor2_layout()
+		3: builder._define_floor3_layout()
 		_: builder._define_floor1_layout()
 	builder._build_grid_from_rooms()
 	builder._generate_geometry()
@@ -127,11 +128,15 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 	var boss_scenes := {
 		1: preload("res://scenes/boss_goblin_king.tscn"),
 		2: preload("res://scenes/boss_spider_queen.tscn"),
+		3: preload("res://scenes/boss_slime_lord.tscn"),
 	}
 
 	# Scale difficulty with floor number
 	var enemy_count = 3 + floor_number * 2
-	var rooms_with_mobs = ["arena", "guard"]  # Regular enemies in arena + guard rooms
+	var rooms_with_mobs = ["arena", "guard"]
+	# Floor 3 has a gauntlet room with extra enemies
+	if floor_number >= 3:
+		rooms_with_mobs.append("gauntlet")
 
 	for i in range(enemy_count):
 		var room_name = rooms_with_mobs[i % rooms_with_mobs.size()]

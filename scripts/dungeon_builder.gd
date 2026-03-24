@@ -62,6 +62,7 @@ func _ready() -> void:
 	match floor_number:
 		1: _define_floor1_layout()
 		2: _define_floor2_layout()
+		3: _define_floor3_layout()
 		_: _define_floor1_layout()
 	_build_grid_from_rooms()
 	_generate_geometry()
@@ -252,6 +253,122 @@ func _define_floor2_layout() -> void:
 			{"type": "candle", "offset": Vector2i(11, 0)},
 			{"type": "candle", "offset": Vector2i(0, 11)},
 			{"type": "candle", "offset": Vector2i(11, 11)},
+		]},
+	]
+
+func _define_floor3_layout() -> void:
+	# Floor 3: "The Deep" — sprawling, dangerous, multiple paths to boss
+	#
+	#                    [Spawn 6x6]
+	#                        |
+	#                    corridor
+	#                        |
+	#  [Tomb 8x6] --corridor-- [Crossroads 8x8] --corridor-- [Shrine 8x6]
+	#                        |
+	#                    corridor
+	#                        |
+	#              [Gauntlet 16x6]
+	#                        |
+	#                    corridor
+	#                        |
+	#              [Boss Lair 16x14]
+	#
+	spawn_cell = Vector2i(3, 3)
+	exit_cell = Vector2i(4, 44)
+
+	rooms = [
+		# Room 0: Spawn
+		{"pos": Vector2i(0, 0), "size": Vector2i(6, 6), "name": "spawn",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(5, 0)},
+			{"type": "barrel", "offset": Vector2i(1, 4)},
+			{"type": "barrel", "offset": Vector2i(4, 4)},
+		]},
+
+		# Corridor: Spawn → Crossroads
+		{"pos": Vector2i(2, 6), "size": Vector2i(2, 3), "name": "corridor_1"},
+
+		# Room 1: Crossroads (center hub)
+		{"pos": Vector2i(-1, 9), "size": Vector2i(8, 8), "name": "arena",
+		 "props": [
+			{"type": "column", "offset": Vector2i(2, 2)},
+			{"type": "column", "offset": Vector2i(5, 2)},
+			{"type": "column", "offset": Vector2i(2, 5)},
+			{"type": "column", "offset": Vector2i(5, 5)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(7, 0)},
+			{"type": "candle", "offset": Vector2i(0, 7)},
+			{"type": "candle", "offset": Vector2i(7, 7)},
+		]},
+
+		# Corridor: Crossroads → Tomb (west)
+		{"pos": Vector2i(-5, 12), "size": Vector2i(4, 2), "name": "corridor_2"},
+
+		# Room 2: Tomb (west wing)
+		{"pos": Vector2i(-13, 10), "size": Vector2i(8, 6), "name": "guard",
+		 "props": [
+			{"type": "chest", "offset": Vector2i(3, 2)},
+			{"type": "chest", "offset": Vector2i(4, 2)},
+			{"type": "rocks", "offset": Vector2i(1, 4)},
+			{"type": "banner", "offset": Vector2i(3, 0)},
+			{"type": "banner", "offset": Vector2i(4, 0)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(7, 0)},
+		]},
+
+		# Corridor: Crossroads → Shrine (east)
+		{"pos": Vector2i(7, 12), "size": Vector2i(4, 2), "name": "corridor_3"},
+
+		# Room 3: Shrine (east wing)
+		{"pos": Vector2i(11, 10), "size": Vector2i(8, 6), "name": "loot",
+		 "props": [
+			{"type": "chest", "offset": Vector2i(3, 3)},
+			{"type": "column", "offset": Vector2i(1, 1)},
+			{"type": "column", "offset": Vector2i(6, 1)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(7, 0)},
+			{"type": "banner", "offset": Vector2i(3, 0)},
+		]},
+
+		# Corridor: Crossroads → Gauntlet (south)
+		{"pos": Vector2i(2, 17), "size": Vector2i(2, 4), "name": "corridor_4"},
+
+		# Room 4: Gauntlet (long narrow hallway with enemies)
+		{"pos": Vector2i(-5, 21), "size": Vector2i(16, 6), "name": "gauntlet",
+		 "props": [
+			{"type": "column", "offset": Vector2i(3, 1)},
+			{"type": "column", "offset": Vector2i(3, 4)},
+			{"type": "column", "offset": Vector2i(7, 1)},
+			{"type": "column", "offset": Vector2i(7, 4)},
+			{"type": "column", "offset": Vector2i(11, 1)},
+			{"type": "column", "offset": Vector2i(11, 4)},
+			{"type": "barrel", "offset": Vector2i(0, 0)},
+			{"type": "barrel", "offset": Vector2i(15, 0)},
+			{"type": "candle", "offset": Vector2i(0, 5)},
+			{"type": "candle", "offset": Vector2i(15, 5)},
+		]},
+
+		# Corridor: Gauntlet → Boss Lair
+		{"pos": Vector2i(2, 27), "size": Vector2i(2, 4), "name": "corridor_5"},
+
+		# Room 5: Boss Lair (massive)
+		{"pos": Vector2i(-5, 31), "size": Vector2i(16, 14), "name": "boss",
+		 "props": [
+			{"type": "column", "offset": Vector2i(3, 3)},
+			{"type": "column", "offset": Vector2i(12, 3)},
+			{"type": "column", "offset": Vector2i(3, 10)},
+			{"type": "column", "offset": Vector2i(12, 10)},
+			{"type": "gate", "offset": Vector2i(7, 0)},
+			{"type": "gate", "offset": Vector2i(8, 0)},
+			{"type": "banner", "offset": Vector2i(7, 12)},
+			{"type": "banner", "offset": Vector2i(8, 12)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(15, 0)},
+			{"type": "candle", "offset": Vector2i(0, 13)},
+			{"type": "candle", "offset": Vector2i(15, 13)},
+			{"type": "rocks", "offset": Vector2i(6, 6)},
+			{"type": "rocks", "offset": Vector2i(9, 6)},
 		]},
 	]
 

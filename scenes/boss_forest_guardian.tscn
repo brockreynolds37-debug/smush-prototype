@@ -1,0 +1,50 @@
+[gd_scene load_steps=4 format=3 uid="uid://boss_forest_guardian"]
+
+[ext_resource type="Script" path="res://scripts/boss_enemy.gd" id="1_boss"]
+
+[sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
+size = Vector2(3.5, 3.5)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_sel_mat"]
+transparency = 1
+albedo_color = Color(0.1, 0.6, 0.3, 0.5)
+emission_enabled = true
+emission = Color(0.1, 0.7, 0.2, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="CapsuleShape3D" id="SubResource_boss_col"]
+radius = 0.9
+height = 3.0
+
+[node name="Boss" type="CharacterBody3D" groups=["enemies", "bosses"]]
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1_boss")
+max_health = 1000
+move_speed = 3.5
+aggro_range = 20.0
+attack_range = 4.0
+attack_damage = 35
+attack_cooldown = 2.2
+boss_type = "forest_guardian"
+boss_display_name = "Verdanthos the Guardian"
+model_scale = 2.5
+
+[node name="EnemyModel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="SelectionCircle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("SubResource_sel_mesh")
+surface_material_override/0 = SubResource("SubResource_sel_mat")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("SubResource_boss_col")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+
+[node name="AttackTimer" type="Timer" parent="."]
+one_shot = true
