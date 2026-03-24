@@ -27,6 +27,9 @@ var ambience_volume: float = 0.3
 var music_volume: float = 0.4
 
 func _ready() -> void:
+	# Load persisted volume settings
+	_load_volume_settings()
+
 	# Create SFX pool
 	for i in range(sfx_pool_size):
 		var player = AudioStreamPlayer.new()
@@ -471,6 +474,16 @@ func _gen_victory_fanfare(sr: int, dur: float, freq: float, vol: float) -> Audio
 			sample += sin(t * f * 3.0 * TAU) * 0.1
 		data[i] = sample * env * vol
 	return _make_wav(sr, data)
+
+# ---- SETTINGS PERSISTENCE ----
+
+func _load_volume_settings() -> void:
+	var config = ConfigFile.new()
+	if config.load("user://settings.cfg") != OK:
+		return
+	master_volume = config.get_value("audio", "master", 0.7)
+	sfx_volume = config.get_value("audio", "sfx", 0.8)
+	ambience_volume = config.get_value("audio", "ambience", 0.3)
 
 # ---- UTILITIES ----
 

@@ -9,6 +9,8 @@ var _panel: PanelContainer
 var _resume_btn: Button
 var _restart_btn: Button
 var _quit_btn: Button
+var _settings_menu: Node = null
+var _in_settings: bool = false
 
 func _ready() -> void:
 	layer = 50
@@ -18,6 +20,8 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _in_settings:
+			return  # Settings menu handles its own ESC
 		if GameManager.game_state != GameManager.GameState.PLAYING:
 			return
 		if is_paused:
@@ -43,6 +47,14 @@ func _on_restart() -> void:
 	_resume()
 	GameManager.reset_game_state()
 	get_tree().change_scene_to_file("res://scenes/character_select.tscn")
+
+func _on_settings() -> void:
+	_in_settings = true
+	if _settings_menu:
+		_settings_menu.show_menu()
+
+func _on_settings_closed() -> void:
+	_in_settings = false
 
 func _on_quit_menu() -> void:
 	_resume()
@@ -88,9 +100,19 @@ func _build_ui() -> void:
 	_restart_btn.pressed.connect(_on_restart)
 	btn_box.add_child(_restart_btn)
 
+	var _settings_btn = _make_button("SETTINGS", true)
+	_settings_btn.pressed.connect(_on_settings)
+	btn_box.add_child(_settings_btn)
+
 	_quit_btn = _make_button("QUIT TO MENU", true)
 	_quit_btn.pressed.connect(_on_quit_menu)
 	btn_box.add_child(_quit_btn)
+
+	# Settings menu overlay
+	var SettingsMenuScript = load("res://scripts/settings_menu.gd")
+	_settings_menu = SettingsMenuScript.new()
+	_settings_menu.closed.connect(_on_settings_closed)
+	add_child(_settings_menu)
 
 	# Hint
 	var hint = Label.new()

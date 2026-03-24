@@ -6,6 +6,7 @@ extends Node3D
 var cam: Camera3D = null
 var cam_angle: float = 0.0
 var is_transitioning: bool = false
+var _settings_menu: Node = null
 
 func _ready() -> void:
 	_build_3d_scene()
@@ -162,10 +163,20 @@ func _build_ui() -> void:
 	new_game_btn.pressed.connect(_on_new_game)
 	btn_box.add_child(new_game_btn)
 
+	# Settings button
+	var settings_btn = _make_button("SETTINGS", true)
+	settings_btn.pressed.connect(_on_settings)
+	btn_box.add_child(settings_btn)
+
 	# Quit button
 	var quit_btn = _make_button("QUIT", true)
 	quit_btn.pressed.connect(_on_quit)
 	btn_box.add_child(quit_btn)
+
+	# Settings menu overlay
+	var SettingsMenuScript = load("res://scripts/settings_menu.gd")
+	_settings_menu = SettingsMenuScript.new()
+	add_child(_settings_menu)
 
 	# Version label
 	var version = Label.new()
@@ -235,6 +246,10 @@ func _on_new_game() -> void:
 	tween.tween_callback(func():
 		get_tree().change_scene_to_file("res://scenes/character_select.tscn")
 	)
+
+func _on_settings() -> void:
+	if _settings_menu:
+		_settings_menu.show_menu()
 
 func _on_quit() -> void:
 	get_tree().quit()
