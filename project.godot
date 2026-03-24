@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameManager="*res://scripts/game_manager.gd"
+FloorManager="*res://scripts/floor_manager.gd"
 
 [display]
 

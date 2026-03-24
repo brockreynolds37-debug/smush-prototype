@@ -5,8 +5,11 @@ extends Node3D
 ##
 ## Attach this to a Node3D. It will generate floor tiles, walls, doorways,
 ## props, and collision, then bake a navigation mesh.
+## Supports multiple floor layouts via floor_number.
 
 const TILE_SIZE := 2.0  # World units per grid cell
+
+@export var floor_number: int = 1
 
 # Tile types for the grid map
 enum Tile {
@@ -27,6 +30,13 @@ var rooms: Array[Dictionary] = []
 var grid: Dictionary = {}  # Vector2i → Tile
 var grid_min := Vector2i.ZERO
 var grid_max := Vector2i.ZERO
+
+# Spawn/exit cell positions (set by layout)
+var spawn_cell := Vector2i(4, 4)
+var exit_cell := Vector2i(19, 29)
+
+# Exit zone node — exposed so scene script can connect signals
+var exit_zone: Area3D = null
 
 # Loaded scenes (cached)
 var _floor_scene: PackedScene
@@ -49,7 +59,10 @@ var _nav_region: NavigationRegion3D
 
 func _ready() -> void:
 	_load_assets()
-	_define_floor1_layout()
+	match floor_number:
+		1: _define_floor1_layout()
+		2: _define_floor2_layout()
+		_: _define_floor1_layout()
 	_build_grid_from_rooms()
 	_generate_geometry()
 	_bake_navigation()
@@ -155,6 +168,93 @@ func _define_floor1_layout() -> void:
 		]},
 	]
 
+func _define_floor2_layout() -> void:
+	# Floor 2: "The Crucible" — tighter, more dangerous layout
+	#
+	#           [Spawn 6x6]
+	#               |
+	#           corridor
+	#               |
+	#  [Side Room 6x6] --corridor-- [Central Hall 10x10] --corridor-- [Armory 6x6]
+	#                                     |
+	#                                 corridor
+	#                                     |
+	#                              [Boss Pit 12x12]
+	#
+	spawn_cell = Vector2i(3, 3)
+	exit_cell = Vector2i(3, 33)  # Inside boss pit (room at -3,24 size 12x12)
+
+	rooms = [
+		# Room 0: Spawn
+		{"pos": Vector2i(0, 0), "size": Vector2i(6, 6), "name": "spawn",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(5, 0)},
+			{"type": "barrel", "offset": Vector2i(1, 4)},
+		]},
+
+		# Corridor: Spawn → Central Hall
+		{"pos": Vector2i(2, 6), "size": Vector2i(2, 4), "name": "corridor_1"},
+
+		# Room 1: Central Hall
+		{"pos": Vector2i(-2, 10), "size": Vector2i(10, 10), "name": "arena",
+		 "props": [
+			{"type": "column", "offset": Vector2i(2, 2)},
+			{"type": "column", "offset": Vector2i(7, 2)},
+			{"type": "column", "offset": Vector2i(2, 7)},
+			{"type": "column", "offset": Vector2i(7, 7)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(9, 0)},
+			{"type": "rocks", "offset": Vector2i(4, 5)},
+		]},
+
+		# Corridor: Central → Side Room (west)
+		{"pos": Vector2i(-6, 14), "size": Vector2i(4, 2), "name": "corridor_2"},
+
+		# Room 2: Side Room
+		{"pos": Vector2i(-12, 12), "size": Vector2i(6, 6), "name": "guard",
+		 "props": [
+			{"type": "barrel", "offset": Vector2i(1, 1)},
+			{"type": "barrel", "offset": Vector2i(4, 1)},
+			{"type": "chest", "offset": Vector2i(2, 3)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(5, 5)},
+		]},
+
+		# Corridor: Central → Armory (east)
+		{"pos": Vector2i(8, 14), "size": Vector2i(4, 2), "name": "corridor_3"},
+
+		# Room 3: Armory
+		{"pos": Vector2i(12, 12), "size": Vector2i(6, 6), "name": "loot",
+		 "props": [
+			{"type": "chest", "offset": Vector2i(1, 2)},
+			{"type": "chest", "offset": Vector2i(4, 2)},
+			{"type": "banner", "offset": Vector2i(2, 0)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(5, 0)},
+		]},
+
+		# Corridor: Central → Boss Pit
+		{"pos": Vector2i(2, 20), "size": Vector2i(2, 4), "name": "corridor_4"},
+
+		# Room 4: Boss Pit
+		{"pos": Vector2i(-3, 24), "size": Vector2i(12, 12), "name": "boss",
+		 "props": [
+			{"type": "column", "offset": Vector2i(2, 2)},
+			{"type": "column", "offset": Vector2i(9, 2)},
+			{"type": "column", "offset": Vector2i(2, 9)},
+			{"type": "column", "offset": Vector2i(9, 9)},
+			{"type": "gate", "offset": Vector2i(5, 0)},
+			{"type": "gate", "offset": Vector2i(6, 0)},
+			{"type": "banner", "offset": Vector2i(5, 10)},
+			{"type": "banner", "offset": Vector2i(6, 10)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(11, 0)},
+			{"type": "candle", "offset": Vector2i(0, 11)},
+			{"type": "candle", "offset": Vector2i(11, 11)},
+		]},
+	]
+
 func _build_grid_from_rooms() -> void:
 	grid.clear()
 
@@ -168,8 +268,8 @@ func _build_grid_from_rooms() -> void:
 				grid[cell] = Tile.FLOOR
 
 	# Mark spawn and exit
-	grid[Vector2i(4, 4)] = Tile.SPAWN  # Center of spawn room
-	grid[Vector2i(19, 29)] = Tile.EXIT  # Center of boss room, far side
+	grid[spawn_cell] = Tile.SPAWN
+	grid[exit_cell] = Tile.EXIT
 
 	# Mark props from room definitions
 	for room in rooms:
@@ -227,8 +327,12 @@ func _generate_geometry() -> void:
 			var cell := Vector2i(rpos.x + prop["offset"].x, rpos.y + prop["offset"].y)
 			_place_prop(cell, prop["type"])
 
-	# Place exit stairs
-	_place_exit_stairs(Vector2i(19, 29))
+	# Place entrance stairs at spawn (visual only — where you arrived from)
+	if floor_number > 1:
+		_place_entrance_stairs(spawn_cell)
+
+	# Place exit stairs with interactive zone
+	_place_exit_stairs(exit_cell)
 
 func _cell_to_world(cell: Vector2i) -> Vector3:
 	return Vector3(cell.x * TILE_SIZE, 0.0, cell.y * TILE_SIZE)
@@ -380,6 +484,16 @@ func _place_prop(cell: Vector2i, prop_type: String) -> void:
 	else:
 		_prop_container.add_child(instance)
 
+func _place_entrance_stairs(cell: Vector2i) -> void:
+	if _stairs_scene == null:
+		return
+	var instance := _stairs_scene.instantiate()
+	instance.position = _cell_to_world(cell)
+	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
+	# Rotate 180° — entrance stairs face opposite direction
+	instance.rotation_degrees.y = 180.0
+	_prop_container.add_child(instance)
+
 func _place_exit_stairs(cell: Vector2i) -> void:
 	if _stairs_scene == null:
 		return
@@ -387,6 +501,24 @@ func _place_exit_stairs(cell: Vector2i) -> void:
 	instance.position = _cell_to_world(cell)
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
 	_prop_container.add_child(instance)
+
+	# Create interactive exit zone on top of stairs
+	var exit_zone_script = load("res://scripts/exit_zone.gd")
+	exit_zone = Area3D.new()
+	exit_zone.set_script(exit_zone_script)
+	exit_zone.name = "ExitZone"
+	exit_zone.position = _cell_to_world(cell) + Vector3.UP * 0.3
+
+	# Collision shape for hero detection
+	var col := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = TILE_SIZE * 0.8
+	shape.height = 2.0
+	col.shape = shape
+	col.position.y = 1.0
+	exit_zone.add_child(col)
+
+	add_child(exit_zone)
 
 func _bake_navigation() -> void:
 	var nav_mesh := NavigationMesh.new()
@@ -420,10 +552,10 @@ func _bake_navigation() -> void:
 # ---------- PUBLIC API ----------
 
 func get_spawn_position() -> Vector3:
-	return _cell_to_world(Vector2i(4, 4)) + Vector3.UP * 0.5
+	return _cell_to_world(spawn_cell) + Vector3.UP * 0.5
 
 func get_exit_position() -> Vector3:
-	return _cell_to_world(Vector2i(19, 29))
+	return _cell_to_world(exit_cell)
 
 func get_room_center(room_name: String) -> Vector3:
 	for room in rooms:

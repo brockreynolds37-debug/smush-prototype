@@ -14,9 +14,16 @@ extends CanvasLayer
 @onready var cooldown_e: ColorRect = %CooldownE
 @onready var cooldown_r: ColorRect = %CooldownR
 @onready var minimap_frame: ColorRect = %MinimapFrame
+@onready var floor_label: Label = %FloorLabel
 @onready var game_over_overlay: ColorRect = $GameOverOverlay
 @onready var game_over_label: Label = $GameOverOverlay/GameOverLabel
 @onready var restart_label: Label = $GameOverOverlay/RestartLabel
+
+const FLOOR_NAMES := {
+	1: "The Sift",
+	2: "The Crucible",
+	3: "The Deep",
+}
 
 var cooldown_labels: Array[ColorRect] = []
 
@@ -24,6 +31,8 @@ func _ready() -> void:
 	cooldown_labels = [cooldown_q, cooldown_w, cooldown_e, cooldown_r]
 	if game_over_overlay:
 		game_over_overlay.visible = false
+	_update_floor_label(FloorManager.current_floor)
+	FloorManager.floor_changed.connect(_on_floor_changed)
 	# Connect to hero when available
 	await get_tree().process_frame
 	_connect_hero()
@@ -55,6 +64,18 @@ func _on_cooldown_updated(spell_index: int, remaining: float, total: float) -> v
 			cd_rect.size.y = 60 * ratio
 		else:
 			cd_rect.visible = false
+
+func _on_floor_changed(floor_num: int) -> void:
+	_update_floor_label(floor_num)
+
+func _update_floor_label(floor_num: int) -> void:
+	if floor_label:
+		var name = FLOOR_NAMES.get(floor_num, "Floor %d" % floor_num)
+		floor_label.text = "Floor %d — %s" % [floor_num, name]
+		# Brief flash animation
+		floor_label.modulate = Color(1, 1, 1, 0)
+		var tween = create_tween()
+		tween.tween_property(floor_label, "modulate", Color(1, 1, 1, 1), 0.5)
 
 func _on_game_over(won: bool) -> void:
 	if game_over_overlay:

@@ -47,13 +47,16 @@ func _on_hero_died() -> void:
 	game_state = GameState.LOST
 	game_over.emit(false)
 
+signal all_enemies_cleared  # Emitted when floor is cleared (enemies dead)
+
 func _check_win_condition() -> void:
 	if game_state != GameState.PLAYING:
 		return
-	# Win when all enemies are dead (and at least some were spawned)
+	# When all enemies on this floor are dead
 	if total_enemies_spawned > 0 and enemies.size() == 0:
-		game_state = GameState.WON
-		game_over.emit(true)
+		all_enemies_cleared.emit()
+		# Don't trigger game_over — let the player use the exit stairs
+		# Final win is only when the last floor boss is defeated (handled externally)
 
 func reset_game_state() -> void:
 	game_state = GameState.PLAYING

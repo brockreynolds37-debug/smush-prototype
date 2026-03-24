@@ -179,6 +179,19 @@ text = "MINIMAP"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="FloorLabel" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 50.0
+text = "Floor 1 — The Sift"
+horizontal_alignment = 2
+vertical_alignment = 0
+
 [node name="GameOverOverlay" type="ColorRect" parent="."]
 visible = false
 anchors_preset = 15
