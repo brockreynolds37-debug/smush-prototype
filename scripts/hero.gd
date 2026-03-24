@@ -42,6 +42,10 @@ var spell_mana_costs: Array[int] = [0, 30, 40, 60]
 var spell_names: Array[String] = ["Strike", "Fireball", "Heal", "Ground Slam"]
 var _spell_set_index: int = 0  # 0 = default, 1 = alternate
 
+# Summon tracking
+var summon_count: int = 0
+var _active_summons: Array[Node3D] = []
+
 # Spell unlock levels: spells 0-1 at start, spell 2 at level 5, spell 3 at level 10
 var spell_unlock_levels: Array[int] = [1, 1, 5, 10]
 var spells_unlocked: Array[bool] = [true, true, false, false]
@@ -1365,8 +1369,30 @@ func _cast_alt_mage(index: int) -> void:
 	match index:
 		0: _start_alt_targeting(0)  # Arcane Bolt targeted
 		1: _alt_ice_wall()
-		2: _start_alt_targeting(2)  # Chain Lightning targeted
+		2: _alt_summon_skeleton()   # Summon Skeleton
 		3: _start_alt_targeting(3)  # Meteor targeted
+
+func _alt_summon_skeleton() -> void:
+	if summon_count >= 2:
+		return
+	_consume_spell(2)
+	_begin_cast()
+	AudioManager.play_sfx("ground_slam", 0.6)
+	_flash_color(Color(0.5, 0.7, 1.0), 0.2)
+	SummonSpell.cast(self)
+	var tween = create_tween()
+	tween.tween_property(model, "scale", original_scale * 1.15, 0.15)
+	tween.tween_property(model, "scale", original_scale, 0.15)
+	tween.tween_callback(_end_cast)
+
+func _on_summon_spawned(minion: Node3D) -> void:
+	summon_count += 1
+	_active_summons.append(minion)
+	minion.minion_died.connect(_on_summon_died)
+
+func _on_summon_died(minion: Node3D) -> void:
+	summon_count = maxi(summon_count - 1, 0)
+	_active_summons.erase(minion)
 
 func _alt_arcane_bolt_at(target_pos: Vector3) -> void:
 	_consume_spell(0)
