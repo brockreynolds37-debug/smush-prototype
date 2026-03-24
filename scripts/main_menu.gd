@@ -322,7 +322,7 @@ func _on_continue() -> void:
 	# Store save data in GameManager meta so scene script can apply hero state after spawn
 	GameManager.set_meta("pending_save_data", save_data)
 
-	_fade_to_scene("res://scenes/dungeon_floor1_scene.tscn")
+	_fade_to_scene("res://scenes/dungeon_floor1.tscn")
 
 func _on_new_game() -> void:
 	if is_transitioning:
