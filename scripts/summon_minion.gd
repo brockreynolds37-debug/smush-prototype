@@ -12,14 +12,17 @@ const ATTACK_RANGE: float = 8.0
 const ATTACK_MELEE_RANGE: float = 2.0
 const MOVE_SPEED: float = 7.0
 const ATTACK_COOLDOWN: float = 1.2
+const LIFESPAN: float = 30.0  # Summons last 30 seconds
 
 var max_health: int = 150
 var current_health: int = 150
 var attack_damage: int = 15
 var is_dead: bool = false
 var _attack_timer: float = 0.0
+var _lifespan_timer: float = LIFESPAN
 var _target: Node3D = null
 var _model: Node3D = null
+var _label: Label3D = null
 
 func _ready() -> void:
 	# Build visual — skeleton model or placeholder
@@ -27,28 +30,38 @@ func _ready() -> void:
 	_model.name = "MinionModel"
 	add_child(_model)
 
-	var mesh = MeshInstance3D.new()
-	var capsule = CapsuleMesh.new()
-	capsule.radius = 0.3
-	capsule.height = 1.4
-	mesh.mesh = capsule
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.4, 0.6, 0.9)
-	mat.emission_enabled = true
-	mat.emission = Color(0.3, 0.4, 0.8)
-	mat.emission_energy_multiplier = 1.5
-	mesh.material_override = mat
-	mesh.position.y = 0.7
-	_model.add_child(mesh)
+	# Try to load skeleton model, fall back to capsule
+	var skel_path := "res://assets/models/enemies/skeleton.glb"
+	var skel_res = load(skel_path)
+	if skel_res:
+		var skel_inst = skel_res.instantiate()
+		skel_inst.scale = Vector3(0.8, 0.8, 0.8)
+		_model.add_child(skel_inst)
+		# Tint blue to distinguish from enemy skeletons
+		_tint_model(skel_inst, Color(0.4, 0.6, 1.0))
+	else:
+		var mesh = MeshInstance3D.new()
+		var capsule = CapsuleMesh.new()
+		capsule.radius = 0.3
+		capsule.height = 1.4
+		mesh.mesh = capsule
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(0.4, 0.6, 0.9)
+		mat.emission_enabled = true
+		mat.emission = Color(0.3, 0.4, 0.8)
+		mat.emission_energy_multiplier = 1.5
+		mesh.material_override = mat
+		mesh.position.y = 0.7
+		_model.add_child(mesh)
 
 	# Label
-	var label = Label3D.new()
-	label.text = "Summon"
-	label.font_size = 24
-	label.modulate = Color(0.5, 0.7, 1.0)
-	label.position = Vector3(0, 2.0, 0)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	add_child(label)
+	_label = Label3D.new()
+	_label.text = "Summon"
+	_label.font_size = 24
+	_label.modulate = Color(0.5, 0.7, 1.0)
+	_label.position = Vector3(0, 2.0, 0)
+	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	add_child(_label)
 
 	# Collision
 	var col = CollisionShape3D.new()
@@ -62,9 +75,40 @@ func _ready() -> void:
 	collision_layer = 2  # Units layer
 	collision_mask = 1 | 3  # Ground + Obstacles
 
+	# Spawn VFX — scale-in burst
+	_model.scale = Vector3(0.01, 0.01, 0.01)
+	var spawn_tw = create_tween()
+	spawn_tw.tween_property(_model, "scale", Vector3(1.2, 0.8, 1.2), 0.15)
+	spawn_tw.tween_property(_model, "scale", Vector3.ONE, 0.1)
+	VFXManager.spawn_spell_impact(global_position, Color(0.4, 0.6, 1.0), 2.0)
+
+func _tint_model(node: Node, color: Color) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		for i in range(mi.mesh.get_surface_count() if mi.mesh else 0):
+			var mat = StandardMaterial3D.new()
+			mat.albedo_color = color
+			mat.emission_enabled = true
+			mat.emission = color * 0.3
+			mat.emission_energy_multiplier = 0.8
+			mi.set_surface_override_material(i, mat)
+	for child in node.get_children():
+		_tint_model(child, color)
+
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
+
+	# Lifespan countdown
+	_lifespan_timer -= delta
+	if _lifespan_timer <= 0.0:
+		_die()
+		return
+
+	# Flash when about to expire
+	if _lifespan_timer <= 5.0 and _label:
+		_label.text = "Summon [%ds]" % ceili(_lifespan_timer)
+		_label.modulate.a = 0.5 + sin(Time.get_ticks_msec() * 0.01) * 0.5
 
 	_attack_timer = maxf(_attack_timer - delta, 0.0)
 
@@ -122,6 +166,12 @@ func _try_attack() -> void:
 		var tween = create_tween()
 		tween.tween_property(_model, "scale", Vector3(1.2, 0.8, 1.2), 0.08)
 		tween.tween_property(_model, "scale", Vector3.ONE, 0.08)
+
+## Scale minion stats by hero's spell power multiplier.
+func apply_spell_power(spell_power: float) -> void:
+	max_health = int(max_health * spell_power)
+	current_health = max_health
+	attack_damage = int(attack_damage * spell_power)
 
 func take_damage(amount: int) -> void:
 	if is_dead:

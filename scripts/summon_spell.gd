@@ -18,6 +18,10 @@ static func cast(hero: Node3D) -> void:
 	var minion = SummonMinion.new()
 	minion.name = "Summon_%d" % (summon_count + 1)
 
+	# Scale by hero spell power
+	if hero.has_method("_get_spell_power"):
+		minion.apply_spell_power(hero._get_spell_power())
+
 	# Spawn near hero
 	var offset = Vector3(randf_range(-2.0, 2.0), 0, randf_range(-2.0, 2.0))
 	minion.position = hero.global_position + offset
@@ -34,4 +38,7 @@ static func cast(hero: Node3D) -> void:
 		hero.summon_count = summon_count + 1
 		minion.minion_died.connect(func(_m): hero.summon_count -= 1)
 
+	# Stats + narrator
+	RunStats.record_summon_spawned()
+	Narrator.on_summon_spawned()
 	GameManager.request_screen_shake(2.0, 0.15)

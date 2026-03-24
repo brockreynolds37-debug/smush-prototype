@@ -120,6 +120,14 @@ const MAGE_CASTING := [
 	"Arcane circles! Don't stand in the fire!",
 ]
 
+const SUMMON_SPAWNED := [
+	"The champion calls upon dark allies!",
+	"A loyal servant rises from nothing!",
+	"Two can play at the numbers game!",
+	"The dead fight for the living now.",
+	"Reinforcements conjured from pure will!",
+]
+
 const OVERTIME := [
 	"THE WALLS ARE CLOSING IN!",
 	"Time has run out — the dungeon devours the slow!",
@@ -263,6 +271,11 @@ func on_hero_healed(hp_ratio_before: float) -> void:
 func announce_mage_cast() -> void:
 	if _rng.randf() < 0.35:  # Don't spam — only 35% chance
 		_say_line(MAGE_CASTING, Color(0.7, 0.2, 1.0), 26)
+
+# ----- Summon (called by SummonSpell) -----
+
+func on_summon_spawned() -> void:
+	_say_line(SUMMON_SPAWNED, Color(0.4, 0.6, 1.0), 24)
 
 # ----- Reset -----
 

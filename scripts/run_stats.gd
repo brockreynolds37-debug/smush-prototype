@@ -11,6 +11,7 @@ var total_kills: int = 0
 var kills_by_type: Dictionary = {}  # enemy_type -> count
 var boss_kills: int = 0
 var elite_kills: int = 0
+var summons_spawned: int = 0
 
 # Damage tracking
 var damage_dealt: int = 0
@@ -74,6 +75,10 @@ func record_spell_cast(spell_index: int) -> void:
 		spells_cast[spell_index] += 1
 		total_spells += 1
 		stat_updated.emit("spells_cast", total_spells)
+
+func record_summon_spawned() -> void:
+	summons_spawned += 1
+	stat_updated.emit("summons_spawned", summons_spawned)
 
 func record_potion_used() -> void:
 	potions_used += 1
@@ -149,6 +154,7 @@ func get_summary() -> Dictionary:
 		"gold_spent": gold_spent,
 		"items_collected": items_collected,
 		"potions_used": potions_used,
+		"summons_spawned": summons_spawned,
 		"floors_cleared": floors_cleared,
 		"highest_floor": highest_floor,
 		"run_time": get_run_time_string(),
@@ -170,6 +176,7 @@ func reset() -> void:
 	total_kills = 0
 	kills_by_type.clear()
 	boss_kills = 0
+	summons_spawned = 0
 	damage_dealt = 0
 	damage_taken = 0
 	largest_hit = 0
