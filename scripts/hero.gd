@@ -69,6 +69,11 @@ var _base_move_speed: float = 8.0
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0  # 0.0 = no slow, 0.5 = 50% slow
 
+# Innate trait
+var _trait_id: String = ""
+var _phase_walk_charges: int = 5
+var _phase_walk_max: int = 5
+
 func _ready() -> void:
 	GameManager.register_hero(self)
 	target_position = global_position
@@ -102,12 +107,22 @@ func _ready() -> void:
 
 	_base_move_speed = move_speed
 
+	# Load innate trait
+	_trait_id = char_data.get("trait_id", "")
+	_apply_trait_passives()
+
 	nav_agent.path_desired_distance = 0.5
 	nav_agent.target_desired_distance = 0.5
 	nav_agent.max_speed = move_speed
 
 	health_changed.emit(current_health, max_health)
 	mana_changed.emit(current_mana, max_mana)
+
+	# Connect trait signals
+	if _trait_id == "arcane_surge":
+		GameManager.enemy_died.connect(_on_trait_enemy_died)
+	if _trait_id == "adaptable" or _trait_id == "phase_walk":
+		FloorManager.floor_changed.connect(_on_trait_floor_changed)
 
 	# Mana regen timer
 	var mana_timer = Timer.new()
@@ -320,11 +335,19 @@ func _perform_melee_attack() -> void:
 func _get_melee_damage() -> int:
 	var base := 35
 	var str_bonus = XpManager.bonus_str * 3  # +3 damage per bonus STR
-	return base + str_bonus
+	var dmg := base + str_bonus
+	# Berserker Rage: +50% damage below 30% HP
+	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
+		dmg = int(dmg * 1.5)
+	return dmg
 
 func _get_spell_power() -> float:
 	# Returns a multiplier: 1.0 at base, scales with bonus INT
-	return 1.0 + XpManager.bonus_int * 0.08  # +8% per bonus INT
+	var power := 1.0 + XpManager.bonus_int * 0.08  # +8% per bonus INT
+	# Berserker Rage: +50% spell power below 30% HP
+	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
+		power *= 1.5
+	return power
 
 func _apply_melee_damage() -> void:
 	if attack_target and is_instance_valid(attack_target) and attack_target.has_method("take_damage"):
@@ -357,7 +380,8 @@ func cast_spell(index: int) -> void:
 		3: _cast_ground_slam()
 
 func _cast_strike() -> void:
-	var target = GameManager.get_nearest_enemy(global_position, 3.5)
+	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
+	var target = GameManager.get_nearest_enemy(global_position, 3.5 * range_mult)
 	if target:
 		set_attack_target(target)
 		spell_cooldowns[0] = spell_max_cooldowns[0]
@@ -365,7 +389,7 @@ func _cast_strike() -> void:
 		AudienceManager.on_spell_cast(0)
 		RunStats.record_spell_cast(0)
 	else:
-		target = GameManager.get_nearest_enemy(global_position, 15.0)
+		target = GameManager.get_nearest_enemy(global_position, 15.0 * range_mult)
 		if target:
 			set_attack_target(target)
 
@@ -509,6 +533,19 @@ func _spawn_slam_particles() -> void:
 func take_damage(amount: int) -> void:
 	if is_dead:
 		return
+
+	# Phase Walk: chance to dodge entirely (uses charges)
+	if _trait_id == "phase_walk" and _phase_walk_charges > 0:
+		if randf() < 0.25:
+			_phase_walk_charges -= 1
+			GameManager.request_damage_number(global_position + Vector3.UP * 2.5, 0, false)
+			_flash_color(Color(0.5, 0.3, 1.0), 0.15)
+			return
+
+	# Exoskeleton: flat 20% damage reduction
+	if _trait_id == "exoskeleton":
+		amount = maxi(int(amount * 0.8), 1)
+
 	current_health -= amount
 	health_changed.emit(current_health, max_health)
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.5, amount, false)
@@ -578,9 +615,11 @@ func _update_animation_state() -> void:
 # ---------- UTILITIES ----------
 
 func _process_cooldowns(delta: float) -> void:
+	# Arcane Surge: cooldowns tick 15% faster
+	var cd_delta := delta * 1.15 if _trait_id == "arcane_surge" else delta
 	for i in range(4):
 		if spell_cooldowns[i] > 0:
-			spell_cooldowns[i] = maxf(spell_cooldowns[i] - delta, 0.0)
+			spell_cooldowns[i] = maxf(spell_cooldowns[i] - cd_delta, 0.0)
 			spell_cooldown_updated.emit(i, spell_cooldowns[i], spell_max_cooldowns[i])
 
 func _process_casting(_delta: float) -> void:
@@ -647,3 +686,44 @@ func _apply_status_stun(stunned: bool) -> void:
 		is_attacking = false
 		current_speed = 0.0
 		velocity = Vector3.ZERO
+
+# ---------- INNATE TRAITS ----------
+
+func _apply_trait_passives() -> void:
+	match _trait_id:
+		"eagle_eye":
+			# +30% attack approach range (lets hero engage from farther)
+			approach_distance = approach_distance * 1.3
+		"phase_walk":
+			_phase_walk_charges = _phase_walk_max
+
+func _on_trait_enemy_died(_enemy: Node3D) -> void:
+	if is_dead:
+		return
+	# Arcane Surge: restore 20 mana on kill
+	if _trait_id == "arcane_surge":
+		current_mana = mini(current_mana + 20, max_mana)
+		mana_changed.emit(current_mana, max_mana)
+
+func _on_trait_floor_changed(_floor_number: int) -> void:
+	if is_dead:
+		return
+	match _trait_id:
+		"adaptable":
+			# +1 to a random core stat per floor
+			var stat_roll := randi() % 4
+			match stat_roll:
+				0:
+					XpManager.bonus_str += 1
+				1:
+					XpManager.bonus_dex += 1
+				2:
+					XpManager.bonus_con += 1
+					max_health += 15
+					current_health += 15
+					health_changed.emit(current_health, max_health)
+				3:
+					XpManager.bonus_int += 1
+		"phase_walk":
+			# Refresh dodge charges each floor
+			_phase_walk_charges = _phase_walk_max

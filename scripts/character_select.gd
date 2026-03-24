@@ -12,6 +12,7 @@ var platform_rotation: float = 0.0
 var name_label: Label = null
 var class_label: Label = null
 var desc_label: Label = null
+var trait_label: Label = null
 var stat_labels: Dictionary = {}
 var start_button: Button = null
 var left_button: Button = null
@@ -214,6 +215,14 @@ func _build_ui() -> void:
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(desc_label)
 
+	# Innate trait
+	trait_label = Label.new()
+	trait_label.add_theme_font_size_override("font_size", 13)
+	trait_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3))
+	trait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	vbox.add_child(trait_label)
+
 	# Stats grid
 	var stat_grid = GridContainer.new()
 	stat_grid.columns = 6
@@ -304,6 +313,7 @@ func _load_character(index: int) -> void:
 	name_label.text = data["name"]
 	class_label.text = "- %s -" % data["class"]
 	desc_label.text = data["description"]
+	trait_label.text = "[%s] %s" % [data.get("trait_name", ""), data.get("trait_desc", "")]
 
 	for stat_name in data["stats"]:
 		if stat_labels.has(stat_name):

@@ -21,6 +21,9 @@ var characters: Array[Dictionary] = [
 		"color_secondary": Color(0.87, 0.72, 0.58),
 		"stats": {"HP": 500, "Mana": 200, "STR": 8, "DEX": 4, "CON": 9, "INT": 3},
 		"spells": ["Strike", "Fireball", "Heal", "Ground Slam"],
+		"trait_id": "exoskeleton",
+		"trait_name": "Exoskeleton",
+		"trait_desc": "Natural armor reduces all damage taken by 20%.",
 	},
 	{
 		"id": "knight",
@@ -35,6 +38,9 @@ var characters: Array[Dictionary] = [
 		"color_secondary": Color(0.3, 0.3, 0.4),
 		"stats": {"HP": 600, "Mana": 250, "STR": 7, "DEX": 4, "CON": 8, "INT": 5},
 		"spells": ["Strike", "Fireball", "Heal", "Ground Slam"],
+		"trait_id": "adaptable",
+		"trait_name": "Adaptable",
+		"trait_desc": "+1 to a random stat each floor. Grows stronger the deeper you go.",
 	},
 	{
 		"id": "barbarian",
@@ -49,6 +55,9 @@ var characters: Array[Dictionary] = [
 		"color_secondary": Color(0.75, 0.6, 0.45),
 		"stats": {"HP": 400, "Mana": 100, "STR": 10, "DEX": 6, "CON": 6, "INT": 2},
 		"spells": ["Strike", "Fireball", "Heal", "Ground Slam"],
+		"trait_id": "berserker_rage",
+		"trait_name": "Berserker Rage",
+		"trait_desc": "Below 30% HP, deal 50% more damage from all sources.",
 	},
 	{
 		"id": "mage",
@@ -63,6 +72,9 @@ var characters: Array[Dictionary] = [
 		"color_secondary": Color(0.85, 0.8, 0.7),
 		"stats": {"HP": 300, "Mana": 400, "STR": 3, "DEX": 5, "CON": 4, "INT": 10},
 		"spells": ["Strike", "Fireball", "Heal", "Ground Slam"],
+		"trait_id": "arcane_surge",
+		"trait_name": "Arcane Surge",
+		"trait_desc": "Each enemy kill restores 20 mana. Spell cooldowns reduced 15%.",
 	},
 	{
 		"id": "ranger",
@@ -77,6 +89,9 @@ var characters: Array[Dictionary] = [
 		"color_secondary": Color(0.55, 0.4, 0.25),
 		"stats": {"HP": 350, "Mana": 200, "STR": 5, "DEX": 10, "CON": 5, "INT": 4},
 		"spells": ["Strike", "Fireball", "Heal", "Ground Slam"],
+		"trait_id": "eagle_eye",
+		"trait_name": "Eagle Eye",
+		"trait_desc": "+30% attack range and spell targeting range.",
 	},
 	{
 		"id": "rogue",
@@ -91,6 +106,9 @@ var characters: Array[Dictionary] = [
 		"color_secondary": Color(0.4, 0.35, 0.3),
 		"stats": {"HP": 350, "Mana": 150, "STR": 6, "DEX": 9, "CON": 5, "INT": 4},
 		"spells": ["Strike", "Fireball", "Heal", "Ground Slam"],
+		"trait_id": "phase_walk",
+		"trait_name": "Phase Walk",
+		"trait_desc": "25% chance to dodge damage entirely. 5 charges per floor.",
 	},
 ]
 
