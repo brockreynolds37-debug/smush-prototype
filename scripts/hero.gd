@@ -74,6 +74,19 @@ var _trait_id: String = ""
 var _phase_walk_charges: int = 5
 var _phase_walk_max: int = 5
 
+# Equipment stats (set by InventoryUI._apply_equipment_stats)
+var equipment_damage_bonus: int = 0
+var equipment_str_bonus: int = 0
+var equipment_int_bonus: int = 0
+var equipment_dex_bonus: int = 0
+var equipment_con_bonus: int = 0
+var equipment_crit_bonus: int = 0
+var equipment_spell_power_bonus: int = 0
+var equipment_armor_bonus: int = 0
+var equipment_hp_bonus: int = 0
+var equipment_speed_bonus: int = 0
+var _base_max_health: int = 500
+
 func _ready() -> void:
 	GameManager.register_hero(self)
 	target_position = global_position
@@ -106,6 +119,7 @@ func _ready() -> void:
 	original_scale = model.scale
 
 	_base_move_speed = move_speed
+	_base_max_health = max_health
 
 	# Load innate trait
 	_trait_id = char_data.get("trait_id", "")
@@ -334,16 +348,21 @@ func _perform_melee_attack() -> void:
 
 func _get_melee_damage() -> int:
 	var base := 35
-	var str_bonus = XpManager.bonus_str * 3  # +3 damage per bonus STR
-	var dmg := base + str_bonus
+	var str_bonus = (XpManager.bonus_str + equipment_str_bonus) * 3  # +3 damage per STR
+	var dmg := base + str_bonus + equipment_damage_bonus
+	# Crit chance from equipment
+	if equipment_crit_bonus > 0 and randf() * 100.0 < equipment_crit_bonus:
+		dmg = int(dmg * 1.8)
 	# Berserker Rage: +50% damage below 30% HP
 	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
 		dmg = int(dmg * 1.5)
 	return dmg
 
 func _get_spell_power() -> float:
-	# Returns a multiplier: 1.0 at base, scales with bonus INT
-	var power := 1.0 + XpManager.bonus_int * 0.08  # +8% per bonus INT
+	# Returns a multiplier: 1.0 at base, scales with bonus INT + equipment
+	var power := 1.0 + (XpManager.bonus_int + equipment_int_bonus) * 0.08  # +8% per INT
+	# Equipment spell power: +1% per point
+	power += equipment_spell_power_bonus * 0.01
 	# Berserker Rage: +50% spell power below 30% HP
 	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
 		power *= 1.5
@@ -546,6 +565,10 @@ func take_damage(amount: int) -> void:
 	if _trait_id == "exoskeleton":
 		amount = maxi(int(amount * 0.8), 1)
 
+	# Equipment armor: flat reduction (1 armor = 1 less damage, min 1)
+	if equipment_armor_bonus > 0:
+		amount = maxi(amount - equipment_armor_bonus, 1)
+
 	current_health -= amount
 	health_changed.emit(current_health, max_health)
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.5, amount, false)
@@ -665,6 +688,35 @@ func _damage_nearby_interactables(damage: int, radius: float) -> void:
 		if global_position.distance_to(obj.global_position) <= radius:
 			if obj.has_method("take_damage"):
 				obj.take_damage(damage)
+
+# ---------- EQUIPMENT STATS ----------
+
+func apply_equipment_stats(totals: Dictionary) -> void:
+	# Remove old HP bonus before applying new one
+	var old_hp_bonus := equipment_hp_bonus
+
+	equipment_damage_bonus = totals.get("damage", 0)
+	equipment_str_bonus = totals.get("str", 0)
+	equipment_int_bonus = totals.get("int", 0)
+	equipment_dex_bonus = totals.get("dex", 0)
+	equipment_con_bonus = totals.get("con", 0)
+	equipment_crit_bonus = totals.get("crit", 0)
+	equipment_spell_power_bonus = totals.get("spell_power", 0)
+	equipment_armor_bonus = totals.get("armor", 0)
+	equipment_hp_bonus = totals.get("hp", 0)
+	equipment_speed_bonus = totals.get("speed", 0)
+
+	# HP bonus: adjust max_health and current_health proportionally
+	var hp_diff := equipment_hp_bonus - old_hp_bonus
+	if hp_diff != 0:
+		max_health = _base_max_health + equipment_hp_bonus
+		current_health = clampi(current_health + hp_diff, 1, max_health)
+		health_changed.emit(current_health, max_health)
+
+	# Speed bonus: percentage-based on base move speed
+	var speed_mult := 1.0 + equipment_speed_bonus * 0.01
+	move_speed = _base_move_speed * speed_mult * (1.0 - _slow_amount)
+	nav_agent.max_speed = move_speed
 
 # ---------- STATUS EFFECTS ----------
 

@@ -169,14 +169,19 @@ func _do_move(from_slot: Panel, to_slot: Panel) -> void:
 
 	# Equipping: bag → equip slot
 	if not from_slot.is_equipment_slot() and to_slot.is_equipment_slot():
-		if from_item.get("type", "") != "weapon":
-			return  # Only weapons for now
-		if to_slot.slot_type != SlotType.WEAPON and to_slot.slot_type != SlotType.OFFHAND:
+		var item_type: String = from_item.get("type", "")
+		if item_type != "weapon" and item_type != "armor":
 			return
+		# Verify item fits this slot
+		var item_slot: int = LootManager.get_item_slot_type(from_item)
+		if item_slot != to_slot.slot_type:
+			# Allow weapons in offhand too
+			if not (to_slot.slot_type == SlotType.OFFHAND and item_type == "weapon"):
+				return
 		_equip_item(from_slot, to_slot, from_item, to_item)
 		return
 
-	# Unequipping: equip → bag
+	# Unequipping: equip → bag (any equipment type)
 	if from_slot.is_equipment_slot() and not to_slot.is_equipment_slot():
 		_unequip_item(from_slot, to_slot, from_item, to_item)
 		return
@@ -205,12 +210,17 @@ func _equip_item(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_ite
 
 func _unequip_item(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_item: Dictionary) -> void:
 	if to_slot.has_item():
-		# Swap — put bag item into equip if it's a weapon
-		if to_item.get("type", "") == "weapon":
-			from_slot.set_item(to_item)
-			equipped_items[from_slot.slot_type] = to_item
+		# Swap — put bag item into equip if it fits the slot
+		var to_type: String = to_item.get("type", "")
+		if to_type == "weapon" or to_type == "armor":
+			var to_slot_type: int = LootManager.get_item_slot_type(to_item)
+			if to_slot_type == from_slot.slot_type or (from_slot.slot_type == SlotType.OFFHAND and to_type == "weapon"):
+				from_slot.set_item(to_item)
+				equipped_items[from_slot.slot_type] = to_item
+			else:
+				return  # Item doesn't fit this equip slot
 		else:
-			return  # Can't swap non-weapon into equip slot
+			return  # Can't swap consumable/currency into equip slot
 	else:
 		from_slot.clear_item()
 		equipped_items.erase(from_slot.slot_type)
@@ -257,12 +267,26 @@ func _apply_equipment_stats() -> void:
 	var hero = GameManager.hero
 	if hero == null:
 		return
-	var total_bonus := 0
-	for slot_type in equipped_items:
-		var item: Dictionary = equipped_items[slot_type]
-		total_bonus += item.get("damage_bonus", 0)
-	if "equipment_damage_bonus" in hero:
-		hero.equipment_damage_bonus = total_bonus
+
+	var totals := {
+		"damage": 0, "str": 0, "int": 0, "dex": 0, "con": 0,
+		"crit": 0, "spell_power": 0, "armor": 0, "hp": 0, "speed": 0,
+	}
+
+	for st in equipped_items:
+		var item: Dictionary = equipped_items[st]
+		totals["damage"] += item.get("damage_bonus", 0)
+		totals["str"] += item.get("str_bonus", 0)
+		totals["int"] += item.get("int_bonus", 0)
+		totals["dex"] += item.get("dex_bonus", 0)
+		totals["con"] += item.get("con_bonus", 0)
+		totals["crit"] += item.get("crit_bonus", 0)
+		totals["spell_power"] += item.get("spell_power_bonus", 0)
+		totals["armor"] += item.get("armor_bonus", 0)
+		totals["hp"] += item.get("hp_bonus", 0)
+		totals["speed"] += item.get("speed_bonus", 0)
+
+	hero.apply_equipment_stats(totals)
 
 func _update_tooltip(slot: Panel) -> void:
 	if slot == null or not slot.has_item():

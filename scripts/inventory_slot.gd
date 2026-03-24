@@ -145,13 +145,17 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	if data is not Dictionary or not data.has("source_slot"):
 		return false
-	# Equipment slots only accept matching types
-	if is_equipment_slot() and data["item"].get("type", "") != "weapon":
-		# For now, only weapon/offhand equip slots accept weapons
-		if slot_type == SlotType.WEAPON or slot_type == SlotType.OFFHAND:
-			return data["item"].get("type", "") == "weapon"
-		return false  # Other equip slots — no armor items yet
-	return true
+	if not is_equipment_slot():
+		return true  # Bag slots accept anything
+	# Equipment slots: check if item matches this slot
+	var item: Dictionary = data["item"]
+	var item_slot: int = LootManager.get_item_slot_type(item)
+	if item_slot == slot_type:
+		return true
+	# Weapons can also go in offhand
+	if slot_type == SlotType.OFFHAND and item.get("type", "") == "weapon":
+		return true
+	return false
 
 func _drop_data(_at_position: Vector2, data: Variant) -> void:
 	if data is Dictionary and data.has("source_slot"):
