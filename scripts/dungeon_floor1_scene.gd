@@ -9,6 +9,7 @@ var _deep_effects: CanvasLayer = null
 var _sponsor_ui: CanvasLayer = null
 var _loading_screen: CanvasLayer = null
 var _player_spawner: Node = null
+var _enemy_sync: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -109,6 +110,18 @@ func _ready() -> void:
 	# Clear scene-baked enemies and spawn fresh for correct floor
 	_clear_enemies()
 	_spawn_floor_enemies(FloorManager.current_floor)
+
+	# Multiplayer: enemy sync (host authority, client interpolation)
+	if NetworkManager.is_multiplayer_active():
+		var enemy_sync_script := preload("res://scripts/enemy_sync.gd")
+		_enemy_sync = Node.new()
+		_enemy_sync.set_script(enemy_sync_script)
+		_enemy_sync.name = "EnemySync"
+		add_child(_enemy_sync)
+		_enemy_sync.setup($Units)
+		_enemy_sync.patch_enemy_targeting()
+		if not NetworkManager.is_host:
+			_enemy_sync.disable_client_enemy_ai()
 
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):

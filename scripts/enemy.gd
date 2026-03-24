@@ -177,15 +177,22 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var hero = GameManager.hero
-	if hero == null or hero.is_dead:
+	# In multiplayer, target nearest player; in singleplayer, target the hero
+	var target_unit: Node3D = null
+	if NetworkManager.is_multiplayer_active():
+		var spawner := get_tree().current_scene.get_node_or_null("PlayerSpawner")
+		if spawner and spawner.has_method("get_nearest_player"):
+			target_unit = spawner.get_nearest_player(global_position, aggro_range * 2.0)
+	if target_unit == null:
+		target_unit = GameManager.hero
+	if target_unit == null or target_unit.is_dead:
 		_return_to_spawn(delta)
 		return
 
-	var dist_to_hero = global_position.distance_to(hero.global_position)
+	var dist_to_target = global_position.distance_to(target_unit.global_position)
 	var dist_to_spawn = global_position.distance_to(spawn_position)
 
-	if not is_aggroed and dist_to_hero < aggro_range:
+	if not is_aggroed and dist_to_target < aggro_range:
 		is_aggroed = true
 		var tween = create_tween()
 		tween.tween_property(model, "scale", original_scale * 1.2, 0.1)
@@ -202,20 +209,20 @@ func _physics_process(delta: float) -> void:
 	var new_state := AnimState.IDLE
 
 	if is_aggroed:
-		if dist_to_hero <= attack_range:
+		if dist_to_target <= attack_range:
 			current_speed = 0.0
 			velocity = Vector3.ZERO
-			_face_position(hero.global_position, delta)
-			_try_attack(hero)
+			_face_position(target_unit.global_position, delta)
+			_try_attack(target_unit)
 			new_state = AnimState.ATTACK
 		else:
-			nav_agent.target_position = hero.global_position
+			nav_agent.target_position = target_unit.global_position
 			var next_pos = nav_agent.get_next_path_position()
 			var direction = (next_pos - global_position).normalized()
 			direction.y = 0
 			current_speed = move_toward(current_speed, move_speed, 15.0 * delta)
 			velocity = direction * current_speed
-			_face_position(hero.global_position, delta)
+			_face_position(target_unit.global_position, delta)
 			new_state = AnimState.WALK
 	else:
 		current_speed = 0.0
@@ -274,7 +281,7 @@ func _face_position(target: Vector3, delta: float) -> void:
 	var target_rot = atan2(look_dir.x, look_dir.z)
 	rotation.y = lerp_angle(rotation.y, target_rot, 10.0 * delta)
 
-func _try_attack(hero: Node3D) -> void:
+func _try_attack(target: Node3D) -> void:
 	if not attack_timer.is_stopped():
 		return
 	attack_timer.start(attack_cooldown)
@@ -282,20 +289,20 @@ func _try_attack(hero: Node3D) -> void:
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.85, 1.2), 0.1)
 	tween.tween_callback(func():
-		if is_instance_valid(hero) and hero.has_method("take_damage"):
-			hero.take_damage(attack_damage)
+		if is_instance_valid(target) and target.has_method("take_damage"):
+			target.take_damage(attack_damage)
 			# Enemy-type status effects on melee hit
 			match enemy_type:
 				"spider":
-					StatusEffectManager.apply_poison(hero, 4.0, 6, 1.0)
+					StatusEffectManager.apply_poison(target, 4.0, 6, 1.0)
 				"slime":
-					StatusEffectManager.apply_slow(hero, 3.0, 0.4)
+					StatusEffectManager.apply_slow(target, 3.0, 0.4)
 				"wolf":
 					if randf() < 0.25:
-						StatusEffectManager.apply_slow(hero, 2.0, 0.3)
+						StatusEffectManager.apply_slow(target, 2.0, 0.3)
 			# Elite: Venomous applies poison on any hit
 			if has_meta("venomous_dot") and get_meta("venomous_dot"):
-				StatusEffectManager.apply_poison(hero, 5.0, 8, 1.0)
+				StatusEffectManager.apply_poison(target, 5.0, 8, 1.0)
 			# Elite: Vampiric heals on damage dealt
 			if has_meta("vampiric_leech"):
 				var leech_pct: float = get_meta("vampiric_leech")
