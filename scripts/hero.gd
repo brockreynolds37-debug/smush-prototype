@@ -10,9 +10,10 @@ signal spell_cooldown_updated(spell_index: int, remaining: float, total: float)
 signal hero_died()
 
 @export var move_speed: float = 8.0
-@export var acceleration: float = 30.0
-@export var deceleration: float = 20.0
-@export var rotation_speed: float = 12.0
+@export var acceleration: float = 25.0
+@export var deceleration: float = 35.0
+@export var rotation_speed: float = 10.0
+@export var approach_distance: float = 2.0  # Start slowing within this range of target
 @export var max_health: int = 500
 @export var max_mana: int = 200
 
@@ -216,10 +217,13 @@ func _physics_process(delta: float) -> void:
 
 func _process_movement(delta: float) -> void:
 	if not is_moving and attack_target == null:
-		current_speed = move_toward(current_speed, 0.0, deceleration * delta)
-		if current_speed > 0:
+		# Smooth ease-out deceleration (faster at high speed, gentle at low)
+		var decel_factor := 1.0 + (current_speed / move_speed) * 2.0
+		current_speed = move_toward(current_speed, 0.0, deceleration * decel_factor * delta)
+		if current_speed > 0.1:
 			velocity = velocity.normalized() * current_speed
 		else:
+			current_speed = 0.0
 			velocity = Vector3.ZERO
 		move_and_slide()
 		return
@@ -237,8 +241,12 @@ func _process_movement(delta: float) -> void:
 
 	if nav_agent.is_navigation_finished():
 		is_moving = false
-		current_speed = move_toward(current_speed, 0.0, deceleration * delta)
-		velocity = velocity.normalized() * current_speed if current_speed > 0 else Vector3.ZERO
+		var decel_factor := 1.0 + (current_speed / move_speed) * 2.0
+		current_speed = move_toward(current_speed, 0.0, deceleration * decel_factor * delta)
+		velocity = velocity.normalized() * current_speed if current_speed > 0.1 else Vector3.ZERO
+		if current_speed < 0.1:
+			current_speed = 0.0
+			velocity = Vector3.ZERO
 		move_and_slide()
 		return
 
@@ -246,7 +254,17 @@ func _process_movement(delta: float) -> void:
 	var direction = (next_pos - global_position).normalized()
 	direction.y = 0
 
-	current_speed = move_toward(current_speed, move_speed, acceleration * delta)
+	# Approach slowdown — ease into target position
+	var target_speed := move_speed
+	var dist_to_target := global_position.distance_to(nav_agent.target_position)
+	if dist_to_target < approach_distance and attack_target == null:
+		var approach_ratio := clampf(dist_to_target / approach_distance, 0.15, 1.0)
+		target_speed = move_speed * approach_ratio
+
+	# Ease-in acceleration (snappy start, smooth ramp)
+	var speed_ratio := current_speed / move_speed if move_speed > 0 else 0.0
+	var accel_factor := 1.5 + (1.0 - speed_ratio) * 2.0  # Faster accel at low speed
+	current_speed = move_toward(current_speed, target_speed, acceleration * accel_factor * delta)
 	velocity = direction * current_speed
 
 	_face_position(global_position + direction, delta)
@@ -259,7 +277,10 @@ func _face_position(target: Vector3, delta: float) -> void:
 	if look_dir.length_squared() < 0.001:
 		return
 	var target_rot = atan2(look_dir.x, look_dir.z)
-	rotation.y = lerp_angle(rotation.y, target_rot, rotation_speed * delta)
+	# Speed-dependent rotation: turn faster when slow, more momentum when fast
+	var speed_ratio := clampf(current_speed / move_speed, 0.0, 1.0) if move_speed > 0 else 0.0
+	var rot_factor := lerpf(1.4, 0.7, speed_ratio)  # 1.4x at standstill, 0.7x at full speed
+	rotation.y = lerp_angle(rotation.y, target_rot, rotation_speed * rot_factor * delta)
 
 func move_to(world_pos: Vector3) -> void:
 	if is_dead or is_casting:
