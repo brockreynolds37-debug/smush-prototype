@@ -193,6 +193,11 @@ func _build_ui() -> void:
 	diff_right.pressed.connect(_cycle_difficulty.bind(1))
 	diff_row.add_child(diff_right)
 
+	# Multiplayer button
+	var mp_btn = _make_button("MULTIPLAYER", true)
+	mp_btn.pressed.connect(_on_multiplayer)
+	btn_box.add_child(mp_btn)
+
 	# Settings button
 	var settings_btn = _make_button("SETTINGS", true)
 	settings_btn.pressed.connect(_on_settings)
@@ -349,6 +354,12 @@ func _fade_to_scene(scene_path: String) -> void:
 	tween.tween_callback(func():
 		get_tree().change_scene_to_file(scene_path)
 	)
+
+func _on_multiplayer() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
+	_fade_to_scene("res://scenes/multiplayer_lobby.tscn")
 
 func _on_settings() -> void:
 	if _settings_menu:
