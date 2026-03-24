@@ -181,7 +181,7 @@ func _build_ui() -> void:
 	_skip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_skip_label.add_theme_font_size_override("font_size", 13)
 	_skip_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
-	_skip_label.set_anchors_preset(Control.PRESET_BOTTOM_CENTER)
+	_skip_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_skip_label.position = Vector2(-80, -40)
 	_skip_label.visible = false
 	_panel.add_child(_skip_label)

@@ -267,10 +267,10 @@ func _damage_enemies_in_radius(radius: float, damage: int) -> int:
 	var killed := 0
 	for e in enemies:
 		if e.has_method("take_damage"):
-			var was_alive := not e.is_dead if "is_dead" in e else true
+			var was_alive: bool = not e.is_dead if "is_dead" in e else true
 			e.take_damage(damage)
 			GameManager.request_damage_number(e.global_position, damage, false)
-			var is_now_dead := e.is_dead if "is_dead" in e else false
+			var is_now_dead: bool = e.is_dead if "is_dead" in e else false
 			if was_alive and is_now_dead:
 				killed += 1
 	return killed

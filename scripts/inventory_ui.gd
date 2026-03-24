@@ -72,8 +72,8 @@ func _ready() -> void:
 	# Connect to LootManager
 	LootManager.inventory_changed.connect(_refresh_bag)
 	_refresh_bag()
-			if TutorialOverlay:
-				TutorialOverlay.on_inventory_opened()
+	if TutorialOverlay:
+		TutorialOverlay.on_inventory_opened()
 
 func _build_equipment_panel() -> VBoxContainer:
 	var vbox := VBoxContainer.new()
@@ -142,9 +142,7 @@ func _build_bag_grid() -> VBoxContainer:
 
 	return vbox
 
-func _refresh_bag()
-			if TutorialOverlay:
-				TutorialOverlay.on_inventory_opened() -> void:
+func _refresh_bag() -> void:
 	var inv: Array = LootManager.inventory
 	for i in range(bag_slots.size()):
 		if i < inv.size():
@@ -187,8 +185,8 @@ func _do_move(from_slot: Panel, to_slot: Panel) -> void:
 	if not from_slot.has_item():
 		return
 
-	var from_item := from_slot.item_data.duplicate()
-	var to_item := to_slot.item_data.duplicate() if to_slot.has_item() else {}
+	var from_item: Dictionary = from_slot.item_data.duplicate()
+	var to_item: Dictionary = to_slot.item_data.duplicate() if to_slot.has_item() else {}
 
 	# Equipping: bag → equip slot
 	if not from_slot.is_equipment_slot() and to_slot.is_equipment_slot():
@@ -262,8 +260,8 @@ func _unequip_item(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_i
 	LootManager.inventory_changed.emit()
 
 func _swap_bag_slots(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_item: Dictionary) -> void:
-	var fi := from_slot.slot_index
-	var ti := to_slot.slot_index
+	var fi: int = from_slot.slot_index
+	var ti: int = to_slot.slot_index
 	var inv := LootManager.inventory
 
 	if not to_item.is_empty():
@@ -338,7 +336,7 @@ func _on_slot_hovered(slot: Panel) -> void:
 		var target_slot: int = LootManager.get_item_slot_type(item)
 		if target_slot >= 0 and equipped_items.has(target_slot):
 			# Only compare if it's a different item
-			var eq := equipped_items[target_slot]
+			var eq: Dictionary = equipped_items[target_slot]
 			if eq.get("id", "") != item.get("id", "") or eq != item:
 				compare_item = eq
 

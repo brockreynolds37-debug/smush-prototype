@@ -295,7 +295,7 @@ func _draw() -> void:
 
 	# Draw floor cells with fog alpha
 	for cell in grid.keys():
-		var alpha := fog_alpha.get(cell, 0.0)
+		var alpha: float = fog_alpha.get(cell, 0.0)
 		if alpha <= 0.01:
 			continue
 		var screen_pos := _cell_to_screen(cell)
@@ -316,7 +316,7 @@ func _draw() -> void:
 			continue
 		var dirs := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 		for dir in dirs:
-			var neighbor := cell + dir
+			var neighbor: Vector2i = cell + dir
 			if not grid.has(neighbor):
 				var screen_pos := _cell_to_screen(cell)
 				var from := Vector2.ZERO

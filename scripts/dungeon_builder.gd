@@ -29,11 +29,11 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"wall_roughness": 0.80,
 				"accent_color": Color(0.55, 0.50, 0.42),
 				"ambient_color": Color(0.7, 0.65, 0.55),
-				"ambient_energy": 0.25,
+				"ambient_energy": 0.45,
 				"fog_color": Color(0.18, 0.16, 0.13),
-				"fog_density": 0.01,
+				"fog_density": 0.006,
 				"light_color": Color(1.0, 0.9, 0.7),
-				"light_energy": 1.0,
+				"light_energy": 1.4,
 			}
 		1:
 			return {
@@ -44,11 +44,11 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"wall_roughness": 0.80,
 				"accent_color": Color(0.55, 0.50, 0.42),
 				"ambient_color": Color(0.6, 0.55, 0.45),
-				"ambient_energy": 0.15,
+				"ambient_energy": 0.35,
 				"fog_color": Color(0.15, 0.13, 0.10),
-				"fog_density": 0.02,
+				"fog_density": 0.012,
 				"light_color": Color(1.0, 0.85, 0.6),
-				"light_energy": 0.8,
+				"light_energy": 1.2,
 			}
 		2:
 			return {
@@ -59,11 +59,11 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"wall_roughness": 0.65,
 				"accent_color": Color(0.85, 0.65, 0.20),
 				"ambient_color": Color(0.8, 0.5, 0.2),
-				"ambient_energy": 0.20,
+				"ambient_energy": 0.40,
 				"fog_color": Color(0.20, 0.10, 0.05),
-				"fog_density": 0.015,
+				"fog_density": 0.008,
 				"light_color": Color(1.0, 0.75, 0.4),
-				"light_energy": 1.0,
+				"light_energy": 1.4,
 			}
 		3:
 			return {
@@ -74,11 +74,11 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"wall_roughness": 0.55,
 				"accent_color": Color(0.60, 0.20, 0.80),
 				"ambient_color": Color(0.5, 0.2, 0.7),
-				"ambient_energy": 0.25,
+				"ambient_energy": 0.40,
 				"fog_color": Color(0.10, 0.05, 0.15),
-				"fog_density": 0.025,
+				"fog_density": 0.015,
 				"light_color": Color(0.8, 0.5, 1.0),
-				"light_energy": 0.9,
+				"light_energy": 1.2,
 			}
 		_:
 			# Floor 4+: "The Deep" — glitch/horror, reality distortion
@@ -90,11 +90,11 @@ static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 				"wall_roughness": 0.35,
 				"accent_color": Color(0.0, 1.0, 0.6),
 				"ambient_color": Color(0.1, 0.3, 0.2),
-				"ambient_energy": 0.10,
+				"ambient_energy": 0.25,
 				"fog_color": Color(0.02, 0.04, 0.03),
-				"fog_density": 0.04,
+				"fog_density": 0.025,
 				"light_color": Color(0.3, 1.0, 0.6),
-				"light_energy": 0.6,
+				"light_energy": 1.0,
 			}
 
 # Tile types for the grid map
@@ -908,7 +908,7 @@ func _place_walls_for_cell(cell: Vector2i) -> void:
 	var rotations := [0.0, 90.0, 180.0, 270.0]
 
 	for i in range(4):
-		var neighbor := cell + directions[i]
+		var neighbor: Vector2i = cell + directions[i]
 		if not _is_floor(neighbor):
 			# Check if this edge is a doorway (both sides of a corridor entrance)
 			# For now, place solid walls — doorways are handled by corridor connectivity

@@ -354,12 +354,12 @@ func _cmd_achievements() -> void:
 	_print_line("[color=cyan]── Achievements (%d/%d) ──[/color]" % [unlocked, total])
 	for id in achs:
 		var a: Dictionary = achs[id]
-		var status := "[color=green]✓[/color]" if a["unlocked"] else "[color=gray]✗[/color]"
+		var status: String = "[color=green]✓[/color]" if a["unlocked"] else "[color=gray]✗[/color]"
 		_print_line("  %s %s %s — %s" % [status, a["icon"], a["title"], a["description"]])
 
 func _cmd_fps() -> void:
 	PerformanceMonitor.toggle_fps()
-	var state := "ON" if PerformanceMonitor.is_fps_visible() else "OFF"
+	var state: String = "ON" if PerformanceMonitor.is_fps_visible() else "OFF"
 	_print_line("[color=cyan]FPS counter: %s[/color]" % state)
 
 func _cmd_perf() -> void:

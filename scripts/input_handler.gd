@@ -21,23 +21,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				GameManager.is_targeting_spell = false
 				GameManager.targeting_spell_id = -1
 
-	# Spell hotkeys
-	if event is InputEventKey and event.pressed:
-		var hero = GameManager.hero
-		if hero == null or hero.is_dead:
-			return
-		if event.keycode == KEY_Q:
-			hero.cast_spell(0)
-			TutorialManager.notify_event("spell_cast")
-		elif event.keycode == KEY_W:
-			hero.cast_spell(1)
-			TutorialManager.notify_event("spell_cast")
-		elif event.keycode == KEY_E:
-			hero.cast_spell(2)
-			TutorialManager.notify_event("spell_cast")
-		elif event.keycode == KEY_R:
-			hero.cast_spell(3)
-			TutorialManager.notify_event("spell_cast")
+	# Spell hotkeys (uses InputMap actions so rebinding works)
+	var hero = GameManager.hero
+	if hero != null and not hero.is_dead:
+		for i in range(4):
+			if event.is_action_pressed("spell_%d" % i):
+				hero.cast_spell(i)
+				TutorialManager.notify_event("spell_cast")
+				break
 
 func _handle_left_click() -> void:
 	if camera_rig == null:
@@ -116,7 +107,7 @@ func _process(_delta: float) -> void:
 		if hero == null or hero.is_dead:
 			_pending_interactable = null
 			return
-		var dist := hero.global_position.distance_to(_pending_interactable.global_position)
+		var dist: float = hero.global_position.distance_to(_pending_interactable.global_position)
 		if dist < 2.5:
 			if _pending_interactable.has_method("interact"):
 				_pending_interactable.interact()

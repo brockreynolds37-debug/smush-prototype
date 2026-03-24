@@ -305,7 +305,7 @@ func get_run_path_summary() -> String:
 		return "No floors completed"
 	var lines: Array[String] = []
 	for entry in floor_history:
-		var label := PATH_LABELS.get(entry.path, "Unknown")
+		var label: String = PATH_LABELS.get(entry.path, "Unknown")
 		lines.append("Floor %d (%s): %s" % [entry.floor_num, entry.archetype, label])
 	return "\n".join(lines)
 

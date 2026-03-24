@@ -122,7 +122,8 @@ func get_bribe_cost(target: Node3D) -> int:
 	final_cost = int(final_cost * (1.0 + FloorManager.current_floor * 0.1))
 
 	# Faction discount if applicable
-	var faction_discount := FactionManager.get_discount_multiplier()
+	var _faction_name: String = _get_target_faction(target)
+	var faction_discount := FactionManager.get_discount_multiplier(_faction_name)
 	final_cost = int(final_cost * faction_discount)
 
 	return maxi(final_cost, MIN_COST)
@@ -181,7 +182,8 @@ func attempt_bribe(target: Node3D, outcome: BribeOutcome = BribeOutcome.STAND_DO
 			_apply_hire(target)
 
 	AudienceManager.grant_vp(25, "Successful Bribe")
-	FactionManager.on_bribe_given()
+	var _bribe_faction: String = _get_target_faction(target)
+	FactionManager.on_bribe_given(_bribe_faction)
 	return true
 
 func attempt_wave_delay() -> bool:
@@ -221,9 +223,9 @@ func _apply_stand_down(target: Node3D) -> void:
 	var tw := target.create_tween()
 	for child in target.get_children():
 		if child is MeshInstance3D:
-			var mat := child.get_surface_override_material(0)
+			var mat: Material = child.get_surface_override_material(0)
 			if mat and mat is StandardMaterial3D:
-				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				(mat as StandardMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 				tw.parallel().tween_property(mat, "albedo_color:a", 0.3, 0.5)
 
 	# Walk away from hero
@@ -264,11 +266,11 @@ func _apply_hire(target: Node3D) -> void:
 	# Tint them green to show they're friendly
 	for child in target.get_children():
 		if child is MeshInstance3D:
-			var mat := child.get_surface_override_material(0)
+			var mat: Material = child.get_surface_override_material(0)
 			if mat and mat is StandardMaterial3D:
-				mat.albedo_color = Color(0.3, 0.8, 0.3)
-				mat.emission = Color(0.1, 0.4, 0.1)
-				mat.emission_enabled = true
+				(mat as StandardMaterial3D).albedo_color = Color(0.3, 0.8, 0.3)
+				(mat as StandardMaterial3D).emission = Color(0.1, 0.4, 0.1)
+				(mat as StandardMaterial3D).emission_enabled = true
 
 	# Simple AI override: attack other enemies
 	var hire_script_text := """
@@ -327,6 +329,20 @@ func _physics_process(delta: float) -> void:
 	ai_node.name = "HiredAI"
 	ai_node.set_script(script)
 	target.add_child(ai_node)
+
+## ── Faction Helpers ──
+
+func _get_target_faction(target: Node3D) -> String:
+	## Returns the faction name for the target, or empty string if none.
+	if not is_instance_valid(target):
+		return ""
+	if target.has_method("get_faction"):
+		return target.get_faction()
+	if target.get("faction") != null:
+		return target.faction
+	if target.has_meta("faction"):
+		return target.get_meta("faction")
+	return ""
 
 ## ── Narrator Helpers ──
 

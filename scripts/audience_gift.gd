@@ -37,8 +37,9 @@ func _build_visual() -> void:
 
 	# Parachute — inverted cone above the gift
 	_parachute = MeshInstance3D.new()
-	var chute_mesh := ConeMesh.new()
-	chute_mesh.radius = 1.2
+	var chute_mesh := CylinderMesh.new()
+	chute_mesh.top_radius = 0.0
+	chute_mesh.bottom_radius = 1.2
 	chute_mesh.height = 0.8
 	_parachute.mesh = chute_mesh
 	_parachute.position = Vector3(0, 2.0, 0)

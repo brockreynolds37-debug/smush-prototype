@@ -289,7 +289,7 @@ func get_summary() -> String:
 	for bloc_id in BLOC_DEFS:
 		var def: Dictionary = BLOC_DEFS[bloc_id]
 		var state: Dictionary = blocs.get(bloc_id, {})
-		var mood_name := MOOD_NAMES[state.get("mood", 0)]
+		var mood_name: String = MOOD_NAMES[state.get("mood", 0)]
 		lines.append("%s: %s (VP: %d)" % [def["name"], mood_name, state.get("vp", 0)])
 	return "\n".join(lines)
 

@@ -269,7 +269,7 @@ func _build_inventory_list(parent: VBoxContainer) -> void:
 	for item in inv:
 		var btn := Button.new()
 		var rarity_names := ["", "★", "★★", "★★★", "★★★★"]
-		var r := item.get("rarity", 0)
+		var r: int = item.get("rarity", 0)
 		btn.text = "%s %s" % [rarity_names[mini(r, 4)], item.get("name", "?")]
 		btn.custom_minimum_size = Vector2(0, 28)
 		btn.pressed.connect(_on_inventory_item_clicked.bind(item))
@@ -434,7 +434,7 @@ func _refresh_recipe_book() -> void:
 	var all_keys := RECIPES.keys()
 	for key in all_keys:
 		var recipe: Dictionary = RECIPES[key]
-		var is_known := key in _discovered_recipe_keys
+		var is_known: bool = key in _discovered_recipe_keys
 		var entry := Label.new()
 		if is_known:
 			entry.text = "✔ %s\n  %s" % [recipe["name"], recipe["hint"]]

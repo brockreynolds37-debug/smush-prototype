@@ -64,7 +64,7 @@ func _build_3d_backdrop() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.08, 0.06, 0.12)
 	environment.ambient_light_energy = 0.2
-	environment.tonemap_mode = Environment.TONE_MAP_ACES
+	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.6
 	environment.glow_bloom = 0.15

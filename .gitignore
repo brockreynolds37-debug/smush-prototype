@@ -6,3 +6,5 @@
 
 # Imported textures, models, etc.
 # Keep .import files so Godot can reimport on other machines
+builds/
+.DS_Store

@@ -227,7 +227,7 @@ func _update_ping_markers(delta: float) -> void:
 		else:
 			# Pulse effect
 			if is_instance_valid(marker):
-				var t := _ping_markers[i]["timer"]
+				var t: float = _ping_markers[i]["timer"]
 				var s := 0.5 + sin(t * 6.0) * 0.15
 				marker.scale = Vector3(s, s, s)
 				# Fade out in last second

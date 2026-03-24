@@ -392,7 +392,7 @@ func _get_melee_damage() -> int:
 	_last_hit_was_crit = false
 	var base := 35
 	var str_bonus = (XpManager.bonus_str + equipment_str_bonus) * 3  # +3 damage per STR
-	var dmg := base + str_bonus + equipment_damage_bonus
+	var dmg: int = base + str_bonus + equipment_damage_bonus
 	# Crit chance from equipment
 	if equipment_crit_bonus > 0 and randf() * 100.0 < equipment_crit_bonus:
 		dmg = int(dmg * 1.8)

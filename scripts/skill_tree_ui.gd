@@ -135,7 +135,7 @@ func _build_ui() -> void:
 
 func _make_skill_button(skill: Dictionary, branch_color: Color) -> Button:
 	var btn := Button.new()
-	var is_unlocked := skill["id"] in SkillTree.unlocked_skills
+	var is_unlocked: bool = skill["id"] in SkillTree.unlocked_skills
 	var can_buy := SkillTree.can_unlock(skill["id"])
 
 	btn.text = "%s\n%s" % [skill["name"], skill["desc"]]

@@ -56,6 +56,7 @@ var cooldown_labels: Array[ColorRect] = []
 
 func _ready() -> void:
 	cooldown_labels = [cooldown_q, cooldown_w, cooldown_e, cooldown_r]
+	KeybindingManager.bindings_changed.connect(_refresh_ability_labels)
 	if game_over_overlay:
 		game_over_overlay.visible = false
 	_update_floor_label(FloorManager.current_floor)
@@ -116,12 +117,12 @@ func _connect_hero() -> void:
 func _refresh_ability_labels() -> void:
 	var spell_set = CharacterData.get_selected_spell_set()
 	var names: Array = spell_set.get("names", ["Strike", "Fireball", "Heal", "Ground Slam"])
-	var keys := ["Q", "W", "E", "R"]
 	var buttons := [ability_q, ability_w, ability_e, ability_r]
 	for i in range(4):
 		if i < buttons.size() and buttons[i]:
-			var n := names[i] if i < names.size() else "?"
-			buttons[i].text = "%s\n%s" % [keys[i], n]
+			var key_label: String = KeybindingManager.get_key_label(i)
+			var n: String = names[i] if i < names.size() else "?"
+			buttons[i].text = "%s\n%s" % [key_label, n]
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	health_bar.max_value = maximum

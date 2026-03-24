@@ -74,7 +74,7 @@ func _build_3d_scene() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.15, 0.12, 0.2)
 	environment.ambient_light_energy = 0.3
-	environment.tonemap_mode = Environment.TONE_MAP_ACES
+	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.4
 	environment.glow_bloom = 0.1
@@ -550,7 +550,11 @@ func _update_spell_set_display(data: Dictionary) -> void:
 		spell_set_button.text = "%s  [%d/%d]" % [active_set.get("label", "Set %d" % (current_spell_set + 1)), current_spell_set + 1, sets.size()]
 	if spell_names_label:
 		var names: PackedStringArray = active_set.get("names", [])
-		spell_names_label.text = "Q: %s  |  W: %s  |  E: %s  |  R: %s" % [names[0] if names.size() > 0 else "?", names[1] if names.size() > 1 else "?", names[2] if names.size() > 2 else "?", names[3] if names.size() > 3 else "?"]
+		var k0: String = KeybindingManager.get_key_label(0)
+		var k1: String = KeybindingManager.get_key_label(1)
+		var k2: String = KeybindingManager.get_key_label(2)
+		var k3: String = KeybindingManager.get_key_label(3)
+		spell_names_label.text = "%s: %s  |  %s: %s  |  %s: %s  |  %s: %s" % [k0, names[0] if names.size() > 0 else "?", k1, names[1] if names.size() > 1 else "?", k2, names[2] if names.size() > 2 else "?", k3, names[3] if names.size() > 3 else "?"]
 
 func _unhandled_input(event: InputEvent) -> void:
 	if is_transitioning:

@@ -85,7 +85,7 @@ func _transition_to_floor(floor_number: int) -> void:
 
 	# Hide loading screen, then fade back in
 	if _loading_screen and _loading_screen.has_method("hide_loading"):
-		_loading_screen.hide_loading()
+		await _loading_screen.hide_loading()
 		await get_tree().create_timer(0.4).timeout
 
 	# Floor cinematic — dramatic archetype reveal (skippable)

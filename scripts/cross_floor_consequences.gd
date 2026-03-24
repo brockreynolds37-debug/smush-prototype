@@ -223,7 +223,7 @@ func _on_path_finalized(floor_num: int, path: String, archetype_name: String) ->
 			pass
 
 	# Environmental massacre auto-detection
-	var env_kills := SolutionPathTracker.scores.get("clever", 0)
+	var env_kills: int = SolutionPathTracker.scores.get("clever", 0)
 	if env_kills >= 15 and not has_tag(TAG_ENV_MASSACRE):
 		set_tag(TAG_ENV_MASSACRE, { "floor": floor_num })
 

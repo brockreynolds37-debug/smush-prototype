@@ -26,6 +26,10 @@ var _text_scale_button: Button
 var _flash_slider: HSlider
 var _flash_label: Label
 
+# Keybinding controls
+var _spell_bind_buttons: Array[Button] = []
+var _rebinding_index: int = -1  # -1 = not rebinding, 0-3 = which spell slot
+
 const SETTINGS_PATH := "user://settings.cfg"
 
 func _ready() -> void:
@@ -48,7 +52,20 @@ func hide_menu() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not _overlay.visible:
 		return
+	# Rebinding mode: capture next key press
+	if _rebinding_index >= 0 and event is InputEventKey and event.pressed:
+		KeybindingManager.rebind_spell(_rebinding_index, event.keycode)
+		_refresh_bind_buttons()
+		_rebinding_index = -1
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _rebinding_index >= 0:
+			# Cancel rebinding
+			_spell_bind_buttons[_rebinding_index].text = KeybindingManager.get_key_label(_rebinding_index)
+			_rebinding_index = -1
+			get_viewport().set_input_as_handled()
+			return
 		hide_menu()
 		get_viewport().set_input_as_handled()
 
@@ -198,16 +215,16 @@ func _build_ui() -> void:
 	controls_grid.add_theme_constant_override("v_separation", 4)
 	main_box.add_child(controls_grid)
 
-	var bindings = [
+	# Static bindings (non-rebindable)
+	var static_bindings = [
 		["Move", "Left Click"],
 		["Attack", "Left Click (on enemy)"],
-		["Spells", "Q / W / E / R"],
 		["Camera Pan", "WASD / Arrow Keys"],
 		["Camera Zoom", "Scroll Wheel"],
 		["Inventory", "I / Tab"],
 		["Pause", "ESC"],
 	]
-	for b in bindings:
+	for b in static_bindings:
 		var action_label = Label.new()
 		action_label.text = b[0]
 		action_label.add_theme_font_size_override("font_size", 16)
@@ -220,6 +237,44 @@ func _build_ui() -> void:
 		key_label.add_theme_font_size_override("font_size", 16)
 		key_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
 		controls_grid.add_child(key_label)
+
+	# Spell hotkey rebinding
+	var spell_header = Label.new()
+	spell_header.text = "SPELL HOTKEYS (click to rebind)"
+	spell_header.add_theme_font_size_override("font_size", 18)
+	spell_header.add_theme_color_override("font_color", Color(0.7, 0.65, 0.8))
+	main_box.add_child(spell_header)
+
+	var spell_grid = GridContainer.new()
+	spell_grid.columns = 2
+	spell_grid.add_theme_constant_override("h_separation", 24)
+	spell_grid.add_theme_constant_override("v_separation", 6)
+	main_box.add_child(spell_grid)
+
+	var spell_names := ["Spell 1", "Spell 2", "Spell 3", "Spell 4"]
+	_spell_bind_buttons.clear()
+	for i in range(4):
+		var slot_label = Label.new()
+		slot_label.text = spell_names[i]
+		slot_label.add_theme_font_size_override("font_size", 16)
+		slot_label.add_theme_color_override("font_color", Color(0.6, 0.58, 0.65))
+		slot_label.custom_minimum_size.x = 140
+		spell_grid.add_child(slot_label)
+
+		var bind_btn = Button.new()
+		bind_btn.text = KeybindingManager.get_key_label(i)
+		bind_btn.custom_minimum_size = Vector2(80, 30)
+		bind_btn.add_theme_font_size_override("font_size", 16)
+		bind_btn.pressed.connect(_on_rebind_pressed.bind(i))
+		spell_grid.add_child(bind_btn)
+		_spell_bind_buttons.append(bind_btn)
+
+	var reset_btn = Button.new()
+	reset_btn.text = "Reset Defaults"
+	reset_btn.custom_minimum_size = Vector2(140, 32)
+	reset_btn.add_theme_font_size_override("font_size", 14)
+	reset_btn.pressed.connect(_on_reset_keybinds)
+	main_box.add_child(reset_btn)
 
 	# ---- SEPARATOR 2 ----
 	var sep2 = HSeparator.new()
@@ -430,3 +485,17 @@ func _make_button(text: String) -> Button:
 	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.95, 0.85))
 
 	return btn
+
+# ── KEYBINDING ──
+
+func _on_rebind_pressed(spell_index: int) -> void:
+	_rebinding_index = spell_index
+	_spell_bind_buttons[spell_index].text = "..."
+
+func _on_reset_keybinds() -> void:
+	KeybindingManager.reset_defaults()
+	_refresh_bind_buttons()
+
+func _refresh_bind_buttons() -> void:
+	for i in range(_spell_bind_buttons.size()):
+		_spell_bind_buttons[i].text = KeybindingManager.get_key_label(i)

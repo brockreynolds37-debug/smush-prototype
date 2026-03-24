@@ -11,7 +11,7 @@ var is_night: bool = false
 var _has_torch: bool = false
 var _shadow_wolves_spawned: bool = false
 
-const NIGHT_AMBIENT_ENERGY: float = 0.1
+const NIGHT_AMBIENT_ENERGY: float = 0.25
 const DAY_AMBIENT_ENERGY: float = 0.8
 const SHADOW_WOLF_COUNT: int = 2
 const MINIMAP_VISION_PENALTY: int = 3
@@ -41,7 +41,7 @@ func _apply_lighting() -> void:
 	if env_node and env_node.environment:
 		if is_night and not _has_torch:
 			env_node.environment.ambient_light_energy = NIGHT_AMBIENT_ENERGY
-			env_node.environment.fog_density = 0.06
+			env_node.environment.fog_density = 0.03
 		else:
 			# Day or has torch — use theme defaults (already applied by builder)
 			pass
@@ -50,7 +50,7 @@ func _apply_lighting() -> void:
 	var lights = _find_nodes_of_type(get_tree().root, "DirectionalLight3D")
 	for light in lights:
 		if is_night and not _has_torch:
-			light.light_energy = 0.15
+			light.light_energy = 0.35
 		# Day lighting is set by dungeon builder, no override needed
 
 func _spawn_shadow_wolves() -> void:

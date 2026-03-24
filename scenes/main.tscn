@@ -47,11 +47,11 @@ filter_baking_aabb = AABB(-32, -1, -32, 64, 10, 64)
 
 [sub_resource type="Environment" id="SubResource_env"]
 background_mode = 1
-background_color = Color(0.3, 0.4, 0.55, 1)
+background_color = Color(0.35, 0.45, 0.6, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.3, 0.35, 0.45, 1)
-ambient_light_energy = 0.4
-tonemap_mode = 2
+ambient_light_color = Color(0.4, 0.45, 0.55, 1)
+ambient_light_energy = 0.7
+tonemap_mode = 3
 ssao_enabled = true
 fog_enabled = true
 fog_light_color = Color(0.4, 0.45, 0.55, 1)
@@ -66,13 +66,13 @@ environment = SubResource("SubResource_env")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 10, 15, 10)
 light_color = Color(1.0, 0.95, 0.85, 1)
-light_energy = 1.2
+light_energy = 1.6
 shadow_enabled = true
 
 [node name="FillLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, -0.707, 0.5, -0.612, -0.612, -8, 10, -8)
 light_color = Color(0.6, 0.7, 0.9, 1)
-light_energy = 0.3
+light_energy = 0.5
 
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("SubResource_navmesh")
