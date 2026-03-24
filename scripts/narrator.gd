@@ -112,6 +112,14 @@ const HEAL_LOW_HP := [
 	"The champion knows when to mend, not rend.",
 ]
 
+const MAGE_CASTING := [
+	"The ground glows with arcane malice — MOVE!",
+	"A caster! Watch the circles!",
+	"Sorcery crackles in the air!",
+	"The shaman conjures doom beneath your feet!",
+	"Arcane circles! Don't stand in the fire!",
+]
+
 const OVERTIME := [
 	"THE WALLS ARE CLOSING IN!",
 	"Time has run out — the dungeon devours the slow!",
@@ -180,6 +188,17 @@ func _on_enemy_died(enemy: Node3D) -> void:
 		_kill_count_since_last = 0
 		return
 
+	# Mage kill callout
+	if enemy and is_instance_valid(enemy) and enemy.get("enemy_type") == "goblin_shaman":
+		var mage_kill_lines := [
+			"The sorcerer falls! No more circles!",
+			"That shaman won't be casting again.",
+			"Arcane threat neutralized!",
+		]
+		if _rng.randf() < 0.5:
+			_say_line(mage_kill_lines, Color(0.7, 0.3, 1.0), 26)
+			return
+
 	# Elite kill callout
 	if enemy and is_instance_valid(enemy) and EliteModifier.is_elite(enemy):
 		var elite_lines := [
@@ -238,6 +257,12 @@ func announce_boss() -> void:
 func on_hero_healed(hp_ratio_before: float) -> void:
 	if hp_ratio_before <= 0.3:
 		_say_line(HEAL_LOW_HP, Color(0.3, 1.0, 0.5), 24)
+
+# ----- Mage Casting (called by mage_enemy.gd) -----
+
+func announce_mage_cast() -> void:
+	if _rng.randf() < 0.35:  # Don't spam — only 35% chance
+		_say_line(MAGE_CASTING, Color(0.7, 0.2, 1.0), 26)
 
 # ----- Reset -----
 
