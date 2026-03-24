@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://hero_scene" path="res://scenes/hero.tscn" id="1_hero"]
 [ext_resource type="PackedScene" uid="uid://enemy_scene" path="res://scenes/enemy.tscn" id="2_enemy"]
 [ext_resource type="PackedScene" uid="uid://hud_scene" path="res://scenes/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://enemy_skeleton_scene" path="res://scenes/enemy_skeleton.tscn" id="7_skeleton"]
 [ext_resource type="Script" path="res://scripts/isometric_camera.gd" id="4_camera"]
 [ext_resource type="Script" path="res://scripts/input_handler.gd" id="5_input"]
 [ext_resource type="Script" path="res://scripts/main_scene.gd" id="6_main"]
@@ -137,10 +138,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 3)
 [node name="Enemy2" parent="Units" instance=ExtResource("2_enemy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 8)
 
-[node name="Enemy3" parent="Units" instance=ExtResource("2_enemy")]
+[node name="Skeleton1" parent="Units" instance=ExtResource("7_skeleton")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -5)
 
-[node name="Enemy4" parent="Units" instance=ExtResource("2_enemy")]
+[node name="Skeleton2" parent="Units" instance=ExtResource("7_skeleton")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -3)
 
 [node name="Enemy5" parent="Units" instance=ExtResource("2_enemy")]

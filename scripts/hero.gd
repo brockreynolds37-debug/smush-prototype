@@ -41,22 +41,23 @@ var spell_names: Array[String] = ["Strike", "Fireball", "Heal", "Ground Slam"]
 enum AnimState { IDLE, WALK, ATTACK, CAST, DEATH }
 var anim_state: AnimState = AnimState.IDLE
 
-# References
-@onready var mesh: MeshInstance3D = $HeroMesh
+# References — model is the GLB scene root (Node3D), used for scale tweens
+@onready var model: Node3D = $HeroModel
 @onready var selection_circle: MeshInstance3D = $SelectionCircle
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var health_bar: Node3D = $HealthBar
 @onready var attack_timer_node: Timer = $AttackTimer
 @onready var cast_timer_node: Timer = $CastTimer
 
-var base_mesh_color := Color(0.2, 0.5, 1.0)  # Hero blue
 var original_scale := Vector3.ONE
+var _cached_mesh_instances: Array[MeshInstance3D] = []
+var _original_materials: Dictionary = {}  # MeshInstance3D -> Array of original materials
 
 func _ready() -> void:
 	GameManager.register_hero(self)
 	target_position = global_position
-	original_scale = mesh.scale
-	_set_mesh_color(base_mesh_color)
+	original_scale = model.scale
+	_cache_mesh_instances()
 
 	nav_agent.path_desired_distance = 0.5
 	nav_agent.target_desired_distance = 0.5
@@ -72,6 +73,26 @@ func _ready() -> void:
 	mana_timer.timeout.connect(_on_mana_regen)
 	add_child(mana_timer)
 
+func _cache_mesh_instances() -> void:
+	_cached_mesh_instances.clear()
+	_original_materials.clear()
+	_find_mesh_instances(model)
+	# Store original materials for color flash restoration
+	for mi in _cached_mesh_instances:
+		var mats: Array = []
+		for i in range(mi.get_surface_override_material_count()):
+			var mat = mi.get_surface_override_material(i)
+			if mat == null:
+				mat = mi.mesh.surface_get_material(i) if mi.mesh else null
+			mats.append(mat)
+		_original_materials[mi] = mats
+
+func _find_mesh_instances(node: Node) -> void:
+	if node is MeshInstance3D:
+		_cached_mesh_instances.append(node as MeshInstance3D)
+	for child in node.get_children():
+		_find_mesh_instances(child)
+
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
@@ -86,7 +107,6 @@ func _physics_process(delta: float) -> void:
 
 func _process_movement(delta: float) -> void:
 	if not is_moving and attack_target == null:
-		# Decelerate to stop
 		current_speed = move_toward(current_speed, 0.0, deceleration * delta)
 		if current_speed > 0:
 			velocity = velocity.normalized() * current_speed
@@ -95,11 +115,9 @@ func _process_movement(delta: float) -> void:
 		move_and_slide()
 		return
 
-	# If we have an attack target, move toward it
 	if attack_target != null and is_instance_valid(attack_target):
 		nav_agent.target_position = attack_target.global_position
 		if global_position.distance_to(attack_target.global_position) < 2.5:
-			# In melee range - attack
 			is_moving = false
 			current_speed = 0.0
 			velocity = Vector3.ZERO
@@ -119,11 +137,9 @@ func _process_movement(delta: float) -> void:
 	var direction = (next_pos - global_position).normalized()
 	direction.y = 0
 
-	# Accelerate
 	current_speed = move_toward(current_speed, move_speed, acceleration * delta)
 	velocity = direction * current_speed
 
-	# Rotate toward movement direction
 	_face_position(global_position + direction, delta)
 
 	move_and_slide()
@@ -143,14 +159,13 @@ func move_to(world_pos: Vector3) -> void:
 	nav_agent.target_position = world_pos
 	is_moving = true
 	attack_target = null
-	# WC3-style "acknowledgment" squash and stretch
 	_play_acknowledge_bounce()
 
 func _play_acknowledge_bounce() -> void:
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", original_scale * Vector3(0.85, 1.2, 0.85), 0.06)
-	tween.tween_property(mesh, "scale", original_scale * Vector3(1.1, 0.9, 1.1), 0.06)
-	tween.tween_property(mesh, "scale", original_scale, 0.08)
+	tween.tween_property(model, "scale", original_scale * Vector3(0.85, 1.2, 0.85), 0.06)
+	tween.tween_property(model, "scale", original_scale * Vector3(1.1, 0.9, 1.1), 0.06)
+	tween.tween_property(model, "scale", original_scale, 0.08)
 
 func _perform_melee_attack() -> void:
 	if not attack_timer_node.is_stopped():
@@ -158,12 +173,11 @@ func _perform_melee_attack() -> void:
 	anim_state = AnimState.ATTACK
 	attack_timer_node.start(0.8)
 
-	# Attack animation
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", original_scale * Vector3(1.3, 0.8, 1.3), 0.15)
+	tween.tween_property(model, "scale", original_scale * Vector3(1.3, 0.8, 1.3), 0.15)
 	tween.tween_callback(_apply_melee_damage)
-	tween.tween_property(mesh, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.1)
-	tween.tween_property(mesh, "scale", original_scale, 0.1)
+	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.1)
+	tween.tween_property(model, "scale", original_scale, 0.1)
 
 func _apply_melee_damage() -> void:
 	if attack_target and is_instance_valid(attack_target) and attack_target.has_method("take_damage"):
@@ -194,20 +208,17 @@ func cast_spell(index: int) -> void:
 		3: _cast_ground_slam()
 
 func _cast_strike() -> void:
-	# Melee attack - find nearest enemy in range
 	var target = GameManager.get_nearest_enemy(global_position, 3.5)
 	if target:
 		set_attack_target(target)
 		spell_cooldowns[0] = spell_max_cooldowns[0]
 		spell_cast.emit(0)
 	else:
-		# No target nearby, find any enemy and move to them
 		target = GameManager.get_nearest_enemy(global_position, 15.0)
 		if target:
 			set_attack_target(target)
 
 func _start_fireball_targeting() -> void:
-	# Enter targeting mode - spell will be cast on next ground click
 	GameManager.is_targeting_spell = true
 	GameManager.targeting_spell_id = 1
 
@@ -220,24 +231,19 @@ func cast_fireball_at(target_pos: Vector3) -> void:
 	velocity = Vector3.ZERO
 	_face_position(target_pos, 1.0)
 
-	# Consume mana
 	current_mana -= spell_mana_costs[1]
 	mana_changed.emit(current_mana, max_mana)
 	spell_cooldowns[1] = spell_max_cooldowns[1]
 	spell_cast.emit(1)
 
-	# Cast animation
 	anim_state = AnimState.CAST
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", original_scale * Vector3(0.8, 1.3, 0.8), 0.2)
+	tween.tween_property(model, "scale", original_scale * Vector3(0.8, 1.3, 0.8), 0.2)
 	tween.tween_callback(func(): _spawn_fireball(target_pos))
-	tween.tween_property(mesh, "scale", original_scale, 0.15)
+	tween.tween_property(model, "scale", original_scale, 0.15)
 	tween.tween_callback(func(): is_casting = false)
 
-	# Brief color flash
-	_set_mesh_color(Color(1.0, 0.5, 0.0))
-	await get_tree().create_timer(0.3).timeout
-	_set_mesh_color(base_mesh_color)
+	_flash_color(Color(1.0, 0.5, 0.0), 0.3)
 
 func _spawn_fireball(target_pos: Vector3) -> void:
 	var fireball_scene = preload("res://scenes/fireball.tscn")
@@ -261,11 +267,10 @@ func _cast_heal() -> void:
 	spell_cast.emit(2)
 
 	anim_state = AnimState.CAST
-	_set_mesh_color(Color(0.2, 1.0, 0.3))
+	_set_model_color(Color(0.2, 1.0, 0.3))
 
-	# Heal animation - grow and glow green
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", original_scale * 1.2, 0.3)
+	tween.tween_property(model, "scale", original_scale * 1.2, 0.3)
 	tween.tween_callback(func():
 		var heal_amount = 150
 		current_health = mini(current_health + heal_amount, max_health)
@@ -273,10 +278,10 @@ func _cast_heal() -> void:
 		GameManager.request_damage_number(global_position + Vector3.UP * 2.5, heal_amount, false)
 		_spawn_heal_particles()
 	)
-	tween.tween_property(mesh, "scale", original_scale, 0.2)
+	tween.tween_property(model, "scale", original_scale, 0.2)
 	tween.tween_callback(func():
 		is_casting = false
-		_set_mesh_color(base_mesh_color)
+		_restore_model_materials()
 	)
 
 func _spawn_heal_particles() -> void:
@@ -284,7 +289,6 @@ func _spawn_heal_particles() -> void:
 	add_child(particles)
 	particles.position = Vector3.ZERO
 	particles.emitting = true
-	# Auto cleanup
 	await get_tree().create_timer(2.0).timeout
 	if is_instance_valid(particles):
 		particles.queue_free()
@@ -302,13 +306,11 @@ func _cast_ground_slam() -> void:
 
 	anim_state = AnimState.CAST
 
-	# Big windup
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", original_scale * Vector3(0.7, 1.5, 0.7), 0.4)
-	_set_mesh_color(Color(1.0, 0.8, 0.0))
-	tween.tween_property(mesh, "scale", original_scale * Vector3(1.5, 0.6, 1.5), 0.1)
+	tween.tween_property(model, "scale", original_scale * Vector3(0.7, 1.5, 0.7), 0.4)
+	_set_model_color(Color(1.0, 0.8, 0.0))
+	tween.tween_property(model, "scale", original_scale * Vector3(1.5, 0.6, 1.5), 0.1)
 	tween.tween_callback(func():
-		# SLAM! Damage all enemies nearby
 		GameManager.request_screen_shake(8.0, 0.4)
 		var enemies = GameManager.get_enemies_in_range(global_position, 6.0)
 		for e in enemies:
@@ -316,10 +318,10 @@ func _cast_ground_slam() -> void:
 				e.take_damage(80)
 		_spawn_slam_particles()
 	)
-	tween.tween_property(mesh, "scale", original_scale, 0.3)
+	tween.tween_property(model, "scale", original_scale, 0.3)
 	tween.tween_callback(func():
 		is_casting = false
-		_set_mesh_color(base_mesh_color)
+		_restore_model_materials()
 	)
 
 func _spawn_slam_particles() -> void:
@@ -341,15 +343,12 @@ func take_damage(amount: int) -> void:
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.5, amount, false)
 
 	# Hit flash
-	_set_mesh_color(Color.WHITE)
-	await get_tree().create_timer(0.08).timeout
-	if not is_dead:
-		_set_mesh_color(base_mesh_color)
+	_flash_color(Color.WHITE, 0.08)
 
 	# Hit squash
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", original_scale * Vector3(1.15, 0.85, 1.15), 0.05)
-	tween.tween_property(mesh, "scale", original_scale, 0.1)
+	tween.tween_property(model, "scale", original_scale * Vector3(1.15, 0.85, 1.15), 0.05)
+	tween.tween_property(model, "scale", original_scale, 0.1)
 
 	if current_health <= 0:
 		_die()
@@ -361,8 +360,8 @@ func _die() -> void:
 	velocity = Vector3.ZERO
 
 	var tween = create_tween()
-	tween.tween_property(mesh, "scale", Vector3(1.5, 0.1, 1.5), 0.5)
-	tween.tween_property(mesh, "scale", Vector3(0.01, 0.01, 0.01), 0.3)
+	tween.tween_property(model, "scale", Vector3(1.5, 0.1, 1.5), 0.5)
+	tween.tween_property(model, "scale", Vector3(0.01, 0.01, 0.01), 0.3)
 	hero_died.emit()
 
 # ---------- UTILITIES ----------
@@ -374,7 +373,7 @@ func _process_cooldowns(delta: float) -> void:
 			spell_cooldown_updated.emit(i, spell_cooldowns[i], spell_max_cooldowns[i])
 
 func _process_casting(_delta: float) -> void:
-	pass  # Casting is tween-driven
+	pass
 
 func _update_animation_state() -> void:
 	if is_dead:
@@ -383,19 +382,37 @@ func _update_animation_state() -> void:
 		anim_state = AnimState.CAST
 	elif current_speed > 0.5:
 		anim_state = AnimState.WALK
-		# Subtle walk bob
-		mesh.position.y = 0.75 + sin(Time.get_ticks_msec() * 0.01) * 0.05
+		# Walk bob on the model
+		model.position.y = sin(Time.get_ticks_msec() * 0.01) * 0.05
 	else:
 		anim_state = AnimState.IDLE
 		# Idle breathing
-		mesh.position.y = 0.75 + sin(Time.get_ticks_msec() * 0.003) * 0.03
+		model.position.y = sin(Time.get_ticks_msec() * 0.003) * 0.03
 
-func _set_mesh_color(color: Color) -> void:
-	var mat = mesh.get_surface_override_material(0)
-	if mat == null:
-		mat = StandardMaterial3D.new()
-		mesh.set_surface_override_material(0, mat)
-	mat.albedo_color = color
+func _set_model_color(color: Color) -> void:
+	for mi in _cached_mesh_instances:
+		for i in range(mi.get_surface_override_material_count()):
+			var mat = mi.get_surface_override_material(i)
+			if mat == null:
+				var base = mi.mesh.surface_get_material(i) if mi.mesh else null
+				if base:
+					mat = base.duplicate()
+				else:
+					mat = StandardMaterial3D.new()
+				mi.set_surface_override_material(i, mat)
+			if mat is StandardMaterial3D:
+				mat.albedo_color = color
+
+func _restore_model_materials() -> void:
+	for mi in _cached_mesh_instances:
+		for i in range(mi.get_surface_override_material_count()):
+			mi.set_surface_override_material(i, null)
+
+func _flash_color(color: Color, duration: float) -> void:
+	_set_model_color(color)
+	await get_tree().create_timer(duration).timeout
+	if not is_dead:
+		_restore_model_materials()
 
 func _on_mana_regen() -> void:
 	if not is_dead and current_mana < max_mana:

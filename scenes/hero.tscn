@@ -1,13 +1,8 @@
-[gd_scene load_steps=12 format=3 uid="uid://hero_scene"]
+[gd_scene load_steps=10 format=3 uid="uid://hero_scene"]
 
 [ext_resource type="Script" path="res://scripts/hero.gd" id="1_hero"]
 [ext_resource type="Script" path="res://scripts/unit_health_bar.gd" id="2_hbar"]
-
-[sub_resource type="BoxMesh" id="SubResource_hero_mesh"]
-size = Vector3(0.8, 1.5, 0.8)
-
-[sub_resource type="StandardMaterial3D" id="SubResource_hero_mat"]
-albedo_color = Color(0.2, 0.5, 1.0, 1)
+[ext_resource type="PackedScene" uid="uid://fat_nate_glb" path="res://assets/models/fat_nate.glb" id="3_model"]
 
 [sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
 size = Vector2(2.0, 2.0)
@@ -19,8 +14,9 @@ emission_enabled = true
 emission = Color(0.3, 1.0, 0.3, 1)
 emission_energy_multiplier = 1.5
 
-[sub_resource type="BoxShape3D" id="SubResource_hero_col"]
-size = Vector3(0.8, 1.5, 0.8)
+[sub_resource type="CapsuleShape3D" id="SubResource_hero_col"]
+radius = 0.5
+height = 1.8
 
 [sub_resource type="BoxMesh" id="SubResource_bar_bg_mesh"]
 size = Vector3(1.2, 0.12, 0.02)
@@ -43,10 +39,8 @@ collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_hero")
 
-[node name="HeroMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
-mesh = SubResource("SubResource_hero_mesh")
-surface_material_override/0 = SubResource("SubResource_hero_mat")
+[node name="HeroModel" parent="." instance=ExtResource("3_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="SelectionCircle" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
@@ -54,7 +48,7 @@ mesh = SubResource("SubResource_sel_mesh")
 surface_material_override/0 = SubResource("SubResource_sel_mat")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("SubResource_hero_col")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
@@ -62,7 +56,7 @@ path_desired_distance = 0.5
 target_desired_distance = 0.5
 
 [node name="HealthBar" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
 script = ExtResource("2_hbar")
 
 [node name="BarBG" type="MeshInstance3D" parent="HealthBar"]
