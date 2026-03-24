@@ -6,6 +6,7 @@ extends Node3D
 var _transition_overlay: ColorRect = null
 var _merchant_ui: CanvasLayer = null
 var _deep_effects: CanvasLayer = null
+var _sponsor_ui: CanvasLayer = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -47,7 +48,15 @@ func _ready() -> void:
 	_merchant_ui.name = "MerchantUI"
 	add_child(_merchant_ui)
 	FloorManager.show_merchant.connect(_on_show_merchant)
-	_merchant_ui.merchant_closed.connect(FloorManager.on_merchant_closed)
+	_merchant_ui.merchant_closed.connect(_on_merchant_closed_show_sponsor)
+
+	# Sponsor system between floors (after merchant)
+	var sponsor_script = preload("res://scripts/sponsor_system.gd")
+	_sponsor_ui = CanvasLayer.new()
+	_sponsor_ui.set_script(sponsor_script)
+	_sponsor_ui.name = "SponsorSystem"
+	add_child(_sponsor_ui)
+	_sponsor_ui.sponsor_closed.connect(FloorManager.on_merchant_closed)
 
 	# Wire Smusher Timer to dungeon builder and start it
 	SmusherTimer.dungeon_builder = $DungeonBuilder
@@ -128,6 +137,13 @@ func _setup_transition_overlay() -> void:
 func _on_show_merchant(floor_number: int) -> void:
 	if _merchant_ui:
 		_merchant_ui.show_shop(floor_number)
+
+func _on_merchant_closed_show_sponsor() -> void:
+	# After merchant closes, show sponsor offer if audience is interested enough
+	if _sponsor_ui and AudienceManager.current_mood >= AudienceManager.Mood.INTERESTED:
+		_sponsor_ui.show_sponsor_offer(FloorManager.current_floor)
+	else:
+		FloorManager.on_merchant_closed()
 
 func _on_floor_transition_midpoint() -> void:
 	# Screen is black — rebuild the dungeon for the new floor
