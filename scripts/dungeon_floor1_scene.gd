@@ -137,6 +137,39 @@ func _ready() -> void:
 		TutorialManager.tutorial_completed.connect(_on_tutorial_completed)
 		TutorialManager.start_tutorial()
 
+	# Forge station — spawn on every 3rd floor (floors 3, 6, 9...) in a side room
+	if FloorManager.current_floor > 0 and FloorManager.current_floor % 3 == 0:
+		_spawn_forge_station()
+
+func _spawn_forge_station() -> void:
+	var builder = $DungeonBuilder
+	if builder == null:
+		return
+	# Try to find a non-start, non-exit room to place the forge
+	var forge_pos: Vector3 = Vector3.ZERO
+	var rooms: Array = builder.rooms if builder.get("rooms") != null else []
+	var candidate_rooms: Array = []
+	for room in rooms:
+		var rname: String = room.get("name", "")
+		if not rname.begins_with("corridor") and rname != "start" and rname != "exit":
+			candidate_rooms.append(rname)
+	if candidate_rooms.size() > 0:
+		candidate_rooms.shuffle()
+		forge_pos = builder.get_room_center(candidate_rooms[0])
+		forge_pos += Vector3(1.5, 0, 1.5)  # Offset from room center
+	else:
+		forge_pos = builder.get_spawn_position() + Vector3(4, 0, 4)
+
+	var forge_script = preload("res://scripts/forge_station.gd")
+	var forge := Node3D.new()
+	forge.set_script(forge_script)
+	forge.name = "ForgeStation"
+	forge.position = forge_pos
+	add_child(forge)
+
+	if Narrator:
+		Narrator.speak("A forge glows in the shadows. Walk up and press E to combine items.")
+
 func _setup_transition_overlay() -> void:
 	var canvas = CanvasLayer.new()
 	canvas.layer = 100  # Above everything

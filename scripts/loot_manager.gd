@@ -576,3 +576,20 @@ func _apply_consumable(item_def: Dictionary) -> void:
 		var mana := item_def.get("mana_amount", 60)
 		hero.current_mana = mini(hero.current_mana + mana, hero.max_mana)
 		hero.mana_changed.emit(hero.current_mana, hero.max_mana)
+	elif item_def["id"] == "elixir_vial":
+		var heal := item_def.get("heal_amount", 80)
+		var mana := item_def.get("mana_amount", 50)
+		hero.current_health = mini(hero.current_health + heal, hero.max_health)
+		hero.health_changed.emit(hero.current_health, hero.max_health)
+		hero.current_mana = mini(hero.current_mana + mana, hero.max_mana)
+		hero.mana_changed.emit(hero.current_mana, hero.max_mana)
+		GameManager.request_damage_number(hero.global_position + Vector3.UP * 2.5, heal, false)
+
+## Remove a specific item from inventory by id. Removes first match found.
+func remove_item(item_def: Dictionary) -> void:
+	var target_id := item_def.get("id", "")
+	for i in range(inventory.size()):
+		if inventory[i].get("id", "") == target_id:
+			inventory.remove_at(i)
+			inventory_changed.emit()
+			return
