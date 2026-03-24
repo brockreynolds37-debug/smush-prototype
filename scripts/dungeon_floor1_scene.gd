@@ -10,6 +10,7 @@ var _sponsor_ui: CanvasLayer = null
 var _loading_screen: CanvasLayer = null
 var _player_spawner: Node = null
 var _enemy_sync: Node = null
+var _loot_sync: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -122,6 +123,15 @@ func _ready() -> void:
 		_enemy_sync.patch_enemy_targeting()
 		if not NetworkManager.is_host:
 			_enemy_sync.disable_client_enemy_ai()
+
+	# Multiplayer: loot sync (host spawns, validates pickups, shared gold)
+	if NetworkManager.is_multiplayer_active():
+		var loot_sync_script := preload("res://scripts/loot_sync.gd")
+		_loot_sync = Node.new()
+		_loot_sync.set_script(loot_sync_script)
+		_loot_sync.name = "LootSync"
+		add_child(_loot_sync)
+		_loot_sync.setup()
 
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):
