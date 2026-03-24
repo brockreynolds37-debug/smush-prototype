@@ -162,6 +162,7 @@ func _ready() -> void:
 	_generate_geometry()
 	_apply_theme_lighting()
 	_bake_navigation()
+	_place_forge_station()
 
 func _load_assets() -> void:
 	_floor_scene = load("res://assets/models/dungeon/kenney_floor.glb")
@@ -1230,3 +1231,15 @@ func get_room_random_floor(room_name: String) -> Vector3:
 			var ry := randi_range(rpos.y + 1, rpos.y + rsize.y - 2)
 			return _cell_to_world(Vector2i(rx, ry)) + Vector3.UP * 0.5
 	return Vector3.ZERO
+
+# ---------- FORGE STATION ----------
+
+func _place_forge_station() -> void:
+	# Place a forge on even floors (merchant floors) near the spawn
+	if floor_number <= 0 or floor_number % 2 != 0:
+		return
+	var forge = ForgeStation.new()
+	forge.name = "ForgeStation"
+	var spawn_pos = get_spawn_position()
+	forge.position = spawn_pos + Vector3(4.0, 0.0, 2.0)
+	add_child(forge)
