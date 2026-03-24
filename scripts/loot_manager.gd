@@ -147,6 +147,20 @@ var LOOT_TABLES := {
 		{"item_id": "iron_axe", "weight": 15, "min": 1, "max": 1},
 		{"item_id": "longbow", "weight": 20, "min": 1, "max": 1},
 	],
+	"chest": [
+		{"item_id": "gold_pile", "weight": 30, "min": 2, "max": 4},
+		{"item_id": "health_potion", "weight": 20, "min": 1, "max": 2},
+		{"item_id": "mana_potion", "weight": 15, "min": 1, "max": 1},
+		{"item_id": "iron_sword", "weight": 12, "min": 1, "max": 1},
+		{"item_id": "steel_sword", "weight": 10, "min": 1, "max": 1},
+		{"item_id": "iron_axe", "weight": 8, "min": 1, "max": 1},
+		{"item_id": "longbow", "weight": 5, "min": 1, "max": 1},
+	],
+	"barrel": [
+		{"item_id": "gold_pile", "weight": 60, "min": 1, "max": 2},
+		{"item_id": "health_potion", "weight": 30, "min": 1, "max": 1},
+		{"item_id": "mana_potion", "weight": 10, "min": 1, "max": 1},
+	],
 }
 
 # Hero inventory + gold

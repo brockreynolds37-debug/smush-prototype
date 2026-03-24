@@ -609,12 +609,17 @@ func _place_prop(cell: Vector2i, prop_type: String) -> void:
 	if scene == null:
 		return
 
+	# Chests and barrels become interactable objects
+	if prop_type in ["chest", "barrel"]:
+		_place_interactable(cell, prop_type, scene)
+		return
+
 	var instance := scene.instantiate()
 	instance.position = _cell_to_world(cell) + Vector3.UP * y_offset
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
 
 	# Add collision for blocking props
-	if prop_type in ["column", "barrel", "rocks"]:
+	if prop_type in ["column", "rocks"]:
 		var body := StaticBody3D.new()
 		body.collision_layer = 1
 		var col := CollisionShape3D.new()
@@ -632,6 +637,35 @@ func _place_prop(cell: Vector2i, prop_type: String) -> void:
 		_prop_container.add_child(wrapper)
 	else:
 		_prop_container.add_child(instance)
+
+func _place_interactable(cell: Vector2i, prop_type: String, scene: PackedScene) -> void:
+	var interactable_script = load("res://scripts/interactable.gd")
+	var body := StaticBody3D.new()
+	body.set_script(interactable_script)
+	body.position = _cell_to_world(cell)
+
+	# Set type
+	if prop_type == "chest":
+		body.interactable_type = 0  # Type.CHEST
+	else:
+		body.interactable_type = 1  # Type.BARREL
+
+	# Add the model
+	var model := scene.instantiate()
+	model.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
+	body.add_child(model)
+	body.setup_model(model)
+
+	# Collision shape for raycasting and blocking
+	var col := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = TILE_SIZE * 0.35
+	shape.height = 1.5
+	col.shape = shape
+	col.position.y = 0.75
+	body.add_child(col)
+
+	_prop_container.add_child(body)
 
 func _place_trap(cell: Vector2i, trap_type_name: String) -> void:
 	var trap_script = load("res://scripts/trap_hazard.gd")

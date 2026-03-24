@@ -68,6 +68,16 @@ func _handle_left_click() -> void:
 		hero.set_attack_target(result.collider)
 		return
 
+	# Check for interactable clicks (chests, barrels)
+	var query2 = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
+	query2.collision_mask = 4  # Layer 3 = Interactables
+	var result2 = space_state.intersect_ray(query2)
+
+	if result2 and result2.collider and result2.collider.is_in_group("interactables"):
+		var interactable = result2.collider
+		_interact_with(hero, interactable)
+		return
+
 	# Otherwise, click-to-move on ground
 	var ground_pos = _get_ground_position(from, dir)
 	if ground_pos != Vector3.ZERO:
@@ -75,6 +85,38 @@ func _handle_left_click() -> void:
 
 		# Spawn click indicator
 		_spawn_click_indicator(ground_pos)
+
+func _interact_with(hero: Node3D, target: Node3D) -> void:
+	var dist := hero.global_position.distance_to(target.global_position)
+	if dist < 2.5:
+		# In range — interact immediately
+		if target.has_method("interact"):
+			target.interact()
+		elif target.has_method("take_damage"):
+			target.take_damage(hero._get_melee_damage())
+	else:
+		# Walk to it first, then interact
+		hero.move_to(target.global_position)
+		# Set a pending interaction (check distance each frame until close)
+		_pending_interactable = target
+
+var _pending_interactable: Node3D = null
+
+func _process(_delta: float) -> void:
+	if _pending_interactable and is_instance_valid(_pending_interactable):
+		var hero = GameManager.hero
+		if hero == null or hero.is_dead:
+			_pending_interactable = null
+			return
+		var dist := hero.global_position.distance_to(_pending_interactable.global_position)
+		if dist < 2.5:
+			if _pending_interactable.has_method("interact"):
+				_pending_interactable.interact()
+			elif _pending_interactable.has_method("take_damage"):
+				_pending_interactable.take_damage(hero._get_melee_damage())
+			_pending_interactable = null
+	elif _pending_interactable:
+		_pending_interactable = null
 
 func _get_ground_position(from: Vector3, dir: Vector3) -> Vector3:
 	if dir.y != 0:

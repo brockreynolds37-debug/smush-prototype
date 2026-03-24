@@ -96,6 +96,10 @@ func _generate_sounds() -> void:
 	sounds["spike_trap"] = _gen_impact(sample_rate, 0.15, 90.0, 0.6)
 	sounds["fire_vent"] = _gen_whoosh(sample_rate, 0.35, 200.0, 1600.0, 0.55)
 
+	# Interactables
+	sounds["chest_open"] = _gen_chest_open(sample_rate, 0.4, 0.5)
+	sounds["barrel_break"] = _gen_barrel_break(sample_rate, 0.25, 0.6)
+
 	# Ambient drone (looping)
 	sounds["dungeon_ambience"] = _gen_ambient_drone(sample_rate, 4.0, 0.15)
 
@@ -479,3 +483,37 @@ func _bandpass_approx(center_freq: float, sr: int, sample_idx: int) -> float:
 	# Simple approximation of bandpass using modulated amplitude
 	var t = float(sample_idx) / float(sr)
 	return 0.5 + 0.5 * sin(t * center_freq * TAU)
+
+# Chest open — creaky hinge + sparkle reveal
+func _gen_chest_open(sr: int, dur: float, vol: float) -> AudioStreamWAV:
+	var samples = int(sr * dur)
+	var data = PackedFloat32Array()
+	data.resize(samples)
+	for i in range(samples):
+		var t = float(i) / sr
+		# Creaky hinge (low freq wobble)
+		var creak = sin(t * 80.0 * TAU) * sin(t * 7.0 * TAU) * 0.3
+		var creak_env = _envelope(t, 0.02, 0.1, 0.4, dur * 0.3, dur * 0.5)
+		# Sparkle (high freq shimmer after creak)
+		var sparkle_t = maxf(t - 0.15, 0.0)
+		var sparkle_env = _envelope(sparkle_t, 0.01, 0.05, 0.5, dur * 0.4, dur - 0.15) if t > 0.15 else 0.0
+		var sparkle = sin(sparkle_t * 1200.0 * TAU) * 0.3 + sin(sparkle_t * 1800.0 * TAU) * 0.2
+		data[i] = (creak * creak_env + sparkle * sparkle_env) * vol
+	return _make_wav(sr, data)
+
+# Barrel break — sharp crack + wood splinter
+func _gen_barrel_break(sr: int, dur: float, vol: float) -> AudioStreamWAV:
+	var samples = int(sr * dur)
+	var data = PackedFloat32Array()
+	data.resize(samples)
+	for i in range(samples):
+		var t = float(i) / sr
+		var env = exp(-t * 12.0)
+		# Sharp crack
+		var crack = _noise() * 0.6
+		# Wood thud
+		var thud = sin(t * 100.0 * TAU) * exp(-t * 20.0) * 0.4
+		# Splinter rattle
+		var rattle = _noise() * sin(t * 40.0 * TAU) * 0.2 * exp(-t * 6.0)
+		data[i] = (crack * env + thud + rattle) * vol
+	return _make_wav(sr, data)

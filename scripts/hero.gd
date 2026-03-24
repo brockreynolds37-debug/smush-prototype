@@ -485,6 +485,8 @@ func _cast_ground_slam() -> void:
 			StatusEffectManager.apply_slow(e, 3.0, 0.5)
 			StatusEffectManager.apply_stun(e, 1.0)
 		AudienceManager.on_aoe_hit(enemies.size())
+		# Damage nearby breakables (barrels)
+		_damage_nearby_interactables(slam_damage, 6.0)
 		_spawn_slam_particles()
 	)
 	tween.tween_property(model, "scale", original_scale, 0.3)
@@ -613,6 +615,17 @@ func _on_mana_regen() -> void:
 	if not is_dead and current_mana < max_mana:
 		current_mana = mini(current_mana + 5, max_mana)
 		mana_changed.emit(current_mana, max_mana)
+
+# ---------- INTERACTABLE DAMAGE ----------
+
+func _damage_nearby_interactables(damage: int, radius: float) -> void:
+	var interactables := get_tree().get_nodes_in_group("interactables")
+	for obj in interactables:
+		if not is_instance_valid(obj):
+			continue
+		if global_position.distance_to(obj.global_position) <= radius:
+			if obj.has_method("take_damage"):
+				obj.take_damage(damage)
 
 # ---------- STATUS EFFECTS ----------
 

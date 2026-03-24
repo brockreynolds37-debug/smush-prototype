@@ -16,6 +16,8 @@ const COLOR_ENEMY := Color(0.9, 0.15, 0.15, 1.0)
 const COLOR_EXIT := Color(1.0, 0.85, 0.2, 1.0)
 const COLOR_SPAWN := Color(0.3, 0.5, 1.0, 0.8)
 const COLOR_TRAP := Color(1.0, 0.4, 0.1, 0.9)
+const COLOR_CHEST := Color(1.0, 0.85, 0.2, 0.9)
+const COLOR_BARREL := Color(0.55, 0.38, 0.2, 0.8)
 
 # Grid data (copied from DungeonBuilder)
 var grid: Dictionary = {}
@@ -158,7 +160,7 @@ func _draw() -> void:
 					to = screen_pos + Vector2(0, cell_px)
 				draw_line(from, to, COLOR_WALL, 1.5)
 
-	# Draw trap markers (small warning dots on explored trap cells)
+	# Draw special tile markers (traps, chests, barrels) on explored cells
 	for cell in explored.keys():
 		if not grid.has(cell):
 			continue
@@ -167,6 +169,14 @@ func _draw() -> void:
 			var trap_screen := _cell_to_screen(cell)
 			var trap_center := trap_screen + Vector2(cell_px / 2.0, cell_px / 2.0)
 			draw_circle(trap_center, cell_px * 0.4, COLOR_TRAP)
+		elif tile_type == 6:  # CHEST
+			var chest_screen := _cell_to_screen(cell)
+			var chest_center := chest_screen + Vector2(cell_px / 2.0, cell_px / 2.0)
+			draw_circle(chest_center, cell_px * 0.5, COLOR_CHEST)
+		elif tile_type == 7:  # BARREL
+			var barrel_screen := _cell_to_screen(cell)
+			var barrel_center := barrel_screen + Vector2(cell_px / 2.0, cell_px / 2.0)
+			draw_circle(barrel_center, cell_px * 0.3, COLOR_BARREL)
 
 	# Draw exit marker (if explored)
 	if explored.has(exit_cell):
