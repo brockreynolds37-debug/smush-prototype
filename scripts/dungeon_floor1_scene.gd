@@ -112,6 +112,13 @@ func _ready() -> void:
 		# Narrator goes quiet in The Deep
 		Narrator.set_process(false)
 
+	# Floating damage numbers (3D world-space)
+	var dmg_num_script = preload("res://scripts/damage_number.gd")
+	var dmg_num = Node3D.new()
+	dmg_num.set_script(dmg_num_script)
+	dmg_num.name = "DamageNumbers"
+	add_child(dmg_num)
+
 	# Tutorial floor — start guided walkthrough with skip button
 	if FloorManager.current_floor == 0 and TutorialManager.is_tutorial_active:
 		_setup_tutorial_skip_button()
