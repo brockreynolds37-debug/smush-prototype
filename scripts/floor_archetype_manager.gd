@@ -20,7 +20,9 @@ var _archetype_pool: Array = [
 ## Tutorial and floor 1 are always Crawl.
 func get_archetype_for_floor(floor_num: int) -> FloorArchetype:
 	if floor_num <= 1:
-		return CrawlArchetype.new()
+		var arch := CrawlArchetype.new()
+		SolutionPathTracker.archetype_preferred_path = arch.audience_favorite_path
+		return arch
 
 	var total_weight: float = 0.0
 	for entry in _archetype_pool:
@@ -31,6 +33,10 @@ func get_archetype_for_floor(floor_num: int) -> FloorArchetype:
 	for entry in _archetype_pool:
 		cumulative += entry[1]
 		if roll <= cumulative:
-			return entry[0].new()
+			var arch: FloorArchetype = entry[0].new()
+			SolutionPathTracker.archetype_preferred_path = arch.audience_favorite_path
+			return arch
 
-	return CrawlArchetype.new()
+	var arch := CrawlArchetype.new()
+	SolutionPathTracker.archetype_preferred_path = arch.audience_favorite_path
+	return arch

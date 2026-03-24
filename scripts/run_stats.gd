@@ -159,6 +159,8 @@ func get_summary() -> Dictionary:
 		"highest_floor": highest_floor,
 		"run_time": get_run_time_string(),
 		"floor_times": floor_clear_times.duplicate(),
+		"solution_path_history": SolutionPathTracker.floor_history.duplicate(),
+		"dominant_path": SolutionPathTracker.get_most_used_path(),
 	}
 
 func get_most_killed_enemy() -> String:

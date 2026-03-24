@@ -9,6 +9,13 @@ func _init() -> void:
 	archetype_name = "Dungeon Crawl"
 	flavor_text = "Clear the floor. Find the exit. Survive."
 	accent_color = Color(0.7, 0.6, 0.4)
+	solution_paths = {"combat": true, "speed": true, "social": false, "clever": true}
+	audience_favorite_path = "combat"
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_crawl(), "combat"
+	)
 
 func start() -> void:
 	super.start()

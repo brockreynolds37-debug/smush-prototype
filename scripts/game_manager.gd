@@ -121,6 +121,7 @@ func reset_game_state() -> void:
 	LootManager.inventory.clear()
 	LootManager.equipped.clear()
 	RunModifiers.reset()
+	SolutionPathTracker.reset()
 	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:

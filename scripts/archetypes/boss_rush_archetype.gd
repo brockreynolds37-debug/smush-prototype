@@ -32,6 +32,13 @@ func _init() -> void:
 	archetype_name = "Boss Rush"
 	flavor_text = "No rest. No loot. Only bosses."
 	accent_color = Color(1.0, 0.2, 0.2)
+	solution_paths = {"combat": true, "speed": true, "social": false, "clever": true}
+	audience_favorite_path = "combat"
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_boss_rush(), "combat"
+	)
 
 func start() -> void:
 	super.start()

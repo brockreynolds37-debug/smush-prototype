@@ -34,9 +34,16 @@ func _init() -> void:
 	archetype_name = "Economy"
 	flavor_text = "Buy low. Sell high. Or just steal everything."
 	accent_color = Color(1.0, 0.85, 0.2)
+	solution_paths = {"combat": true, "speed": true, "social": true, "clever": true}
+	audience_favorite_path = "social"
 
 func setup(p_builder: Node3D, p_units_node: Node3D, p_floor_number: int) -> void:
 	super.setup(p_builder, p_units_node, p_floor_number)
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_economy(), "social"
+	)
 
 func start() -> void:
 	super.start()

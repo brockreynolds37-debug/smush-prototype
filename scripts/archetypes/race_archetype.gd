@@ -30,6 +30,13 @@ func _init() -> void:
 	archetype_name = "Race"
 	flavor_text = "Sprint to the exit. Beat the ghosts."
 	accent_color = Color(0.2, 0.9, 0.6)
+	solution_paths = {"combat": true, "speed": true, "social": false, "clever": true}
+	audience_favorite_path = "speed"
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_race(), "speed"
+	)
 
 func start() -> void:
 	super.start()

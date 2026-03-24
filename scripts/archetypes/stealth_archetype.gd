@@ -33,9 +33,16 @@ func _init() -> void:
 	archetype_name = "Stealth"
 	flavor_text = "They cannot know you are here."
 	accent_color = Color(0.2, 0.8, 0.4)
+	solution_paths = {"combat": true, "speed": true, "social": true, "clever": true}
+	audience_favorite_path = "clever"
 
 func setup(p_builder: Node3D, p_units_node: Node3D, p_floor_number: int) -> void:
 	super.setup(p_builder, p_units_node, p_floor_number)
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_stealth(), "clever"
+	)
 
 func start() -> void:
 	super.start()

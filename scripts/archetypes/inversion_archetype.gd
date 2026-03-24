@@ -39,6 +39,13 @@ func _init() -> void:
 	archetype_name = "Inversion"
 	flavor_text = "You are the boss now. Defend your dungeon."
 	accent_color = Color(0.9, 0.3, 0.6)
+	solution_paths = {"combat": true, "speed": false, "social": false, "clever": true}
+	audience_favorite_path = "clever"
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_inversion(), "clever"
+	)
 
 func start() -> void:
 	super.start()

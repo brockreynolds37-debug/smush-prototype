@@ -26,6 +26,8 @@ func _init() -> void:
 	archetype_name = "Survival Arena"
 	flavor_text = "The exits are sealed. Survive the onslaught."
 	accent_color = Color(0.9, 0.2, 0.2)
+	solution_paths = {"combat": true, "speed": true, "social": false, "clever": true}
+	audience_favorite_path = "combat"
 
 func setup(p_builder: Node3D, p_units_node: Node3D, p_floor_number: int) -> void:
 	super.setup(p_builder, p_units_node, p_floor_number)
@@ -40,6 +42,11 @@ func setup(p_builder: Node3D, p_units_node: Node3D, p_floor_number: int) -> void
 		center + Vector3(-offset, 0, offset),
 		center + Vector3(offset, 0, offset),
 	]
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_survival(), "combat"
+	)
 
 func start() -> void:
 	super.start()

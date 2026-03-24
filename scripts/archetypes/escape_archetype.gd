@@ -19,9 +19,16 @@ func _init() -> void:
 	archetype_name = "Escape"
 	flavor_text = "The floor is collapsing. Run."
 	accent_color = Color(1.0, 0.3, 0.1)
+	solution_paths = {"combat": true, "speed": true, "social": false, "clever": true}
+	audience_favorite_path = "speed"
 
 func setup(p_builder: Node3D, p_units_node: Node3D, p_floor_number: int) -> void:
 	super.setup(p_builder, p_units_node, p_floor_number)
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_escape(), "speed"
+	)
 
 func start() -> void:
 	super.start()

@@ -23,6 +23,17 @@ var flavor_text: String = ""
 ## Accent color for UI hints
 var accent_color: Color = Color.WHITE
 
+## Solution paths supported by this archetype and which path the audience favors.
+## Keys: "combat", "speed", "social", "clever". Values: true/false for supported.
+var solution_paths: Dictionary = {
+	"combat": true,
+	"speed": true,
+	"social": false,
+	"clever": true,
+}
+## Which solution path the audience most wants to see on this archetype.
+var audience_favorite_path: String = "combat"
+
 ## References set by setup()
 var builder: Node3D = null
 var units_node: Node3D = null
@@ -38,6 +49,14 @@ func setup(p_builder: Node3D, p_units_node: Node3D, p_floor_number: int) -> void
 ## Start the archetype gameplay. Called after dungeon is built and hero is placed.
 func start() -> void:
 	_is_active = true
+	_register_solution_paths()
+
+## Register this archetype's solution paths with SolutionPathTracker.
+## Override in subclasses to provide archetype-specific path configs.
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_crawl(), audience_favorite_path
+	)
 
 ## Per-frame update. Called from dungeon_floor1_scene._process().
 func update(_delta: float) -> void:

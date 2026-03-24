@@ -34,6 +34,13 @@ func _init() -> void:
 	archetype_name = "Political"
 	flavor_text = "Become mayor. Or remove the current one."
 	accent_color = Color(0.6, 0.3, 0.9)
+	solution_paths = {"combat": true, "speed": false, "social": true, "clever": true}
+	audience_favorite_path = "social"
+
+func _register_solution_paths() -> void:
+	SolutionPathTracker.register_floor_paths(
+		SolutionPathTracker.paths_political(), "social"
+	)
 
 func start() -> void:
 	super.start()
