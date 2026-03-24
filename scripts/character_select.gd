@@ -418,6 +418,13 @@ func _on_start() -> void:
 	var data = CharacterData.characters[current_index]
 	CharacterData.select(data["id"])
 
+	# Route to tutorial floor (Floor 0) on first play, otherwise Floor 1
+	if TutorialManager.should_show_tutorial():
+		FloorManager.current_floor = 0
+		TutorialManager.is_tutorial_active = true
+	else:
+		FloorManager.current_floor = 1
+
 	# Fade to black and load dungeon
 	var overlay = ColorRect.new()
 	overlay.color = Color(0, 0, 0, 0)

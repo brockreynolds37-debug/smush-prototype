@@ -322,6 +322,7 @@ func move_to(world_pos: Vector3) -> void:
 	is_attacking = false
 	attack_target = null
 	_play_acknowledge_bounce()
+	TutorialManager.notify_event("hero_moved")
 
 func _play_acknowledge_bounce() -> void:
 	var tween = create_tween()
@@ -377,6 +378,7 @@ func _apply_melee_damage() -> void:
 		var dmg = _get_melee_damage()
 		attack_target.take_damage(dmg)
 		RunStats.record_damage_dealt(dmg)
+		TutorialManager.notify_event("enemy_hit")
 		if _last_hit_was_crit:
 			GameManager.request_screen_shake(6.0, 0.25)
 			GameManager.request_hitstop(0.08)
@@ -403,6 +405,7 @@ func cast_spell(index: int) -> void:
 	if current_mana < spell_mana_costs[index]:
 		return
 
+	TutorialManager.notify_event("spell_cast")
 	match index:
 		0: _cast_strike()
 		1: _start_fireball_targeting()
@@ -452,6 +455,7 @@ func cast_fireball_at(target_pos: Vector3) -> void:
 	tween.tween_callback(func(): is_casting = false)
 
 	_flash_color(Color(1.0, 0.5, 0.0), 0.3)
+	VFXManager.spawn_spell_impact(target_pos, Color(1.0, 0.5, 0.0), 3.0)
 
 func _spawn_fireball(target_pos: Vector3) -> void:
 	var fireball_scene = preload("res://scenes/fireball.tscn")
@@ -491,6 +495,7 @@ func _cast_heal() -> void:
 		health_changed.emit(current_health, max_health)
 		GameManager.request_damage_number(global_position + Vector3.UP * 2.5, heal_amount, false)
 		_spawn_heal_particles()
+		VFXManager.spawn_heal_glow(self)
 	)
 	tween.tween_property(model, "scale", original_scale, 0.2)
 	tween.tween_callback(func():
@@ -542,6 +547,7 @@ func _cast_ground_slam() -> void:
 		# Damage nearby breakables (barrels)
 		_damage_nearby_interactables(slam_damage, 6.0)
 		_spawn_slam_particles()
+		VFXManager.spawn_spell_impact(global_position, Color(1.0, 0.8, 0.0), 6.0)
 	)
 	tween.tween_property(model, "scale", original_scale, 0.3)
 	tween.tween_callback(func():

@@ -36,6 +36,7 @@ SaveManager="*res://scripts/save_manager.gd"
 ScreenEffects="*res://scripts/screen_effects.gd"
 SkillTree="*res://scripts/skill_tree.gd"
 TutorialManager="*res://scripts/tutorial_manager.gd"
+VFXManager="*res://scripts/vfx_manager.gd"
 
 [display]
 
