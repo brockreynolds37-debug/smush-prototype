@@ -60,18 +60,34 @@ var active_anim_player: AnimationPlayer = null
 var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 var _original_materials: Dictionary = {}
+var _char_primary_color: Color = Color(0.15, 0.25, 0.5)
+var _char_secondary_color: Color = Color(0.87, 0.72, 0.58)
 
 func _ready() -> void:
 	GameManager.register_hero(self)
 	target_position = global_position
 
-	# Preload animated GLB scenes
+	# Load character data and apply stats
+	var char_data = CharacterData.get_selected()
+	max_health = char_data["stats"]["HP"]
+	current_health = max_health
+	max_mana = char_data["stats"]["Mana"]
+	current_mana = max_mana
+	_char_primary_color = char_data["color_primary"]
+	_char_secondary_color = char_data["color_secondary"]
+
+	# Build animation scene map from selected character
+	var base_model = load(char_data["model_path"])
+	var attack_model = load(char_data["attack_model"]) if char_data["attack_model"] != "" else base_model
+	var death_model = load(char_data["death_model"]) if char_data["death_model"] != "" else base_model
+	var cast_model = load(char_data["cast_model"]) if char_data["cast_model"] != "" else base_model
+
 	anim_scenes = {
-		AnimState.IDLE: preload("res://assets/models/fat-nate/walking.glb"),
-		AnimState.WALK: preload("res://assets/models/fat-nate/walking.glb"),
-		AnimState.ATTACK: preload("res://assets/models/fat-nate/sword_slash.glb"),
-		AnimState.CAST: preload("res://assets/models/fat-nate/punch_combo.glb"),
-		AnimState.DEATH: preload("res://assets/models/fat-nate/dead.glb"),
+		AnimState.IDLE: base_model,
+		AnimState.WALK: base_model,
+		AnimState.ATTACK: attack_model,
+		AnimState.CAST: cast_model,
+		AnimState.DEATH: death_model,
 	}
 
 	# Set up the initial model
@@ -134,12 +150,10 @@ func _apply_hero_materials() -> void:
 			var mat = StandardMaterial3D.new()
 			var surface_name = mi.mesh.surface_get_material(i).resource_name if mi.mesh.surface_get_material(i) else ""
 			if "Dots" in surface_name or i == 0:
-				# Outfit/dots pattern — dark blue
-				mat.albedo_color = Color(0.15, 0.25, 0.5)
+				mat.albedo_color = _char_primary_color
 				mat.roughness = 0.8
 			else:
-				# Skin/body — warm flesh tone
-				mat.albedo_color = Color(0.87, 0.72, 0.58)
+				mat.albedo_color = _char_secondary_color
 				mat.roughness = 0.7
 			mat.emission_enabled = true
 			mat.emission = mat.albedo_color * 0.15
