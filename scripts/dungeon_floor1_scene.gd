@@ -110,6 +110,9 @@ func _ready() -> void:
 	# Start run timer
 	GameManager.start_run()
 
+	# Floor archetype system — pick and start archetype for this floor
+	_setup_archetype(FloorManager.current_floor)
+
 	# The Deep effects (Floor 4+) — reality distortion, camera flickers
 	var deep_script = preload("res://scripts/deep_effects.gd")
 	_deep_effects = CanvasLayer.new()
@@ -212,8 +215,12 @@ func _on_floor_transition_midpoint() -> void:
 		hero.current_speed = 0.0
 
 func _on_floor_changed(floor_number: int) -> void:
-	# Spawn enemies for the new floor
-	_spawn_floor_enemies(floor_number)
+	# Set up new floor archetype before spawning enemies
+	_setup_archetype(floor_number)
+
+	# Spawn enemies for the new floor (if archetype uses default spawning)
+	if FloorManager.current_archetype and FloorManager.current_archetype.uses_default_enemy_spawning():
+		_spawn_floor_enemies(floor_number)
 
 	# Re-add room lights
 	_add_room_lights()
@@ -406,3 +413,64 @@ func _on_tutorial_completed() -> void:
 	SmusherTimer.dungeon_builder = $DungeonBuilder
 	SmusherTimer.start_timer()
 	FloorManager.go_to_next_floor()
+
+# ---------- ARCHETYPE SYSTEM ----------
+
+func _process(delta: float) -> void:
+	# Update active floor archetype each frame
+	if FloorManager.current_archetype and FloorManager.current_archetype._is_active:
+		FloorManager.current_archetype.update(delta)
+
+func _setup_archetype(floor_num: int) -> void:
+	# Tear down previous archetype
+	_teardown_archetype()
+
+	# Pick new archetype
+	var archetype = FloorManager.pick_archetype(floor_num)
+	FloorManager.current_archetype = archetype
+
+	# Set up with dungeon references
+	archetype.setup($DungeonBuilder, $Units, floor_num)
+
+	# Connect archetype UI messages to HUD
+	archetype.archetype_ui_message.connect(_on_archetype_message)
+
+	# Connect floor completion to exit unlock
+	archetype.floor_completed.connect(_on_archetype_completed)
+
+	# Add archetype HUD overlay
+	var overlay = archetype.create_hud_overlay()
+	if overlay:
+		var hud = get_tree().current_scene.get_node_or_null("HUD")
+		if hud:
+			hud.add_child(overlay)
+
+	# If archetype doesn't use default spawning, clear default enemies
+	if not archetype.uses_default_enemy_spawning():
+		_clear_enemies()
+
+	# Start the archetype
+	archetype.start()
+
+func _teardown_archetype() -> void:
+	if FloorManager.current_archetype:
+		FloorManager.current_archetype.stop()
+		FloorManager.current_archetype.destroy_hud_overlay()
+		if FloorManager.current_archetype.archetype_ui_message.is_connected(_on_archetype_message):
+			FloorManager.current_archetype.archetype_ui_message.disconnect(_on_archetype_message)
+		if FloorManager.current_archetype.floor_completed.is_connected(_on_archetype_completed):
+			FloorManager.current_archetype.floor_completed.disconnect(_on_archetype_completed)
+		FloorManager.current_archetype = null
+
+func _on_archetype_message(text: String, color: Color, duration: float) -> void:
+	# Route archetype messages to the Narrator for floating text
+	if Narrator and Narrator.has_method("show_commentary"):
+		Narrator.show_commentary(text)
+
+func _on_archetype_completed() -> void:
+	# Archetype win condition met — unlock exit
+	var builder = $DungeonBuilder
+	if builder and builder.exit_zone:
+		# Make exit portal visible/active
+		builder.exit_zone.monitoring = true
+		builder.exit_zone.visible = true

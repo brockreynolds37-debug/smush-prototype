@@ -133,7 +133,12 @@ func show_loading(floor_number: int) -> void:
 	else:
 		floor_name = "Floor %d" % floor_number
 
-	_floor_label.text = "Entering %s" % floor_name
+	# Show archetype name if non-standard
+	var archetype_suffix := ""
+	if FloorManager.current_archetype and FloorManager.current_archetype.archetype_name != "Dungeon Crawl":
+		archetype_suffix = " — %s" % FloorManager.current_archetype.archetype_name
+
+	_floor_label.text = "Entering %s%s" % [floor_name, archetype_suffix]
 	_dots_label.text = ""
 
 	# Random tip

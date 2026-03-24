@@ -19,6 +19,7 @@ const CRITICAL_THRESHOLD := 60.0  # 1 minute
 
 var time_remaining: float = DEFAULT_DURATION
 var is_running: bool = false
+var time_scale: float = 1.0  # Archetypes can speed up/slow down the timer
 var is_overtime: bool = false
 var overtime_elapsed: float = 0.0
 var _collapse_timer: float = 0.0
@@ -41,7 +42,7 @@ func _process(delta: float) -> void:
 		return
 
 	if not is_overtime:
-		time_remaining -= delta
+		time_remaining -= delta * time_scale
 		time_updated.emit(time_remaining)
 
 		# Warning thresholds
