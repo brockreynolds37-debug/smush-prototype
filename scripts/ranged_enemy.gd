@@ -53,6 +53,7 @@ const KITE_CHANGE_INTERVAL: float = 1.5  # Change strafe direction
 var _arrow_scene: PackedScene
 
 func _ready() -> void:
+	add_to_group("enemies")
 	GameManager.register_enemy(self)
 	spawn_position = global_position
 

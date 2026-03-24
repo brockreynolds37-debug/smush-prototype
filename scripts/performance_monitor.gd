@@ -51,11 +51,12 @@ func _process(delta: float) -> void:
 		else:
 			_fps_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 
-	# LOD checks
+	# LOD checks + particle cull
 	_lod_timer += delta
 	if _lod_timer >= LOD_CHECK_INTERVAL:
 		_lod_timer = 0.0
 		_update_lod()
+		_enforce_particle_limit()
 
 	# Periodic frame time logging
 	_log_timer += delta
@@ -150,12 +151,32 @@ func register_particle_system(particles: GPUParticles3D) -> bool:
 	if _active_particle_systems.size() >= MAX_ACTIVE_PARTICLES:
 		# Kill the oldest particle system
 		if _active_particle_systems.size() > 0:
-			var oldest := _active_particle_systems[0]
+			var oldest: GPUParticles3D = _active_particle_systems[0]
 			if is_instance_valid(oldest):
 				oldest.emitting = false
 			_active_particle_systems.remove_at(0)
 	_active_particle_systems.append(particles)
 	return true
+
+func _enforce_particle_limit() -> void:
+	## Auto-scan the scene tree for emitting GPUParticles3D and enforce the cap.
+	## Called during LOD checks so no manual registration is required.
+	var all_particles := get_tree().get_nodes_in_group("particles")
+	if all_particles.is_empty():
+		return  # Nothing registered; skip scan
+	var emitting: Array[GPUParticles3D] = []
+	for node in all_particles:
+		if node is GPUParticles3D and is_instance_valid(node) and node.emitting:
+			emitting.append(node)
+	# Sort by distance from camera — keep closest, cull farthest
+	var camera := get_viewport().get_camera_3d()
+	if camera and emitting.size() > MAX_ACTIVE_PARTICLES:
+		emitting.sort_custom(func(a, b):
+			return camera.global_position.distance_to(a.global_position) < \
+			       camera.global_position.distance_to(b.global_position)
+		)
+		for i in range(MAX_ACTIVE_PARTICLES, emitting.size()):
+			emitting[i].emitting = false
 
 func get_active_particle_count() -> int:
 	_active_particle_systems = _active_particle_systems.filter(
@@ -183,7 +204,7 @@ func get_frame_stats_summary() -> String:
 	var min_fps := 999.0
 	var max_fps := 0.0
 	for t in _frame_times:
-		var f := 1.0 / t if t > 0 else 0
+		var f: float = 1.0 / t if t > 0 else 0.0
 		min_fps = min(min_fps, f)
 		max_fps = max(max_fps, f)
 	if _frame_times.is_empty():

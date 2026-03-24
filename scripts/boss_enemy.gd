@@ -63,6 +63,7 @@ var active_model: Node3D = null
 @onready var attack_timer: Timer = $AttackTimer
 
 func _ready() -> void:
+	add_to_group("enemies")
 	GameManager.register_enemy(self)
 	spawn_position = global_position
 
