@@ -426,10 +426,13 @@ func _cast_heal() -> void:
 	_set_model_color(Color(0.2, 1.0, 0.3))
 	AudioManager.on_hero_cast_heal()
 
+	var hp_ratio_before := float(current_health) / float(max_health)
+
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * 1.2, 0.3)
 	tween.tween_callback(func():
 		var heal_amount = int(150 * _get_spell_power())
+		Narrator.on_hero_healed(hp_ratio_before)
 		current_health = mini(current_health + heal_amount, max_health)
 		health_changed.emit(current_health, max_health)
 		GameManager.request_damage_number(global_position + Vector3.UP * 2.5, heal_amount, false)

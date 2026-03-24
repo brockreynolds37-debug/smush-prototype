@@ -107,6 +107,7 @@ func _boss_intro() -> void:
 	tween.tween_callback(func():
 		GameManager.request_screen_shake(4.0, 0.3)
 		AudioManager.on_boss_spawn()
+		Narrator.announce_boss()
 	)
 
 func _cache_mesh_instances() -> void:

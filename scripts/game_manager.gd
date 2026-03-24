@@ -99,6 +99,7 @@ func reset_game_state() -> void:
 	StatusEffectManager.reset()
 	FloorManager.reset()
 	RunStats.reset()
+	Narrator.reset()
 
 func register_camera(c: Node3D) -> void:
 	camera = c

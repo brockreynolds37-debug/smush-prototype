@@ -9,6 +9,7 @@ signal mood_changed(new_mood: int)
 signal audience_comment(text: String, color: Color)
 signal boredom_started()
 signal boredom_ended()
+signal gift_spawned(gift_type: int)
 
 # ----- VP State -----
 var total_vp: int = 0
@@ -99,10 +100,19 @@ const ERUPTING_COMMENTS := [
 	"LEGENDARY", "THIS CRAWLER IS BUILT DIFFERENT", "GOAT STATUS",
 ]
 
+# ----- Audience Gifts -----
+var _gift_cooldown: float = 0.0
+const GIFT_COOLDOWN_TIME: float = 20.0  # Seconds between gift drops
+const GIFT_CHANCE_EXCITED: float = 0.4  # 40% on reaching Excited
+const GIFT_CHANCE_ERUPTING: float = 0.8  # 80% on reaching Erupting
+const CRUEL_TRICK_CHANCE: float = 0.2  # 20% of gifts are cruel tricks
+var _gift_script: GDScript = null
+
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
+	_gift_script = load("res://scripts/audience_gift.gd")
 	GameManager.enemy_died.connect(_on_enemy_died)
 	GameManager.all_enemies_cleared.connect(_on_floor_cleared)
 	FloorManager.floor_changed.connect(_on_floor_changed)
@@ -110,6 +120,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if GameManager.game_state != GameManager.GameState.PLAYING:
 		return
+
+	# Gift cooldown
+	if _gift_cooldown > 0:
+		_gift_cooldown -= delta
 
 	# Boredom tracking
 	_bored_timer += delta
@@ -140,10 +154,15 @@ func _update_mood() -> void:
 			new_mood = i
 			break
 	if new_mood != current_mood:
+		var old_mood := current_mood
 		current_mood = new_mood
 		mood_changed.emit(new_mood)
 		if new_mood == Mood.ERUPTING:
 			_emit_comment(ERUPTING_COMMENTS, MOOD_COLORS[Mood.ERUPTING])
+
+		# Audience gifts — only on upward mood transitions
+		if new_mood > old_mood:
+			_try_spawn_gift(new_mood)
 
 # ----- Event Handlers -----
 
@@ -285,6 +304,63 @@ func get_mood_name() -> String:
 func get_mood_color() -> Color:
 	return MOOD_COLORS[current_mood]
 
+# ----- Audience Gifts -----
+
+func _try_spawn_gift(mood: int) -> void:
+	if _gift_cooldown > 0:
+		return
+	if GameManager.hero == null or GameManager.hero.is_dead:
+		return
+
+	var chance: float = 0.0
+	if mood == Mood.EXCITED:
+		chance = GIFT_CHANCE_EXCITED
+	elif mood == Mood.ERUPTING:
+		chance = GIFT_CHANCE_ERUPTING
+	else:
+		return
+
+	if _rng.randf() > chance:
+		return
+
+	_gift_cooldown = GIFT_COOLDOWN_TIME
+	_spawn_gift()
+
+func _spawn_gift() -> void:
+	var hero = GameManager.hero
+	if hero == null or not is_instance_valid(hero):
+		return
+
+	# Pick gift type — weighted by mood
+	var gift_type: int = _pick_gift_type()
+
+	var gift := Node3D.new()
+	gift.set_script(_gift_script)
+	gift.gift_type = gift_type
+
+	# Spawn above hero with slight random offset
+	var offset := Vector3(_rng.randf_range(-2.0, 2.0), 0.0, _rng.randf_range(-2.0, 2.0))
+	gift.position = hero.global_position + offset + Vector3.UP * 15.0
+
+	var tree := get_tree()
+	if tree and tree.root:
+		tree.root.add_child(gift)
+		gift_spawned.emit(gift_type)
+
+func _pick_gift_type() -> int:
+	# GiftType enum from audience_gift.gd: HEAL=0, MANA=1, WEAPON=2, CRUEL_TRICK=3
+	if _rng.randf() < CRUEL_TRICK_CHANCE:
+		return 3  # CRUEL_TRICK
+
+	# Weighted roll for beneficial gifts
+	var roll := _rng.randf()
+	if roll < 0.45:
+		return 0  # HEAL
+	elif roll < 0.75:
+		return 1  # MANA
+	else:
+		return 2  # WEAPON
+
 # ----- Reset -----
 
 func reset() -> void:
@@ -298,3 +374,4 @@ func reset() -> void:
 	_recent_spells.clear()
 	_near_death_active = false
 	_near_death_timer = 0.0
+	_gift_cooldown = 0.0

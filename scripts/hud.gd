@@ -85,6 +85,8 @@ func _ready() -> void:
 	_setup_status_icons()
 	StatusEffectManager.effect_applied.connect(_on_status_effect_applied)
 	StatusEffectManager.effect_removed.connect(_on_status_effect_removed)
+	# Narrator
+	Narrator.narrator_says.connect(_on_narrator_says)
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -451,6 +453,45 @@ func _on_status_effect_removed(target: Node3D, etype: int) -> void:
 		var tween = create_tween()
 		tween.tween_property(icon, "scale", Vector2(0.0, 0.0), 0.1)
 		tween.tween_callback(icon.queue_free)
+
+# ---------- NARRATOR ----------
+
+var _narrator_label: Label = null
+
+func _on_narrator_says(text: String, color: Color, size: int) -> void:
+	# Remove previous narrator text if still showing
+	if _narrator_label and is_instance_valid(_narrator_label):
+		_narrator_label.queue_free()
+
+	_narrator_label = Label.new()
+	_narrator_label.text = text
+	_narrator_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_narrator_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_narrator_label.anchors_preset = Control.PRESET_CENTER_TOP
+	_narrator_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_narrator_label.offset_left = -500.0
+	_narrator_label.offset_right = 500.0
+	_narrator_label.offset_top = 140.0
+	_narrator_label.offset_bottom = 190.0
+	_narrator_label.add_theme_color_override("font_color", color)
+	_narrator_label.add_theme_font_size_override("font_size", size)
+	_narrator_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_narrator_label.add_theme_constant_override("shadow_offset_x", 2)
+	_narrator_label.add_theme_constant_override("shadow_offset_y", 2)
+	_narrator_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_narrator_label.modulate = Color(1, 1, 1, 0)
+	add_child(_narrator_label)
+
+	# Dramatic fade: in → hold → out
+	var tween := create_tween()
+	tween.tween_property(_narrator_label, "modulate:a", 1.0, 0.4).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(2.5)
+	tween.tween_property(_narrator_label, "modulate:a", 0.0, 1.0).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func():
+		if _narrator_label and is_instance_valid(_narrator_label):
+			_narrator_label.queue_free()
+			_narrator_label = null
+	)
 
 func _on_retry_pressed() -> void:
 	GameManager.reset_game_state()
