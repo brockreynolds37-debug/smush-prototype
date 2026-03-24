@@ -3,6 +3,8 @@ extends Node
 ## THE SMUSHER — 30-minute countdown timer per floor.
 ## At 0:00, rooms collapse from entry-side toward exit, 1 room per 3 seconds.
 ## 60 seconds overtime before total collapse. Player in collapsed room = instant death.
+## Enemies do NOT flee the Smush — they're too dumb/aggressive. Players can kite
+## enemies into collapsing rooms for "Smush kills" with massive VP bonuses.
 
 signal time_updated(seconds_remaining: float)
 signal warning_phase_entered  # < 5 minutes
@@ -30,6 +32,22 @@ var _collapsed_rooms: Array[int] = []
 # Track warning states to emit signals only once
 var _warned_5min: bool = false
 var _warned_1min: bool = false
+
+# Smush kill tracking
+var smush_kills: int = 0
+var _smush_kill_total_run: int = 0
+
+const SMUSH_KILL_VP := 80  # Huge bonus per enemy crushed
+const SMUSH_NARRATOR_LINES := [
+	"The Smusher claims another victim! The audience LOVES it!",
+	"Crushed by the arena itself. That's tactical genius... or cruelty.",
+	"The Collective designed the Smush for THIS exact moment!",
+	"Lured into the collapse zone! The viewers are screaming!",
+	"Smush kill! The audience is losing their minds!",
+	"That enemy just got Smushed. There's no coming back from that.",
+	"Using the arena as a weapon? The Collective approves!",
+	"The floor ate them alive. The crowd goes wild!",
+]
 
 # Reference to dungeon builder for room positions
 var dungeon_builder: Node3D = null
@@ -73,8 +91,9 @@ func _process(delta: float) -> void:
 			_kill_hero("THE SMUSHER")
 			is_running = false
 
-		# Check if hero is in a collapsed room
+		# Check if hero or enemies are in collapsed rooms
 		_check_hero_in_collapsed_room()
+		_check_enemies_in_collapsed_rooms()
 
 func start_timer(duration: float = DEFAULT_DURATION) -> void:
 	time_remaining = duration
@@ -100,9 +119,12 @@ func reset() -> void:
 	_collapsed_rooms.clear()
 	_warned_5min = false
 	_warned_1min = false
+	smush_kills = 0
+	_smush_kill_total_run = 0
 
 func _on_floor_changed(_floor_num: int) -> void:
 	# Reset and restart timer for new floor
+	smush_kills = 0
 	start_timer()
 
 func _start_overtime() -> void:
@@ -158,6 +180,61 @@ func _check_hero_in_collapsed_room() -> void:
 			_kill_hero("CRUSHED")
 			return
 
+func _check_enemies_in_collapsed_rooms() -> void:
+	if _collapsed_rooms.is_empty() or not dungeon_builder:
+		return
+
+	var enemies_to_kill: Array[Node3D] = []
+	for e in GameManager.enemies:
+		if not is_instance_valid(e) or e.is_dead:
+			continue
+		var epos: Vector3 = e.global_position
+		var ecell := Vector2i(
+			roundi(epos.x / dungeon_builder.TILE_SIZE),
+			roundi(epos.z / dungeon_builder.TILE_SIZE)
+		)
+		for room_idx in _collapsed_rooms:
+			if room_idx >= dungeon_builder.rooms.size():
+				continue
+			var room: Dictionary = dungeon_builder.rooms[room_idx]
+			var rpos: Vector2i = room["pos"]
+			var rsize: Vector2i = room["size"]
+			if ecell.x >= rpos.x and ecell.x < rpos.x + rsize.x \
+					and ecell.y >= rpos.y and ecell.y < rpos.y + rsize.y:
+				enemies_to_kill.append(e)
+				break
+
+	for e in enemies_to_kill:
+		_smush_kill_enemy(e)
+
+func _smush_kill_enemy(enemy: Node3D) -> void:
+	if not is_instance_valid(enemy) or enemy.is_dead:
+		return
+
+	# Instant kill via massive damage
+	if enemy.has_method("take_damage"):
+		enemy.take_damage(99999)
+
+	smush_kills += 1
+	_smush_kill_total_run += 1
+
+	# Massive VP bonus
+	AudienceManager.grant_vp(SMUSH_KILL_VP, "SMUSH KILL!")
+	SolutionPathTracker.record_environmental_kill()
+
+	# Narrator line (50% chance per kill to avoid spam)
+	if randf() < 0.5:
+		var line: String = SMUSH_NARRATOR_LINES[randi() % SMUSH_NARRATOR_LINES.size()]
+		Narrator.queue_line(line, Color(1.0, 0.3, 0.1))
+
+	# Screen shake for satisfaction
+	GameManager.request_screen_shake(0.4, 0.3)
+
+	# Damage number at enemy position
+	GameManager.request_damage_number(
+		enemy.global_position + Vector3.UP, 99999, true
+	)
+
 func _kill_hero(cause: String) -> void:
 	if GameManager.hero and not GameManager.hero.is_dead:
 		if GameManager.hero.has_method("take_damage"):
@@ -188,3 +265,15 @@ func get_phase() -> String:
 		return "warning"
 	else:
 		return "normal"
+
+## Returns total Smush kills for the current floor
+func get_floor_smush_kills() -> int:
+	return smush_kills
+
+## Returns total Smush kills for the entire run
+func get_run_smush_kills() -> int:
+	return _smush_kill_total_run
+
+## Returns true if timer is in a danger phase where enemies can be Smushed
+func is_smushable_phase() -> bool:
+	return is_overtime and not _collapsed_rooms.is_empty()
