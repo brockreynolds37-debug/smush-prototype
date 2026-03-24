@@ -120,6 +120,7 @@ func reset_game_state() -> void:
 	LootManager.gold = 0
 	LootManager.inventory.clear()
 	LootManager.equipped.clear()
+	RunModifiers.reset()
 	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:

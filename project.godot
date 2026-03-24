@@ -46,6 +46,7 @@ Leaderboard="*res://scripts/leaderboard.gd"
 ReplayManager="*res://scripts/replay_manager.gd"
 ChatConsole="*res://scripts/chat_console.gd"
 FloorCinematic="*res://scripts/floor_cinematic.gd"
+RunModifiers="*res://scripts/run_modifiers.gd"
 
 [display]
 

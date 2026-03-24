@@ -23,6 +23,14 @@ var spell_set_label: Label = null
 var spell_names_label: Label = null
 var current_spell_set: int = 0
 
+# Modifier selection
+var _modifier_btn: Button = null
+var _modifier_overlay: PanelContainer = null
+var _modifier_offered: Array[Dictionary] = []
+var _modifier_selected: Array[Dictionary] = []
+var _modifier_buttons: Array[Button] = []
+var _modifier_summary_label: Label = null
+
 # Camera
 var cam: Camera3D = null
 
@@ -323,6 +331,41 @@ func _build_ui() -> void:
 	start_button.pressed.connect(_on_start)
 	canvas.add_child(start_button)
 
+	# --- Modifier button (below start) ---
+	_modifier_btn = Button.new()
+	_modifier_btn.text = "MODIFIERS (0/2)"
+	_modifier_btn.add_theme_font_size_override("font_size", 14)
+	_modifier_btn.custom_minimum_size = Vector2(200, 35)
+	_modifier_btn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_modifier_btn.offset_left = -100
+	_modifier_btn.offset_right = 100
+	_modifier_btn.offset_top = -248
+	_modifier_btn.offset_bottom = -218
+	_modifier_btn.flat = true
+	_modifier_btn.add_theme_color_override("font_color", Color(0.7, 0.5, 0.9))
+	_modifier_btn.add_theme_color_override("font_hover_color", Color(0.9, 0.6, 1.0))
+	_modifier_btn.pressed.connect(_on_modifier_btn)
+	canvas.add_child(_modifier_btn)
+
+	# Modifier summary label
+	_modifier_summary_label = Label.new()
+	_modifier_summary_label.text = "No modifiers selected"
+	_modifier_summary_label.add_theme_font_size_override("font_size", 11)
+	_modifier_summary_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	_modifier_summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_modifier_summary_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_modifier_summary_label.offset_left = -200
+	_modifier_summary_label.offset_right = 200
+	_modifier_summary_label.offset_top = -215
+	_modifier_summary_label.offset_bottom = -200
+	canvas.add_child(_modifier_summary_label)
+
+	# Build modifier overlay (hidden)
+	_build_modifier_overlay(canvas)
+
+	# Pre-roll offered modifiers
+	_modifier_offered = RunModifiers.get_offered_modifiers()
+
 	# Character counter dots
 	var dot_container = HBoxContainer.new()
 	dot_container.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -458,6 +501,10 @@ func _on_start() -> void:
 	var data = CharacterData.characters[current_index]
 	CharacterData.select(data["id"], current_spell_set)
 
+	# Apply run modifiers
+	RunModifiers.set_active_modifiers(_modifier_selected)
+	RunModifiers.apply_modifiers()
+
 	# Route to tutorial floor (Floor 0) on first play, otherwise Floor 1
 	if TutorialManager.should_show_tutorial():
 		FloorManager.current_floor = 0
@@ -508,7 +555,14 @@ func _update_spell_set_display(data: Dictionary) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if is_transitioning:
 		return
+	# Close modifier overlay with ESC
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _modifier_overlay and _modifier_overlay.visible:
+			_modifier_overlay.visible = false
+			return
 	if event is InputEventKey and event.pressed:
+		if _modifier_overlay and _modifier_overlay.visible:
+			return  # Block other keys while modifier overlay is open
 		match event.keycode:
 			KEY_LEFT, KEY_A:
 				_on_prev()
@@ -518,3 +572,125 @@ func _unhandled_input(event: InputEvent) -> void:
 				_on_start()
 			KEY_TAB:
 				_on_spell_set_toggle()
+			KEY_M:
+				_on_modifier_btn()
+
+# ── MODIFIER SELECTION ──
+
+func _build_modifier_overlay(canvas: CanvasLayer) -> void:
+	_modifier_overlay = PanelContainer.new()
+	_modifier_overlay.name = "ModifierOverlay"
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.04, 0.08, 0.95)
+	style.border_color = Color(0.5, 0.3, 0.7)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(16)
+	_modifier_overlay.add_theme_stylebox_override("panel", style)
+	_modifier_overlay.set_anchors_preset(Control.PRESET_CENTER)
+	_modifier_overlay.custom_minimum_size = Vector2(500, 400)
+	_modifier_overlay.offset_left = -250
+	_modifier_overlay.offset_right = 250
+	_modifier_overlay.offset_top = -200
+	_modifier_overlay.offset_bottom = 200
+	_modifier_overlay.visible = false
+	canvas.add_child(_modifier_overlay)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	_modifier_overlay.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "RUN MODIFIERS (pick 0-2)"
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(0.7, 0.5, 0.9))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var desc = Label.new()
+	desc.text = "Click to toggle. Modifiers add challenge and variety."
+	desc.add_theme_font_size_override("font_size", 12)
+	desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(desc)
+
+	var sep = HSeparator.new()
+	vbox.add_child(sep)
+
+	# Modifier buttons will be populated when overlay opens
+	var mod_container = VBoxContainer.new()
+	mod_container.name = "ModContainer"
+	mod_container.add_theme_constant_override("separation", 6)
+	vbox.add_child(mod_container)
+
+	var close_btn = Button.new()
+	close_btn.text = "CLOSE"
+	close_btn.add_theme_font_size_override("font_size", 16)
+	close_btn.custom_minimum_size = Vector2(120, 35)
+	close_btn.pressed.connect(func(): _modifier_overlay.visible = false)
+	vbox.add_child(close_btn)
+
+func _on_modifier_btn() -> void:
+	if _modifier_overlay.visible:
+		_modifier_overlay.visible = false
+		return
+
+	# Populate modifier buttons
+	var container = _modifier_overlay.get_node("VBoxContainer/ModContainer") if _modifier_overlay.has_node("VBoxContainer/ModContainer") else null
+	if container == null:
+		# Find it manually
+		for child in _modifier_overlay.get_children():
+			if child is VBoxContainer:
+				container = child.get_node_or_null("ModContainer")
+				break
+
+	if container:
+		# Clear old buttons
+		for child in container.get_children():
+			child.queue_free()
+		_modifier_buttons.clear()
+
+		for mod in _modifier_offered:
+			var btn = Button.new()
+			var is_selected := mod in _modifier_selected
+			btn.text = "%s %s — %s" % ["[X]" if is_selected else "[ ]", mod.get("name", "?"), mod.get("description", "")]
+			btn.add_theme_font_size_override("font_size", 13)
+			btn.add_theme_color_override("font_color", mod.get("color", Color.WHITE) if is_selected else Color(0.6, 0.6, 0.6))
+			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			btn.custom_minimum_size = Vector2(460, 40)
+			btn.pressed.connect(_on_modifier_toggled.bind(mod, btn))
+			container.add_child(btn)
+			_modifier_buttons.append(btn)
+
+	_modifier_overlay.visible = true
+
+func _on_modifier_toggled(mod: Dictionary, btn: Button) -> void:
+	if mod in _modifier_selected:
+		_modifier_selected.erase(mod)
+	elif _modifier_selected.size() < RunModifiers.MAX_ACTIVE:
+		_modifier_selected.append(mod)
+	else:
+		return  # Can't select more
+
+	# Update button appearance
+	var is_selected := mod in _modifier_selected
+	btn.text = "%s %s — %s" % ["[X]" if is_selected else "[ ]", mod.get("name", "?"), mod.get("description", "")]
+	btn.add_theme_color_override("font_color", mod.get("color", Color.WHITE) if is_selected else Color(0.6, 0.6, 0.6))
+
+	# Update summary
+	_update_modifier_summary()
+
+func _update_modifier_summary() -> void:
+	if _modifier_btn:
+		_modifier_btn.text = "MODIFIERS (%d/%d)" % [_modifier_selected.size(), RunModifiers.MAX_ACTIVE]
+
+	if _modifier_summary_label:
+		if _modifier_selected.is_empty():
+			_modifier_summary_label.text = "No modifiers selected"
+			_modifier_summary_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		else:
+			var names: Array[String] = []
+			for m in _modifier_selected:
+				names.append(m.get("name", "?"))
+			_modifier_summary_label.text = ", ".join(names)
+			_modifier_summary_label.add_theme_color_override("font_color", Color(0.7, 0.5, 0.9))
