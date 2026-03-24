@@ -131,6 +131,7 @@ func reset_game_state() -> void:
 	AudienceBlocs.reset()
 	BriberySystem.reset()
 	FloorArchetypeManager.reset()
+	SmusherTimer.reset()
 	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:

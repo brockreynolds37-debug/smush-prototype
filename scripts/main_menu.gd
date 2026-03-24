@@ -329,14 +329,12 @@ func _on_new_game() -> void:
 		return
 	is_transitioning = true
 	SaveManager.delete_save()
+	GameManager.reset_game_state()
 	# First-time players get a tutorial floor before character select
 	if TutorialManager.should_show_tutorial():
-		GameManager.reset_game_state()
 		FloorManager.current_floor = 0
 		TutorialManager.is_tutorial_active = true
-		_fade_to_scene("res://scenes/character_select.tscn")
-	else:
-		_fade_to_scene("res://scenes/character_select.tscn")
+	_fade_to_scene("res://scenes/character_select.tscn")
 
 func _fade_to_scene(scene_path: String) -> void:
 	var overlay = ColorRect.new()

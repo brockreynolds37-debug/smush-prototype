@@ -398,6 +398,7 @@ func _on_main_menu() -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
+	GameManager.reset_game_state()
 	_fade_to_scene("res://scenes/main_menu.tscn")
 
 # ── HELPERS ──
