@@ -513,6 +513,7 @@ func _attempt_steal(npc: Node3D, hero: Node3D, item: Dictionary) -> void:
 		show_message("CAUGHT STEALING! Guards inbound!", Color(1.0, 0.1, 0.1), 2.5)
 		GameManager.request_screen_shake(4.0, 0.2)
 		_alert_all_guards()
+		CrossFloorConsequences.set_tag(CrossFloorConsequences.TAG_MERCHANT_ROBBED)
 
 func _alert_all_guards() -> void:
 	for guard in _guards:

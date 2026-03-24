@@ -490,6 +490,7 @@ func _check_election() -> void:
 		_win_path = WinPath.ELECTED
 		show_message("ELECTION WON! You are the new mayor!", Color(0.2, 1.0, 0.4), 4.0)
 		AudienceManager.grant_vp(80, "Elected mayor!")
+		CrossFloorConsequences.set_tag(CrossFloorConsequences.TAG_MAYOR_ELECTED)
 		GameManager.request_screen_shake(3.0, 0.2)
 		_unlock_exit()
 
@@ -541,6 +542,7 @@ func _on_mayor_killed() -> void:
 
 	show_message("MAYOR ASSASSINATED! Chaos erupts!", Color(1.0, 0.1, 0.1), 4.0)
 	AudienceManager.grant_vp(60, "Mayor assassinated!")
+	CrossFloorConsequences.set_tag(CrossFloorConsequences.TAG_MAYOR_ASSASSINATED)
 	GameManager.request_screen_shake(5.0, 0.3)
 
 	# All guards go hostile

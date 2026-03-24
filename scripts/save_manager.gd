@@ -93,6 +93,14 @@ func _gather_save_data() -> Dictionary:
 			"points": SkillTree.skill_points,
 			"unlocked": SkillTree.unlocked_skills.duplicate(),
 		},
+		"cross_floor": {
+			"tags": CrossFloorConsequences.tags.duplicate(true),
+			"pending": CrossFloorConsequences._pending.duplicate(true),
+		},
+		"solution_paths": {
+			"floor_history": SolutionPathTracker.floor_history.duplicate(true),
+			"last_three": SolutionPathTracker.last_three_paths.duplicate(),
+		},
 	}
 
 func apply_save_data(data: Dictionary) -> void:
@@ -147,6 +155,24 @@ func apply_save_data(data: Dictionary) -> void:
 	SkillTree.unlocked_skills.clear()
 	for sid in skill_data.get("unlocked", []):
 		SkillTree.unlocked_skills.append(str(sid))
+
+	# Restore cross-floor consequences
+	var cf_data: Dictionary = data.get("cross_floor", {})
+	if not cf_data.is_empty():
+		CrossFloorConsequences.tags = cf_data.get("tags", {})
+		CrossFloorConsequences._pending.clear()
+		for p in cf_data.get("pending", []):
+			CrossFloorConsequences._pending.append(p)
+
+	# Restore solution path history
+	var sp_data: Dictionary = data.get("solution_paths", {})
+	if not sp_data.is_empty():
+		SolutionPathTracker.floor_history.clear()
+		for entry in sp_data.get("floor_history", []):
+			SolutionPathTracker.floor_history.append(entry)
+		SolutionPathTracker.last_three_paths.clear()
+		for p in sp_data.get("last_three", []):
+			SolutionPathTracker.last_three_paths.append(p)
 
 func apply_hero_state(data: Dictionary) -> void:
 	## Call after hero is spawned to restore HP/Mana from save.

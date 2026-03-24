@@ -321,6 +321,7 @@ func _trigger_alarm(spotter: CharacterBody3D) -> void:
 	_alarm_timer = 0.0
 
 	show_message("ALARM! YOU'VE BEEN SPOTTED!", Color(1.0, 0.0, 0.0), 3.0)
+	CrossFloorConsequences.set_tag(CrossFloorConsequences.TAG_GUARDS_ALERTED)
 	GameManager.request_screen_shake(6.0, 0.3)
 
 	if AudioManager.has_method("play_sfx"):
