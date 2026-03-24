@@ -70,6 +70,9 @@ func _ready() -> void:
 		quit_btn.pressed.connect(_on_quit_menu_pressed)
 	LootManager.item_picked_up.connect(_on_item_picked_up)
 	LootManager.gold_changed.connect(_on_gold_changed)
+	# Accessibility: apply text scale to key labels
+	_apply_text_scale()
+	AccessibilitySettings.settings_changed.connect(_apply_text_scale)
 	# Smusher Timer
 	SmusherTimer.time_updated.connect(_on_smusher_time_updated)
 	SmusherTimer.warning_phase_entered.connect(_on_smusher_warning)
@@ -510,9 +513,11 @@ func _on_status_effect_applied(target: Node3D, etype: int, _duration: float) -> 
 	icon.custom_minimum_size = Vector2(28, 28)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# Colored background
+	# Colored background (colorblind-aware for poison)
 	var style := StyleBoxFlat.new()
 	var color: Color = StatusEffectManager.EFFECT_COLORS[etype]
+	if etype == StatusEffectManager.EffectType.POISON:
+		color = AccessibilitySettings.get_poison_color()
 	style.bg_color = Color(color.r, color.g, color.b, 0.7)
 	style.corner_radius_top_left = 4
 	style.corner_radius_top_right = 4
@@ -615,3 +620,21 @@ func _unhandled_input(event: InputEvent) -> void:
 				_on_retry_pressed()
 			elif event.keycode == KEY_ESCAPE:
 				_on_quit_menu_pressed()
+
+func _apply_text_scale() -> void:
+	## Rescale key HUD labels based on AccessibilitySettings.ui_text_scale.
+	var scale := AccessibilitySettings.ui_text_scale
+	var base_sizes := {
+		"hp_label":      24,
+		"mp_label":      24,
+		"floor_label":   20,
+		"gold_label":    22,
+		"timer_label":   32,
+		"level_label":   20,
+		"xp_label":      18,
+	}
+	for node_name in base_sizes:
+		var node = get_node_or_null(node_name)
+		if node and node is Label:
+			if node.get_theme_font_size("font_size") > 0 or true:
+				node.add_theme_font_size_override("font_size", int(base_sizes[node_name] * scale))

@@ -14,6 +14,14 @@ var _master_label: Label
 var _sfx_label: Label
 var _ambience_label: Label
 
+# Accessibility controls
+var _colorblind_button: Button
+var _shake_slider: HSlider
+var _shake_label: Label
+var _text_scale_button: Button
+var _flash_slider: HSlider
+var _flash_label: Label
+
 const SETTINGS_PATH := "user://settings.cfg"
 
 func _ready() -> void:
@@ -26,6 +34,7 @@ func _ready() -> void:
 func show_menu() -> void:
 	_overlay.visible = true
 	_sync_sliders()
+	_sync_accessibility_controls()
 
 func hide_menu() -> void:
 	_overlay.visible = false
@@ -77,6 +86,7 @@ func _save_settings() -> void:
 	config.set_value("audio", "sfx", AudioManager.sfx_volume if AudioManager else 0.8)
 	config.set_value("audio", "ambience", AudioManager.ambience_volume if AudioManager else 0.3)
 	config.save(SETTINGS_PATH)
+	AccessibilitySettings.save_settings()
 
 func _load_settings() -> void:
 	var config = ConfigFile.new()
@@ -115,8 +125,8 @@ func _build_ui() -> void:
 	main_box.set_anchors_preset(Control.PRESET_CENTER)
 	main_box.offset_left = -260
 	main_box.offset_right = 260
-	main_box.offset_top = -120
-	main_box.offset_bottom = 200
+	main_box.offset_top = -220
+	main_box.offset_bottom = 300
 	main_box.add_theme_constant_override("separation", 8)
 	_overlay.add_child(main_box)
 
@@ -190,6 +200,69 @@ func _build_ui() -> void:
 		key_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
 		controls_grid.add_child(key_label)
 
+	# ---- SEPARATOR 2 ----
+	var sep2 = HSeparator.new()
+	sep2.add_theme_constant_override("separation", 16)
+	sep2.add_theme_stylebox_override("separator", StyleBoxLine.new())
+	main_box.add_child(sep2)
+
+	# ---- ACCESSIBILITY SECTION ----
+	var access_header = Label.new()
+	access_header.text = "ACCESSIBILITY"
+	access_header.add_theme_font_size_override("font_size", 22)
+	access_header.add_theme_color_override("font_color", Color(0.7, 0.65, 0.8))
+	main_box.add_child(access_header)
+
+	# Colorblind mode cycle button
+	var cb_row = HBoxContainer.new()
+	cb_row.add_theme_constant_override("separation", 12)
+	var cb_lbl = Label.new()
+	cb_lbl.text = "Colorblind"
+	cb_lbl.add_theme_font_size_override("font_size", 18)
+	cb_lbl.add_theme_color_override("font_color", Color(0.75, 0.7, 0.8))
+	cb_lbl.custom_minimum_size.x = 100
+	cb_row.add_child(cb_lbl)
+	_colorblind_button = _make_cycle_button()
+	_colorblind_button.pressed.connect(_on_colorblind_cycle)
+	cb_row.add_child(_colorblind_button)
+	main_box.add_child(cb_row)
+
+	# Text scale cycle button
+	var ts_row = HBoxContainer.new()
+	ts_row.add_theme_constant_override("separation", 12)
+	var ts_lbl = Label.new()
+	ts_lbl.text = "Text Size"
+	ts_lbl.add_theme_font_size_override("font_size", 18)
+	ts_lbl.add_theme_color_override("font_color", Color(0.75, 0.7, 0.8))
+	ts_lbl.custom_minimum_size.x = 100
+	ts_row.add_child(ts_lbl)
+	_text_scale_button = _make_cycle_button()
+	_text_scale_button.pressed.connect(_on_text_scale_cycle)
+	ts_row.add_child(_text_scale_button)
+	main_box.add_child(ts_row)
+
+	# Screen shake slider
+	var shake_row = _make_slider_row("Shake")
+	_shake_slider = shake_row[0]
+	_shake_label = shake_row[1]
+	_shake_slider.value = AccessibilitySettings.screen_shake_scale
+	_shake_slider.value_changed.connect(_on_shake_changed)
+	_update_label(_shake_label, AccessibilitySettings.screen_shake_scale)
+	main_box.add_child(shake_row[2])
+
+	# Screen flash slider
+	var flash_row = _make_slider_row("Flash")
+	_flash_slider = flash_row[0]
+	_flash_label = flash_row[1]
+	_flash_slider.value = AccessibilitySettings.screen_flash_scale
+	_flash_slider.value_changed.connect(_on_flash_changed)
+	_update_label(_flash_label, AccessibilitySettings.screen_flash_scale)
+	main_box.add_child(flash_row[2])
+
+	# Sync accessibility button labels
+	_sync_colorblind_label()
+	_sync_text_scale_label()
+
 	# ---- BACK BUTTON ----
 	var back_btn = _make_button("BACK")
 	back_btn.pressed.connect(_on_back)
@@ -241,6 +314,74 @@ func _make_slider_row(label_text: String) -> Array:
 	hbox.add_child(val_label)
 
 	return [slider, val_label, hbox]
+
+# ---------- ACCESSIBILITY CALLBACKS ----------
+
+const CB_MODES := ["off", "deuteranopia", "protanopia", "tritanopia"]
+const CB_LABELS := {"off": "Off", "deuteranopia": "Deuteranopia (Red-Green)", "protanopia": "Protanopia (Red-Green)", "tritanopia": "Tritanopia (Blue-Yellow)"}
+
+const TEXT_SCALES := [1.0, 1.3, 1.6]
+const TEXT_SCALE_LABELS := {1.0: "Normal", 1.3: "Large", 1.6: "Extra Large"}
+
+func _on_colorblind_cycle() -> void:
+	var idx = CB_MODES.find(AccessibilitySettings.colorblind_mode)
+	idx = (idx + 1) % CB_MODES.size()
+	AccessibilitySettings.colorblind_mode = CB_MODES[idx]
+	_sync_colorblind_label()
+	AccessibilitySettings.settings_changed.emit()
+
+func _sync_colorblind_label() -> void:
+	if _colorblind_button:
+		_colorblind_button.text = CB_LABELS.get(AccessibilitySettings.colorblind_mode, "Off")
+
+func _on_text_scale_cycle() -> void:
+	var idx = TEXT_SCALES.find(AccessibilitySettings.ui_text_scale)
+	idx = (idx + 1) % TEXT_SCALES.size()
+	AccessibilitySettings.ui_text_scale = TEXT_SCALES[idx]
+	_sync_text_scale_label()
+	AccessibilitySettings.settings_changed.emit()
+
+func _sync_text_scale_label() -> void:
+	if _text_scale_button:
+		_text_scale_button.text = TEXT_SCALE_LABELS.get(AccessibilitySettings.ui_text_scale, "Normal")
+
+func _on_shake_changed(val: float) -> void:
+	AccessibilitySettings.screen_shake_scale = val
+	_update_label(_shake_label, val)
+
+func _on_flash_changed(val: float) -> void:
+	AccessibilitySettings.screen_flash_scale = val
+	_update_label(_flash_label, val)
+
+func _sync_accessibility_controls() -> void:
+	_sync_colorblind_label()
+	_sync_text_scale_label()
+	if _shake_slider:
+		_shake_slider.value = AccessibilitySettings.screen_shake_scale
+		_update_label(_shake_label, AccessibilitySettings.screen_shake_scale)
+	if _flash_slider:
+		_flash_slider.value = AccessibilitySettings.screen_flash_scale
+		_update_label(_flash_label, AccessibilitySettings.screen_flash_scale)
+
+func _make_cycle_button() -> Button:
+	var btn = Button.new()
+	btn.text = "Off"
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.custom_minimum_size = Vector2(280, 32)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.2, 0.18, 0.25)
+	style.border_color = Color(0.5, 0.45, 0.55)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", style)
+	var style_hover = style.duplicate()
+	style_hover.bg_color = Color(0.3, 0.26, 0.35)
+	style_hover.border_color = Color(0.75, 0.55, 0.2)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	btn.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.95, 0.85))
+	return btn
 
 func _make_button(text: String) -> Button:
 	var btn = Button.new()
