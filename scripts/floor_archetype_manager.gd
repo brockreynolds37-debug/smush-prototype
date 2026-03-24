@@ -9,6 +9,7 @@ var _archetype_pool: Array = [
 	[EscapeArchetype, 2],
 	[SurvivalArenaArchetype, 3],
 	[StealthArchetype, 2],
+	[EconomyArchetype, 2],
 ]
 
 ## Pick an archetype for the given floor number.
