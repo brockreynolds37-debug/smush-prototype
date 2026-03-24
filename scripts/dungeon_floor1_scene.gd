@@ -38,6 +38,10 @@ func _ready() -> void:
 	FloorManager.transition_fade_midpoint.connect(_on_floor_transition_midpoint)
 	FloorManager.floor_changed.connect(_on_floor_changed)
 
+	# Wire Smusher Timer to dungeon builder and start it
+	SmusherTimer.dungeon_builder = $DungeonBuilder
+	SmusherTimer.start_timer()
+
 	# Start dungeon ambience
 	AudioManager.start_ambience()
 
@@ -93,6 +97,9 @@ func _on_floor_transition_midpoint() -> void:
 	builder._build_grid_from_rooms()
 	builder._generate_geometry()
 	builder._bake_navigation()
+
+	# Update Smusher Timer reference to rebuilt builder
+	SmusherTimer.dungeon_builder = builder
 
 	# Reposition hero at new floor's spawn
 	var hero = GameManager.hero

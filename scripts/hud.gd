@@ -20,11 +20,15 @@ extends CanvasLayer
 @onready var boss_bar_container: VBoxContainer = %BossBarContainer
 @onready var boss_name_label: Label = %BossName
 @onready var boss_health_bar: ProgressBar = %BossHealthBar
+@onready var smusher_label: Label = %SmusherTimerLabel
+@onready var smusher_edge: ColorRect = %SmusherScreenEdge
 @onready var game_over_overlay: ColorRect = $GameOverOverlay
 @onready var game_over_label: Label = $GameOverOverlay/GameOverLabel
 @onready var restart_label: Label = $GameOverOverlay/RestartLabel
 
 var _active_boss: Node3D = null
+var _edge_pulse_tween: Tween = null
+var _timer_flash_tween: Tween = null
 
 const FLOOR_NAMES := {
 	1: "The Sift",
@@ -46,6 +50,12 @@ func _ready() -> void:
 	GameManager.game_over.connect(_on_game_over)
 	LootManager.item_picked_up.connect(_on_item_picked_up)
 	LootManager.gold_changed.connect(_on_gold_changed)
+	# Smusher Timer
+	SmusherTimer.time_updated.connect(_on_smusher_time_updated)
+	SmusherTimer.warning_phase_entered.connect(_on_smusher_warning)
+	SmusherTimer.critical_phase_entered.connect(_on_smusher_critical)
+	SmusherTimer.overtime_started.connect(_on_smusher_overtime)
+	SmusherTimer.room_collapsed.connect(_on_room_collapsed)
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -77,6 +87,20 @@ func _on_cooldown_updated(spell_index: int, remaining: float, total: float) -> v
 func _on_floor_changed(floor_num: int) -> void:
 	_update_floor_label(floor_num)
 	hide_boss_bar()
+	_reset_smusher_visuals()
+
+func _reset_smusher_visuals() -> void:
+	# Reset timer label to white/normal state for new floor
+	if smusher_label:
+		smusher_label.add_theme_color_override("font_color", Color.WHITE)
+		smusher_label.modulate = Color(1, 1, 1, 1)
+	if smusher_edge:
+		smusher_edge.visible = false
+		smusher_edge.color = Color(0.8, 0.0, 0.0, 0.0)
+	if _edge_pulse_tween and _edge_pulse_tween.is_valid():
+		_edge_pulse_tween.kill()
+	if _timer_flash_tween and _timer_flash_tween.is_valid():
+		_timer_flash_tween.kill()
 
 func _update_floor_label(floor_num: int) -> void:
 	if floor_label:
@@ -155,6 +179,74 @@ func _on_boss_health_changed(current: int, maximum: int) -> void:
 
 func _on_boss_defeated(_boss_type: String) -> void:
 	hide_boss_bar()
+
+# ---------- SMUSHER TIMER ----------
+
+func _on_smusher_time_updated(seconds_remaining: float) -> void:
+	if smusher_label == null:
+		return
+	smusher_label.text = SmusherTimer.get_time_string()
+
+func _on_smusher_warning() -> void:
+	# < 5 minutes: orange text, screen edges start pulsing red
+	if smusher_label:
+		smusher_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.0))
+	_start_edge_pulse(0.12, 2.0)
+
+func _on_smusher_critical() -> void:
+	# < 1 minute: red flashing text, stronger edge pulse, heartbeat feel
+	if smusher_label:
+		smusher_label.add_theme_color_override("font_color", Color(1.0, 0.15, 0.15))
+	_start_timer_flash()
+	_start_edge_pulse(0.25, 0.8)
+
+func _on_smusher_overtime() -> void:
+	# Timer hit 0 — rooms collapsing
+	if smusher_label:
+		smusher_label.text = "OVERTIME"
+		smusher_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.0))
+	_start_edge_pulse(0.35, 0.5)
+
+func _on_room_collapsed(_room_index: int, room_name: String) -> void:
+	# Flash message when a room collapses
+	_show_center_message("💀 %s COLLAPSED" % room_name.to_upper())
+
+func _start_edge_pulse(max_alpha: float, period: float) -> void:
+	if smusher_edge == null:
+		return
+	smusher_edge.visible = true
+	smusher_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _edge_pulse_tween and _edge_pulse_tween.is_valid():
+		_edge_pulse_tween.kill()
+	_edge_pulse_tween = create_tween().set_loops()
+	_edge_pulse_tween.tween_property(smusher_edge, "color:a", max_alpha, period * 0.5)
+	_edge_pulse_tween.tween_property(smusher_edge, "color:a", 0.0, period * 0.5)
+
+func _start_timer_flash() -> void:
+	if smusher_label == null:
+		return
+	if _timer_flash_tween and _timer_flash_tween.is_valid():
+		_timer_flash_tween.kill()
+	_timer_flash_tween = create_tween().set_loops()
+	_timer_flash_tween.tween_property(smusher_label, "modulate:a", 0.3, 0.4)
+	_timer_flash_tween.tween_property(smusher_label, "modulate:a", 1.0, 0.4)
+
+func _show_center_message(text: String) -> void:
+	var msg := Label.new()
+	msg.text = text
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	msg.anchors_preset = Control.PRESET_CENTER
+	msg.offset_left = -300.0
+	msg.offset_right = 300.0
+	msg.offset_top = 60.0
+	msg.offset_bottom = 100.0
+	msg.add_theme_color_override("font_color", Color(1.0, 0.2, 0.2))
+	add_child(msg)
+	var tween := create_tween()
+	tween.tween_interval(1.5)
+	tween.tween_property(msg, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(msg.queue_free)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:

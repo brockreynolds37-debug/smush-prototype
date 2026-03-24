@@ -230,6 +230,31 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("3_inventory")
 
+[node name="SmusherTimerLabel" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -80.0
+offset_top = 8.0
+offset_right = 80.0
+offset_bottom = 48.0
+grow_horizontal = 2
+text = "30:00"
+horizontal_alignment = 1
+vertical_alignment = 0
+
+[node name="SmusherScreenEdge" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.8, 0.0, 0.0, 0.0)
+mouse_filter = 2
+
 [node name="BossBarContainer" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
 visible = false
