@@ -145,6 +145,8 @@ func _execute(cmd: String) -> void:
 			_cmd_consequences()
 		"blocs", "bloc", "audience_blocs":
 			_cmd_blocs()
+		"bribe", "bribes", "negotiate":
+			_cmd_bribes()
 		"replays":
 			_cmd_replays()
 		"clear", "cls":
@@ -184,6 +186,7 @@ func _cmd_help() -> void:
 	_print_line("-faction    Show faction reputation")
 	_print_line("-tags       Show cross-floor consequence tags")
 	_print_line("-blocs      Show audience civilization blocs")
+	_print_line("-bribe      Show bribery and negotiation stats")
 	_print_line("-replays  List saved replays")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
@@ -302,6 +305,10 @@ func _cmd_replays() -> void:
 			r.get("floors_cleared", 0),
 			r.get("total_kills", 0),
 		])
+
+func _cmd_bribes() -> void:
+	_print_line("[color=cyan]── Bribery & Negotiation ──[/color]")
+	_print_line(BriberySystem.get_stats_summary())
 
 func _cmd_blocs() -> void:
 	_print_line("[color=cyan]── Audience Civilization Blocs ──[/color]")
