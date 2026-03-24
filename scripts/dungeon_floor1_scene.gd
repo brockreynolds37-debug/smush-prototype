@@ -123,12 +123,18 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 	var orc_scene = preload("res://scenes/enemy.tscn")
 	var skeleton_scene = preload("res://scenes/enemy_skeleton.tscn")
 
+	# Boss scenes per floor
+	var boss_scenes := {
+		1: preload("res://scenes/boss_goblin_king.tscn"),
+		2: preload("res://scenes/boss_spider_queen.tscn"),
+	}
+
 	# Scale difficulty with floor number
 	var enemy_count = 3 + floor_number * 2
-	var rooms_with_enemies = ["arena", "guard", "boss"]
+	var rooms_with_mobs = ["arena", "guard"]  # Regular enemies in arena + guard rooms
 
 	for i in range(enemy_count):
-		var room_name = rooms_with_enemies[i % rooms_with_enemies.size()]
+		var room_name = rooms_with_mobs[i % rooms_with_mobs.size()]
 		var pos = builder.get_room_random_floor(room_name)
 		if pos == Vector3.ZERO:
 			continue
@@ -142,6 +148,23 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 
 		enemy.global_position = pos
 		units_node.add_child(enemy)
+
+	# Spawn boss in boss room
+	if boss_scenes.has(floor_number):
+		var boss_scene = boss_scenes[floor_number]
+		var boss = boss_scene.instantiate()
+		var boss_pos = builder.get_room_center("boss")
+		if boss_pos != Vector3.ZERO:
+			boss.global_position = boss_pos
+			units_node.add_child(boss)
+			# Connect boss health to HUD
+			_connect_boss_hud(boss)
+
+func _connect_boss_hud(boss: Node3D) -> void:
+	# Find the HUD and tell it about the boss
+	var hud = get_tree().current_scene.get_node_or_null("HUD")
+	if hud and hud.has_method("show_boss_bar"):
+		hud.show_boss_bar(boss)
 
 func _add_room_lights() -> void:
 	var builder = $DungeonBuilder

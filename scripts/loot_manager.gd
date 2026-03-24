@@ -139,6 +139,14 @@ var LOOT_TABLES := {
 		{"item_id": "steel_sword", "weight": 7, "min": 1, "max": 1},
 		{"item_id": "longbow", "weight": 3, "min": 1, "max": 1},
 	],
+	"boss": [
+		{"item_id": "gold_pile", "weight": 20, "min": 3, "max": 5},
+		{"item_id": "health_potion", "weight": 15, "min": 2, "max": 3},
+		{"item_id": "mana_potion", "weight": 10, "min": 1, "max": 2},
+		{"item_id": "steel_sword", "weight": 20, "min": 1, "max": 1},
+		{"item_id": "iron_axe", "weight": 15, "min": 1, "max": 1},
+		{"item_id": "longbow", "weight": 20, "min": 1, "max": 1},
+	],
 }
 
 # Hero inventory + gold
@@ -154,8 +162,26 @@ func _ready() -> void:
 	GameManager.enemy_died.connect(_on_enemy_died)
 
 func _on_enemy_died(enemy: Node3D) -> void:
+	# Check if this is a boss (has boss_type property)
+	var is_boss := "boss_type" in enemy
 	var enemy_type := "default"
-	if enemy.has_method("get") or "enemy_type" in enemy:
+
+	if is_boss:
+		# Bosses always drop loot — 3 guaranteed rolls on boss table
+		var table: Array = LOOT_TABLES.get("boss", LOOT_TABLES["default"])
+		for _roll in range(3):
+			var rolled_item := _roll_weighted(table)
+			if rolled_item.is_empty():
+				continue
+			var item_def: Dictionary = ITEMS.get(rolled_item["item_id"], {})
+			if item_def.is_empty():
+				continue
+			var count := randi_range(rolled_item.get("min", 1), rolled_item.get("max", 1))
+			for _i in range(count):
+				_spawn_drop(enemy.global_position, item_def)
+		return
+
+	if "enemy_type" in enemy:
 		enemy_type = enemy.enemy_type
 	# Map enemy types to loot tables
 	var table_key := "default"

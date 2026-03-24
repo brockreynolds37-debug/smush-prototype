@@ -17,9 +17,14 @@ extends CanvasLayer
 @onready var floor_label: Label = %FloorLabel
 @onready var gold_label: Label = %GoldLabel
 @onready var loot_feed: VBoxContainer = %LootFeed
+@onready var boss_bar_container: VBoxContainer = %BossBarContainer
+@onready var boss_name_label: Label = %BossName
+@onready var boss_health_bar: ProgressBar = %BossHealthBar
 @onready var game_over_overlay: ColorRect = $GameOverOverlay
 @onready var game_over_label: Label = $GameOverOverlay/GameOverLabel
 @onready var restart_label: Label = $GameOverOverlay/RestartLabel
+
+var _active_boss: Node3D = null
 
 const FLOOR_NAMES := {
 	1: "The Sift",
@@ -71,6 +76,7 @@ func _on_cooldown_updated(spell_index: int, remaining: float, total: float) -> v
 
 func _on_floor_changed(floor_num: int) -> void:
 	_update_floor_label(floor_num)
+	hide_boss_bar()
 
 func _update_floor_label(floor_num: int) -> void:
 	if floor_label:
@@ -120,6 +126,35 @@ func _on_item_picked_up(item: Dictionary) -> void:
 		var oldest := loot_feed.get_child(0)
 		loot_feed.remove_child(oldest)
 		oldest.queue_free()
+
+func show_boss_bar(boss: Node3D) -> void:
+	_active_boss = boss
+	if boss_bar_container:
+		boss_bar_container.visible = true
+		boss_name_label.text = boss.boss_display_name
+		boss_health_bar.max_value = boss.max_health
+		boss_health_bar.value = boss.current_health
+		boss.health_changed.connect(_on_boss_health_changed)
+		boss.boss_defeated.connect(_on_boss_defeated)
+		# Slide-in animation
+		boss_bar_container.modulate = Color(1, 1, 1, 0)
+		var tween = create_tween()
+		tween.tween_property(boss_bar_container, "modulate", Color(1, 1, 1, 1), 0.5)
+
+func hide_boss_bar() -> void:
+	_active_boss = null
+	if boss_bar_container:
+		var tween = create_tween()
+		tween.tween_property(boss_bar_container, "modulate", Color(1, 1, 1, 0), 0.3)
+		tween.tween_callback(func(): boss_bar_container.visible = false)
+
+func _on_boss_health_changed(current: int, maximum: int) -> void:
+	if boss_health_bar:
+		boss_health_bar.max_value = maximum
+		boss_health_bar.value = current
+
+func _on_boss_defeated(_boss_type: String) -> void:
+	hide_boss_bar()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:

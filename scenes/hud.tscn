@@ -230,6 +230,32 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("3_inventory")
 
+[node name="BossBarContainer" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -250.0
+offset_top = 30.0
+offset_right = 250.0
+offset_bottom = 100.0
+grow_horizontal = 2
+
+[node name="BossName" type="Label" parent="BossBarContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "BOSS NAME"
+horizontal_alignment = 1
+
+[node name="BossHealthBar" type="ProgressBar" parent="BossBarContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(500, 20)
+max_value = 800.0
+value = 800.0
+show_percentage = false
+
 [node name="GameOverOverlay" type="ColorRect" parent="."]
 visible = false
 anchors_preset = 15
