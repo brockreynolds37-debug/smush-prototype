@@ -8,6 +8,7 @@ var _merchant_ui: CanvasLayer = null
 var _deep_effects: CanvasLayer = null
 var _sponsor_ui: CanvasLayer = null
 var _loading_screen: CanvasLayer = null
+var _player_spawner: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -27,6 +28,17 @@ func _ready() -> void:
 	var hero = GameManager.hero
 	if builder and hero:
 		hero.global_position = builder.get_spawn_position()
+
+	# Multiplayer: spawn all players via PlayerSpawner
+	if NetworkManager.is_multiplayer_active():
+		var spawner_script := preload("res://scripts/player_spawner.gd")
+		_player_spawner = Node.new()
+		_player_spawner.set_script(spawner_script)
+		_player_spawner.name = "PlayerSpawner"
+		add_child(_player_spawner)
+		_player_spawner.spawn_all_players(builder.get_spawn_position(), $Units)
+		# Re-fetch local hero (may have changed)
+		hero = GameManager.hero
 
 	# Connect hero health bar
 	if hero:
@@ -239,13 +251,16 @@ func _on_floor_transition_midpoint() -> void:
 	# Update Smusher Timer reference to rebuilt builder
 	SmusherTimer.dungeon_builder = builder
 
-	# Reposition hero at new floor's spawn
-	var hero = GameManager.hero
-	if hero:
-		hero.global_position = builder.get_spawn_position()
-		hero.is_moving = false
-		hero.velocity = Vector3.ZERO
-		hero.current_speed = 0.0
+	# Reposition hero(es) at new floor's spawn
+	if _player_spawner and NetworkManager.is_multiplayer_active():
+		_player_spawner.reposition_all(builder.get_spawn_position())
+	else:
+		var hero = GameManager.hero
+		if hero:
+			hero.global_position = builder.get_spawn_position()
+			hero.is_moving = false
+			hero.velocity = Vector3.ZERO
+			hero.current_speed = 0.0
 
 func _on_floor_changed(floor_number: int) -> void:
 	# Set up new floor archetype before spawning enemies
