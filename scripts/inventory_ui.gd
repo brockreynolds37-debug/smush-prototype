@@ -147,6 +147,14 @@ func _refresh_bag() -> void:
 			bag_slots[i].set_item(inv[i])
 		else:
 			bag_slots[i].clear_item()
+	# Restore equipped items from LootManager (for save/load)
+	for slot_type in LootManager.equipped:
+		var item: Dictionary = LootManager.equipped[slot_type]
+		if equip_slots.has(slot_type):
+			equip_slots[slot_type].set_item(item)
+			equipped_items[slot_type] = item
+	if not equipped_items.is_empty():
+		_apply_equipment_stats()
 	_update_tooltip(null)
 
 func _on_slot_clicked(slot: Panel) -> void:
@@ -206,6 +214,7 @@ func _equip_item(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_ite
 	# Put from_item in equip slot
 	to_slot.set_item(from_item)
 	equipped_items[to_slot.slot_type] = from_item
+	LootManager.equipped[to_slot.slot_type] = from_item
 
 	# If equip slot had something, put it back in bag
 	if not to_item.is_empty():
@@ -228,6 +237,7 @@ func _unequip_item(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_i
 			if to_slot_type == from_slot.slot_type or (from_slot.slot_type == SlotType.OFFHAND and to_type == "weapon"):
 				from_slot.set_item(to_item)
 				equipped_items[from_slot.slot_type] = to_item
+				LootManager.equipped[from_slot.slot_type] = to_item
 			else:
 				return  # Item doesn't fit this equip slot
 		else:
@@ -235,6 +245,7 @@ func _unequip_item(from_slot: Panel, to_slot: Panel, from_item: Dictionary, to_i
 	else:
 		from_slot.clear_item()
 		equipped_items.erase(from_slot.slot_type)
+		LootManager.equipped.erase(from_slot.slot_type)
 
 	# Put unequipped item in bag
 	to_slot.set_item(from_item)

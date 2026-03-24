@@ -107,6 +107,7 @@ func reset_game_state() -> void:
 	XpManager.reset()
 	AudienceManager.reset()
 	StatusEffectManager.reset()
+	SkillTree.reset()
 	FloorManager.reset()
 	RunStats.reset()
 	Narrator.reset()

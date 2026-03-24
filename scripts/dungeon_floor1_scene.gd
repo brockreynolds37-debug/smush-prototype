@@ -59,6 +59,23 @@ func _ready() -> void:
 	pause_menu.name = "PauseMenu"
 	add_child(pause_menu)
 
+	# Skill tree UI (Tab to toggle)
+	var skill_tree_ui_script = preload("res://scripts/skill_tree_ui.gd")
+	var skill_tree_ui = CanvasLayer.new()
+	skill_tree_ui.set_script(skill_tree_ui_script)
+	skill_tree_ui.name = "SkillTreeUI"
+	add_child(skill_tree_ui)
+
+	# Clear scene-baked enemies and spawn fresh for correct floor
+	_clear_enemies()
+	_spawn_floor_enemies(FloorManager.current_floor)
+
+	# Restore saved hero state if continuing a run
+	if GameManager.has_meta("pending_save_data"):
+		var save_data: Dictionary = GameManager.get_meta("pending_save_data")
+		GameManager.remove_meta("pending_save_data")
+		SaveManager.apply_hero_state(save_data)
+
 	# Start dungeon ambience
 	AudioManager.start_ambience()
 

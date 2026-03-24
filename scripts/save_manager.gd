@@ -85,6 +85,10 @@ func _gather_save_data() -> Dictionary:
 		},
 		"run_time": GameManager.get_run_elapsed(),
 		"run_kills": GameManager.run_kills,
+		"skills": {
+			"points": SkillTree.skill_points,
+			"unlocked": SkillTree.unlocked_skills.duplicate(),
+		},
 	}
 
 func apply_save_data(data: Dictionary) -> void:
@@ -129,6 +133,13 @@ func apply_save_data(data: Dictionary) -> void:
 
 	# Restore run stats
 	GameManager.run_kills = int(data.get("run_kills", 0))
+
+	# Restore skill tree
+	var skill_data: Dictionary = data.get("skills", {})
+	SkillTree.skill_points = int(skill_data.get("points", 0))
+	SkillTree.unlocked_skills.clear()
+	for sid in skill_data.get("unlocked", []):
+		SkillTree.unlocked_skills.append(str(sid))
 
 func apply_hero_state(data: Dictionary) -> void:
 	## Call after hero is spawned to restore HP/Mana from save.

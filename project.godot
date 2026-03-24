@@ -34,6 +34,7 @@ RunStats="*res://scripts/run_stats.gd"
 Narrator="*res://scripts/narrator.gd"
 SaveManager="*res://scripts/save_manager.gd"
 ScreenEffects="*res://scripts/screen_effects.gd"
+SkillTree="*res://scripts/skill_tree.gd"
 
 [display]
 

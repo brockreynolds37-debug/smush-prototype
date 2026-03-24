@@ -377,6 +377,7 @@ var LOOT_TABLES := {
 # Hero inventory + gold
 var gold: int = 0
 var inventory: Array[Dictionary] = []  # Array of item dicts
+var equipped: Dictionary = {}  # SlotType int → item dict (persisted for save/load)
 var max_inventory_size: int = 20
 
 # Loot drop scene (built programmatically)

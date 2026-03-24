@@ -116,6 +116,8 @@ var _prop_container: Node3D
 var _nav_region: NavigationRegion3D
 
 func _ready() -> void:
+	# Use FloorManager's current floor (important for save/load continue)
+	floor_number = FloorManager.current_floor
 	_theme = _get_theme_for_floor(floor_number)
 	_load_assets()
 	match floor_number:
