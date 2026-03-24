@@ -289,6 +289,16 @@ var ITEMS := {
 		"model": "", "mesh_color": Color(0.6, 0.4, 0.15),
 		"description": "Earthquakes follow each step.",
 	},
+
+	# ----- Trinkets -----
+	"healing_aura_trinket": {
+		"id": "healing_aura_trinket", "name": "Healing Aura Trinket", "type": "armor",
+		"equip_slot": "trinket", "rarity": Rarity.RARE,
+		"base_hp": 20,
+		"aura_type": "heal", "aura_radius": 4.0, "aura_value": 5.0,
+		"model": "", "mesh_color": Color(0.2, 0.9, 0.3),
+		"description": "Radiates a healing aura (5 HP/sec, radius 4). Affects summons too.",
+	},
 }
 
 # Loot tables — source → weighted drop list
@@ -349,6 +359,7 @@ var LOOT_TABLES := {
 		{"item_id": "dragonscale_mail", "weight": 2, "min": 1, "max": 1},
 		{"item_id": "windrunner_boots", "weight": 5, "min": 1, "max": 1},
 		{"item_id": "boots_of_the_colossus", "weight": 4, "min": 1, "max": 1},
+		{"item_id": "healing_aura_trinket", "weight": 5, "min": 1, "max": 1},
 	],
 	"chest": [
 		{"item_id": "gold_pile", "weight": 25, "min": 2, "max": 4},
