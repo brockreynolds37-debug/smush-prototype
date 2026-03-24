@@ -10,6 +10,7 @@ var _settings_menu: Node = null
 var _continue_btn: Button = null
 var _difficulty_label: Label = null
 var _leaderboard_overlay: CanvasLayer = null
+var _credits_screen: Node = null
 
 func _ready() -> void:
 	_build_3d_scene()
@@ -214,6 +215,11 @@ func _build_ui() -> void:
 	lb_btn.pressed.connect(_on_leaderboard)
 	btn_box.add_child(lb_btn)
 
+	# Credits button
+	var credits_btn = _make_button("CREDITS", true)
+	credits_btn.pressed.connect(_on_credits)
+	btn_box.add_child(credits_btn)
+
 	# Quit button
 	var quit_btn = _make_button("QUIT", true)
 	quit_btn.pressed.connect(_on_quit)
@@ -223,6 +229,11 @@ func _build_ui() -> void:
 	var SettingsMenuScript = load("res://scripts/settings_menu.gd")
 	_settings_menu = SettingsMenuScript.new()
 	add_child(_settings_menu)
+
+	# Credits screen
+	var CreditsScript = load("res://scripts/credits_screen.gd")
+	_credits_screen = CreditsScript.new()
+	add_child(_credits_screen)
 
 	# Version label
 	var version = Label.new()
@@ -383,6 +394,10 @@ func _on_settings() -> void:
 	if _settings_menu:
 		_settings_menu.show_menu()
 
+func _on_credits() -> void:
+	if _credits_screen:
+		_credits_screen.show_credits()
+
 func _on_leaderboard() -> void:
 	if _leaderboard_overlay and is_instance_valid(_leaderboard_overlay):
 		_leaderboard_overlay.queue_free()
@@ -489,8 +504,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_transitioning:
 		return
 	if event is InputEventKey and event.pressed:
-		# Close leaderboard on ESC
+		# Close credits / leaderboard on ESC
 		if event.keycode == KEY_ESCAPE:
+			if _credits_screen and _credits_screen.get("_is_open"):
+				_credits_screen.close_credits()
+				return
 			if _leaderboard_overlay and is_instance_valid(_leaderboard_overlay):
 				_leaderboard_overlay.queue_free()
 				_leaderboard_overlay = null
