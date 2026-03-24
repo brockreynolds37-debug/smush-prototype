@@ -57,6 +57,7 @@ BriberySystem="*res://scripts/bribery_system.gd"
 NetworkManager="*res://scripts/network_manager.gd"
 AchievementManager="*res://scripts/achievement_manager.gd"
 NewGamePlus="*res://scripts/new_game_plus.gd"
+PerformanceMonitor="*res://scripts/performance_monitor.gd"
 
 [display]
 

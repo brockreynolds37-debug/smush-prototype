@@ -151,6 +151,12 @@ func _execute(cmd: String) -> void:
 			_cmd_replays()
 		"achievements", "ach":
 			_cmd_achievements()
+		"fps":
+			_cmd_fps()
+		"perf":
+			_cmd_perf()
+		"netstat":
+			_cmd_netstat()
 		"clear", "cls":
 			_output.clear()
 		# ── CHEAT CODES (debug only) ──
@@ -191,6 +197,9 @@ func _cmd_help() -> void:
 	_print_line("-bribe      Show bribery and negotiation stats")
 	_print_line("-replays  List saved replays")
 	_print_line("-ach      Show achievement progress")
+	_print_line("-fps      Toggle FPS counter overlay")
+	_print_line("-perf     Show performance stats")
+	_print_line("-netstat  Show network stats")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
 		_print_line("[color=yellow]── Cheats (debug only) ──[/color]")
@@ -347,6 +356,28 @@ func _cmd_achievements() -> void:
 		var a: Dictionary = achs[id]
 		var status := "[color=green]✓[/color]" if a["unlocked"] else "[color=gray]✗[/color]"
 		_print_line("  %s %s %s — %s" % [status, a["icon"], a["title"], a["description"]])
+
+func _cmd_fps() -> void:
+	PerformanceMonitor.toggle_fps()
+	var state := "ON" if PerformanceMonitor.is_fps_visible() else "OFF"
+	_print_line("[color=cyan]FPS counter: %s[/color]" % state)
+
+func _cmd_perf() -> void:
+	_print_line("[color=cyan]── Performance ──[/color]")
+	_print_line(PerformanceMonitor.get_frame_stats_summary())
+	var draw_calls := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	var objects := Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
+	var vram := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+	_print_line("Draw calls: %d | Objects: %d | VRAM: %.1f MB" % [draw_calls, objects, vram])
+
+func _cmd_netstat() -> void:
+	if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
+		_print_line("[color=gray]Not connected to multiplayer.[/color]")
+		return
+	_print_line("[color=cyan]── Network Stats ──[/color]")
+	_print_line("Peer ID: %d | Is server: %s" % [multiplayer.get_unique_id(), "Yes" if multiplayer.is_server() else "No"])
+	var peers := multiplayer.get_peers()
+	_print_line("Connected peers: %d" % peers.size())
 
 # ── CHEAT CODES ──
 
