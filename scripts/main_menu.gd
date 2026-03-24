@@ -404,7 +404,7 @@ func _on_leaderboard() -> void:
 
 	# Header row
 	var header = Label.new()
-	header.text = "  #   Score    Floor  Kills  Character       Difficulty"
+	header.text = "  #   Score    Floor  Kills  Time   Character       Difficulty"
 	header.add_theme_font_size_override("font_size", 14)
 	header.add_theme_color_override("font_color", Color(0.6, 0.55, 0.7))
 	vbox.add_child(header)
@@ -429,9 +429,13 @@ func _on_leaderboard() -> void:
 			if char_str.length() > 14:
 				char_str = char_str.left(14)
 			char_str = char_str.rpad(14)
+			var time_str: String = e.get("time_str", "")
+			if time_str == "":
+				var t: float = e.get("time", 0.0)
+				time_str = "%d:%02d" % [int(t) / 60, int(t) % 60]
 			var diff_str: String = e.get("difficulty_name", "Normal")
 			var won: bool = e.get("won", false)
-			row.text = "  %s  %s    %s   %s  %s  %s%s" % [rank_str, score_str, floor_str, kills_str, char_str, diff_str, " *" if won else ""]
+			row.text = "  %s  %s    %s   %s  %s  %s  %s%s" % [rank_str, score_str, floor_str, kills_str, time_str.rpad(5), char_str, diff_str, " W" if won else ""]
 			row.add_theme_font_size_override("font_size", 15)
 			var color := Color(0.85, 0.8, 0.7) if i > 0 else Color(1.0, 0.9, 0.4)
 			if i == 1:
@@ -456,11 +460,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_transitioning:
 		return
 	if event is InputEventKey and event.pressed:
+		# Close leaderboard on ESC
+		if event.keycode == KEY_ESCAPE:
+			if _leaderboard_overlay and is_instance_valid(_leaderboard_overlay):
+				_leaderboard_overlay.queue_free()
+				_leaderboard_overlay = null
+				return
+			_on_quit()
+			return
+		# Don't process other keys while leaderboard is open
+		if _leaderboard_overlay and is_instance_valid(_leaderboard_overlay):
+			return
 		match event.keycode:
 			KEY_ENTER, KEY_SPACE:
 				if SaveManager.has_save():
 					_on_continue()
 				else:
 					_on_new_game()
-			KEY_ESCAPE:
-				_on_quit()
