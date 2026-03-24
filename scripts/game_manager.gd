@@ -34,6 +34,9 @@ var MAX_FLOOR: int:
 var is_targeting_spell: bool = false
 var targeting_spell_id: int = -1  # 0=Q, 1=W, 2=E, 3=R
 
+## Friendly fire toggle (default off, synced with NetworkManager)
+var friendly_fire: bool = false
+
 func request_screen_shake(intensity: float, duration: float) -> void:
 	screen_shake_requested.emit(intensity, duration)
 

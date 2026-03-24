@@ -12,6 +12,7 @@ var _player_spawner: Node = null
 var _enemy_sync: Node = null
 var _loot_sync: Node = null
 var _floor_transition_sync: Node = null
+var _combat_sync: Node = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -144,6 +145,17 @@ func _ready() -> void:
 		var hud := get_node_or_null("HUD")
 		if hud:
 			_floor_transition_sync.setup_exit_hud(hud)
+
+	# Multiplayer: combat sync (damage validation, AoE, friendly fire, heal allies)
+	if NetworkManager.is_multiplayer_active():
+		var cs_script := preload("res://scripts/combat_sync.gd")
+		_combat_sync = Node.new()
+		_combat_sync.set_script(cs_script)
+		_combat_sync.name = "CombatSync"
+		add_child(_combat_sync)
+		_combat_sync.setup($Units, _player_spawner)
+		_combat_sync.setup_player_hp_bars()
+		GameManager.friendly_fire = NetworkManager.friendly_fire_enabled
 
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):
