@@ -157,6 +157,14 @@ func _ready() -> void:
 		_combat_sync.setup_player_hp_bars()
 		GameManager.friendly_fire = NetworkManager.friendly_fire_enabled
 
+	# Multiplayer: chat + communication (Enter chat, Q ping, V callout wheel)
+	if NetworkManager.is_multiplayer_active():
+		var chat_script := preload("res://scripts/multiplayer_chat.gd")
+		var chat := CanvasLayer.new()
+		chat.set_script(chat_script)
+		chat.name = "MultiplayerChat"
+		add_child(chat)
+
 	# Restore saved hero state if continuing a run
 	if GameManager.has_meta("pending_save_data"):
 		var save_data: Dictionary = GameManager.get_meta("pending_save_data")
