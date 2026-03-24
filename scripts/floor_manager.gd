@@ -51,23 +51,24 @@ func _transition_to_floor(floor_number: int) -> void:
 		fade_out.tween_property(_overlay, "modulate", Color(1, 1, 1, 1), 0.6)
 		await fade_out.finished
 
-	# Show merchant shop between floors
-	_waiting_for_merchant = true
-	show_merchant.emit(floor_number)
-	# Wait until merchant UI is dismissed
-	while _waiting_for_merchant:
-		await get_tree().process_frame
-
-	# Show loading screen with floor name and tip
-	if _loading_screen and _loading_screen.has_method("show_loading"):
-		_loading_screen.show_loading(floor_number)
-		await get_tree().create_timer(0.3).timeout
-
 	# Pick archetype for next floor via FloorArchetypeManager
 	if current_archetype:
 		current_archetype.stop()
 		current_archetype.destroy_hud_overlay()
 	current_archetype = FloorArchetypeManager.get_archetype_for_floor(floor_number)
+
+	# Show merchant shop between floors (some archetypes skip it)
+	if current_archetype.has_merchant():
+		_waiting_for_merchant = true
+		show_merchant.emit(floor_number)
+		# Wait until merchant UI is dismissed
+		while _waiting_for_merchant:
+			await get_tree().process_frame
+
+	# Show loading screen with floor name and tip
+	if _loading_screen and _loading_screen.has_method("show_loading"):
+		_loading_screen.show_loading(floor_number)
+		await get_tree().create_timer(0.3).timeout
 
 	# Midpoint — screen is black, swap level content
 	current_floor = floor_number

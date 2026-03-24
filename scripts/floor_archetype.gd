@@ -55,6 +55,10 @@ func has_boss() -> bool:
 func has_smusher() -> bool:
 	return true
 
+## Should the merchant appear before this floor? Boss Rush skips it.
+func has_merchant() -> bool:
+	return true
+
 ## Should the exit portal be visible from the start? Some archetypes hide it.
 func exit_visible_at_start() -> bool:
 	return false
