@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3 uid="uid://fireball_scene"]
+
+[ext_resource type="Script" path="res://scripts/fireball.gd" id="1_fireball"]
+
+[sub_resource type="SphereMesh" id="SubResource_fb_mesh"]
+radius = 0.3
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="SubResource_fb_mat"]
+albedo_color = Color(1.0, 0.4, 0.0, 1)
+emission_enabled = true
+emission = Color(1.0, 0.5, 0.0, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="ParticleProcessMaterial" id="SubResource_trail_mat"]
+direction = Vector3(0, 0, 0)
+spread = 30.0
+initial_velocity_min = 0.5
+initial_velocity_max = 1.5
+gravity = Vector3(0, -1, 0)
+scale_min = 0.3
+scale_max = 0.6
+color = Color(1.0, 0.5, 0.0, 1)
+color_ramp = null
+
+[node name="Fireball" type="Node3D"]
+script = ExtResource("1_fireball")
+
+[node name="FireballMesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("SubResource_fb_mesh")
+surface_material_override/0 = SubResource("SubResource_fb_mat")
+
+[node name="TrailParticles" type="GPUParticles3D" parent="."]
+amount = 20
+lifetime = 0.5
+emitting = true
+process_material = SubResource("SubResource_trail_mat")
+draw_pass_1 = SubResource("SubResource_fb_mesh")

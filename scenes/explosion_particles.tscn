@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://explosion_particles"]
+
+[sub_resource type="ParticleProcessMaterial" id="SubResource_exp_mat"]
+direction = Vector3(0, 0.5, 0)
+spread = 180.0
+initial_velocity_min = 3.0
+initial_velocity_max = 8.0
+gravity = Vector3(0, -5, 0)
+scale_min = 0.2
+scale_max = 0.6
+color = Color(1.0, 0.4, 0.0, 1)
+
+[sub_resource type="SphereMesh" id="SubResource_exp_mesh"]
+radius = 0.12
+height = 0.24
+
+[node name="ExplosionParticles" type="GPUParticles3D"]
+amount = 50
+lifetime = 0.8
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("SubResource_exp_mat")
+draw_pass_1 = SubResource("SubResource_exp_mesh")

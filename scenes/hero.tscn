@@ -1,0 +1,86 @@
+[gd_scene load_steps=12 format=3 uid="uid://hero_scene"]
+
+[ext_resource type="Script" path="res://scripts/hero.gd" id="1_hero"]
+[ext_resource type="Script" path="res://scripts/unit_health_bar.gd" id="2_hbar"]
+
+[sub_resource type="BoxMesh" id="SubResource_hero_mesh"]
+size = Vector3(0.8, 1.5, 0.8)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_hero_mat"]
+albedo_color = Color(0.2, 0.5, 1.0, 1)
+
+[sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
+size = Vector2(2.0, 2.0)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_sel_mat"]
+transparency = 1
+albedo_color = Color(0.3, 1.0, 0.3, 0.4)
+emission_enabled = true
+emission = Color(0.3, 1.0, 0.3, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxShape3D" id="SubResource_hero_col"]
+size = Vector3(0.8, 1.5, 0.8)
+
+[sub_resource type="BoxMesh" id="SubResource_bar_bg_mesh"]
+size = Vector3(1.2, 0.12, 0.02)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_bar_bg_mat"]
+albedo_color = Color(0.15, 0.15, 0.15, 0.8)
+transparency = 1
+
+[sub_resource type="BoxMesh" id="SubResource_bar_fill_mesh"]
+size = Vector3(1.1, 0.1, 0.02)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_bar_fill_mat"]
+albedo_color = Color(0.1, 0.9, 0.1, 1)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_mana_fill_mat"]
+albedo_color = Color(0.2, 0.3, 1.0, 1)
+
+[node name="Hero" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1_hero")
+
+[node name="HeroMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("SubResource_hero_mesh")
+surface_material_override/0 = SubResource("SubResource_hero_mat")
+
+[node name="SelectionCircle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("SubResource_sel_mesh")
+surface_material_override/0 = SubResource("SubResource_sel_mat")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+shape = SubResource("SubResource_hero_col")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+
+[node name="HealthBar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+script = ExtResource("2_hbar")
+
+[node name="BarBG" type="MeshInstance3D" parent="HealthBar"]
+mesh = SubResource("SubResource_bar_bg_mesh")
+surface_material_override/0 = SubResource("SubResource_bar_bg_mat")
+
+[node name="BarFill" type="MeshInstance3D" parent="HealthBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.01)
+mesh = SubResource("SubResource_bar_fill_mesh")
+surface_material_override/0 = SubResource("SubResource_bar_fill_mat")
+
+[node name="ManaFill" type="MeshInstance3D" parent="HealthBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.14, 0.01)
+mesh = SubResource("SubResource_bar_fill_mesh")
+surface_material_override/0 = SubResource("SubResource_mana_fill_mat")
+
+[node name="AttackTimer" type="Timer" parent="."]
+one_shot = true
+
+[node name="CastTimer" type="Timer" parent="."]
+one_shot = true

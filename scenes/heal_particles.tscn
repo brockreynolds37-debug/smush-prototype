@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://heal_particles"]
+
+[sub_resource type="ParticleProcessMaterial" id="SubResource_heal_mat"]
+direction = Vector3(0, 1, 0)
+spread = 45.0
+initial_velocity_min = 2.0
+initial_velocity_max = 4.0
+gravity = Vector3(0, 0.5, 0)
+scale_min = 0.1
+scale_max = 0.3
+color = Color(0.2, 1.0, 0.3, 1)
+
+[sub_resource type="SphereMesh" id="SubResource_heal_mesh"]
+radius = 0.08
+height = 0.16
+
+[node name="HealParticles" type="GPUParticles3D"]
+amount = 30
+lifetime = 1.5
+one_shot = true
+explosiveness = 0.8
+process_material = SubResource("SubResource_heal_mat")
+draw_pass_1 = SubResource("SubResource_heal_mesh")

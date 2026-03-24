@@ -1,0 +1,180 @@
+[gd_scene load_steps=2 format=3 uid="uid://hud_scene"]
+
+[ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="BottomPanel" type="PanelContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -180.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HBox" type="HBoxContainer" parent="BottomPanel"]
+layout_mode = 2
+
+[node name="Portrait" type="ColorRect" parent="BottomPanel/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(160, 160)
+color = Color(0.15, 0.15, 0.25, 1)
+
+[node name="PortraitLabel" type="Label" parent="BottomPanel/HBox/Portrait"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -30.0
+offset_top = -12.0
+offset_right = 30.0
+offset_bottom = 12.0
+text = "HERO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BarsContainer" type="VBoxContainer" parent="BottomPanel/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(400, 0)
+
+[node name="Spacer1" type="Control" parent="BottomPanel/HBox/BarsContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+
+[node name="HealthLabel" type="Label" parent="BottomPanel/HBox/BarsContainer"]
+layout_mode = 2
+text = "HP"
+
+[node name="HealthBar" type="ProgressBar" parent="BottomPanel/HBox/BarsContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(350, 28)
+max_value = 500.0
+value = 500.0
+show_percentage = false
+
+[node name="ManaLabel" type="Label" parent="BottomPanel/HBox/BarsContainer"]
+layout_mode = 2
+text = "MP"
+
+[node name="ManaBar" type="ProgressBar" parent="BottomPanel/HBox/BarsContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(350, 28)
+max_value = 200.0
+value = 200.0
+show_percentage = false
+
+[node name="AbilityContainer" type="HBoxContainer" parent="BottomPanel/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Spacer2" type="Control" parent="BottomPanel/HBox/AbilityContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(20, 0)
+
+[node name="AbilityQ" type="Button" parent="BottomPanel/HBox/AbilityContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(60, 60)
+text = "Q
+Strike"
+
+[node name="CooldownQ" type="ColorRect" parent="BottomPanel/HBox/AbilityContainer/AbilityQ"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+color = Color(0.0, 0.0, 0.0, 0.6)
+
+[node name="AbilityW" type="Button" parent="BottomPanel/HBox/AbilityContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(60, 60)
+text = "W
+Fire"
+
+[node name="CooldownW" type="ColorRect" parent="BottomPanel/HBox/AbilityContainer/AbilityW"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+color = Color(0.0, 0.0, 0.0, 0.6)
+
+[node name="AbilityE" type="Button" parent="BottomPanel/HBox/AbilityContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(60, 60)
+text = "E
+Heal"
+
+[node name="CooldownE" type="ColorRect" parent="BottomPanel/HBox/AbilityContainer/AbilityE"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+color = Color(0.0, 0.0, 0.0, 0.6)
+
+[node name="AbilityR" type="Button" parent="BottomPanel/HBox/AbilityContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(60, 60)
+text = "R
+Slam"
+
+[node name="CooldownR" type="ColorRect" parent="BottomPanel/HBox/AbilityContainer/AbilityR"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+color = Color(0.0, 0.0, 0.0, 0.6)
+
+[node name="MinimapFrame" type="ColorRect" parent="BottomPanel/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(160, 160)
+color = Color(0.1, 0.1, 0.1, 0.8)
+
+[node name="MinimapLabel" type="Label" parent="BottomPanel/HBox/MinimapFrame"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -12.0
+offset_right = 40.0
+offset_bottom = 12.0
+text = "MINIMAP"
+horizontal_alignment = 1
+vertical_alignment = 1

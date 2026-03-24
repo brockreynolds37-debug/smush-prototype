@@ -1,0 +1,159 @@
+[gd_scene load_steps=14 format=3 uid="uid://main_scene"]
+
+[ext_resource type="PackedScene" uid="uid://hero_scene" path="res://scenes/hero.tscn" id="1_hero"]
+[ext_resource type="PackedScene" uid="uid://enemy_scene" path="res://scenes/enemy.tscn" id="2_enemy"]
+[ext_resource type="PackedScene" uid="uid://hud_scene" path="res://scenes/hud.tscn" id="3_hud"]
+[ext_resource type="Script" path="res://scripts/isometric_camera.gd" id="4_camera"]
+[ext_resource type="Script" path="res://scripts/input_handler.gd" id="5_input"]
+[ext_resource type="Script" path="res://scripts/main_scene.gd" id="6_main"]
+
+[sub_resource type="PlaneMesh" id="SubResource_ground_mesh"]
+size = Vector2(60, 60)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_ground_mat"]
+albedo_color = Color(0.25, 0.35, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="SubResource_rock_mesh"]
+size = Vector3(2, 1.5, 2)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_rock_mat"]
+albedo_color = Color(0.4, 0.38, 0.35, 1)
+
+[sub_resource type="BoxMesh" id="SubResource_tree_trunk"]
+size = Vector3(0.3, 2, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_trunk_mat"]
+albedo_color = Color(0.4, 0.25, 0.1, 1)
+
+[sub_resource type="SphereMesh" id="SubResource_tree_canopy"]
+radius = 1.2
+height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="SubResource_canopy_mat"]
+albedo_color = Color(0.15, 0.45, 0.1, 1)
+
+[sub_resource type="BoxShape3D" id="SubResource_ground_col"]
+size = Vector3(60, 0.1, 60)
+
+[sub_resource type="NavigationMesh" id="SubResource_navmesh"]
+cell_size = 0.25
+cell_height = 0.1
+agent_radius = 0.5
+agent_height = 1.8
+agent_max_climb = 0.3
+agent_max_slope = 45.0
+filter_baking_aabb = AABB(-32, -1, -32, 64, 10, 64)
+
+[sub_resource type="Environment" id="SubResource_env"]
+background_mode = 1
+background_color = Color(0.3, 0.4, 0.55, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.3, 0.35, 0.45, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+ssao_enabled = true
+fog_enabled = true
+fog_light_color = Color(0.4, 0.45, 0.55, 1)
+fog_density = 0.005
+
+[node name="Main" type="Node3D"]
+script = ExtResource("6_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("SubResource_env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 10, 15, 10)
+light_color = Color(1.0, 0.95, 0.85, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, -0.707, 0.5, -0.612, -0.612, -8, 10, -8)
+light_color = Color(0.6, 0.7, 0.9, 1)
+light_energy = 0.3
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("SubResource_navmesh")
+
+[node name="Ground" type="MeshInstance3D" parent="NavigationRegion3D"]
+mesh = SubResource("SubResource_ground_mesh")
+surface_material_override/0 = SubResource("SubResource_ground_mat")
+
+[node name="GroundCollision" type="StaticBody3D" parent="NavigationRegion3D"]
+collision_layer = 1
+
+[node name="GroundShape" type="CollisionShape3D" parent="NavigationRegion3D/GroundCollision"]
+shape = SubResource("SubResource_ground_col")
+
+[node name="Rock1" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.75, 5)
+mesh = SubResource("SubResource_rock_mesh")
+surface_material_override/0 = SubResource("SubResource_rock_mat")
+
+[node name="Rock2" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(0.8, 0, 0.6, 0, 1, 0, -0.6, 0, 0.8, 10, 0.5, -7)
+mesh = SubResource("SubResource_rock_mesh")
+surface_material_override/0 = SubResource("SubResource_rock_mat")
+
+[node name="Tree1Trunk" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1, -8)
+mesh = SubResource("SubResource_tree_trunk")
+surface_material_override/0 = SubResource("SubResource_trunk_mat")
+
+[node name="Tree1Canopy" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 2.8, -8)
+mesh = SubResource("SubResource_tree_canopy")
+surface_material_override/0 = SubResource("SubResource_canopy_mat")
+
+[node name="Tree2Trunk" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1, 10)
+mesh = SubResource("SubResource_tree_trunk")
+surface_material_override/0 = SubResource("SubResource_trunk_mat")
+
+[node name="Tree2Canopy" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, 7, 3, 10)
+mesh = SubResource("SubResource_tree_canopy")
+surface_material_override/0 = SubResource("SubResource_canopy_mat")
+
+[node name="Tree3Trunk" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, -3)
+mesh = SubResource("SubResource_tree_trunk")
+surface_material_override/0 = SubResource("SubResource_trunk_mat")
+
+[node name="Tree3Canopy" type="MeshInstance3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.8, -3)
+mesh = SubResource("SubResource_tree_canopy")
+surface_material_override/0 = SubResource("SubResource_canopy_mat")
+
+[node name="Units" type="Node3D" parent="."]
+
+[node name="Hero" parent="Units" instance=ExtResource("1_hero")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Enemy1" parent="Units" instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 3)
+
+[node name="Enemy2" parent="Units" instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 8)
+
+[node name="Enemy3" parent="Units" instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -5)
+
+[node name="Enemy4" parent="Units" instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -3)
+
+[node name="Enemy5" parent="Units" instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 8)
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("4_camera")
+
+[node name="CameraArm" type="Node3D" parent="CameraRig"]
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig/CameraArm"]
+
+[node name="InputHandler" type="Node" parent="."]
+script = ExtResource("5_input")
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
