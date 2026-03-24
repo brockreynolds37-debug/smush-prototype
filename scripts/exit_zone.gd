@@ -35,4 +35,5 @@ func _ready() -> void:
 func _on_body_entered(body: Node3D) -> void:
 	if body == GameManager.hero and not FloorManager.is_transitioning:
 		hero_entered_exit.emit()
+		TutorialManager.notify_event("exit_entered")
 		FloorManager.go_to_next_floor()

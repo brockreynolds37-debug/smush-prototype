@@ -92,6 +92,7 @@ func _open_chest() -> void:
 	# Drop loot
 	_spawn_chest_loot()
 	interacted.emit()
+	TutorialManager.notify_event("chest_opened")
 
 	# Fade out after delay
 	await get_tree().create_timer(2.0).timeout

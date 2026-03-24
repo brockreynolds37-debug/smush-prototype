@@ -20,6 +20,21 @@ var _theme: Dictionary = {}
 
 static func _get_theme_for_floor(floor_num: int) -> Dictionary:
 	match floor_num:
+		0:
+			return {
+				"name": "Training Grounds",
+				"floor_color": Color(0.32, 0.30, 0.28),
+				"floor_roughness": 0.85,
+				"wall_color": Color(0.42, 0.40, 0.36),
+				"wall_roughness": 0.80,
+				"accent_color": Color(0.55, 0.50, 0.42),
+				"ambient_color": Color(0.7, 0.65, 0.55),
+				"ambient_energy": 0.25,
+				"fog_color": Color(0.18, 0.16, 0.13),
+				"fog_density": 0.01,
+				"light_color": Color(1.0, 0.9, 0.7),
+				"light_energy": 1.0,
+			}
 		1:
 			return {
 				"name": "The Sift",
@@ -121,6 +136,7 @@ func _ready() -> void:
 	_theme = _get_theme_for_floor(floor_number)
 	_load_assets()
 	match floor_number:
+		0: _define_tutorial_layout()
 		1: _define_floor1_layout()
 		2: _define_floor2_layout()
 		3: _define_floor3_layout()
@@ -454,6 +470,47 @@ func _define_floor3_layout() -> void:
 			{"type": "candle", "offset": Vector2i(15, 13)},
 			{"type": "rocks", "offset": Vector2i(6, 6)},
 			{"type": "rocks", "offset": Vector2i(9, 6)},
+		]},
+	]
+
+func _define_tutorial_layout() -> void:
+	# Tutorial Floor (Floor 0): single safe room with training area
+	#
+	#  [Spawn + Training 12x10] --corridor-- [Exit Room 6x6]
+	#
+	# Simple layout: spawn area with a training dummy, a chest, one trap,
+	# and an exit portal at the far end.
+	spawn_cell = Vector2i(2, 5)
+	exit_cell = Vector2i(19, 3)
+
+	rooms = [
+		# Main training room
+		{"pos": Vector2i(0, 0), "size": Vector2i(12, 10), "name": "spawn",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(11, 0)},
+			{"type": "candle", "offset": Vector2i(0, 9)},
+			{"type": "candle", "offset": Vector2i(11, 9)},
+			{"type": "barrel", "offset": Vector2i(1, 1)},
+			{"type": "barrel", "offset": Vector2i(2, 1)},
+			{"type": "chest", "offset": Vector2i(8, 5)},
+			{"type": "trap_spike", "offset": Vector2i(6, 7)},
+			{"type": "column", "offset": Vector2i(5, 2)},
+			{"type": "column", "offset": Vector2i(5, 7)},
+		]},
+
+		# Corridor to exit
+		{"pos": Vector2i(12, 3), "size": Vector2i(4, 2), "name": "corridor_1"},
+
+		# Exit room with portal
+		{"pos": Vector2i(16, 1), "size": Vector2i(6, 6), "name": "arena",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(5, 0)},
+			{"type": "candle", "offset": Vector2i(0, 5)},
+			{"type": "candle", "offset": Vector2i(5, 5)},
+			{"type": "banner", "offset": Vector2i(2, 0)},
+			{"type": "banner", "offset": Vector2i(3, 0)},
 		]},
 	]
 

@@ -50,7 +50,9 @@ func _ready() -> void:
 
 	# Wire Smusher Timer to dungeon builder and start it
 	SmusherTimer.dungeon_builder = $DungeonBuilder
-	SmusherTimer.start_timer()
+	# Skip smusher on tutorial floor
+	if FloorManager.current_floor != 0:
+		SmusherTimer.start_timer()
 
 	# Pause menu (ESC to toggle)
 	var pause_menu_script = preload("res://scripts/pause_menu.gd")
@@ -81,6 +83,12 @@ func _ready() -> void:
 
 	# Start run timer
 	GameManager.start_run()
+
+	# Tutorial floor — start guided walkthrough with skip button
+	if FloorManager.current_floor == 0 and TutorialManager.is_tutorial_active:
+		_setup_tutorial_skip_button()
+		TutorialManager.tutorial_completed.connect(_on_tutorial_completed)
+		TutorialManager.start_tutorial()
 
 func _setup_transition_overlay() -> void:
 	var canvas = CanvasLayer.new()
@@ -131,6 +139,7 @@ func _on_floor_transition_midpoint() -> void:
 	builder.rooms.clear()
 	builder.grid.clear()
 	match builder.floor_number:
+		0: builder._define_tutorial_layout()
 		1: builder._define_floor1_layout()
 		2: builder._define_floor2_layout()
 		3: builder._define_floor3_layout()
@@ -182,6 +191,17 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 		2: preload("res://scenes/boss_spider_queen.tscn"),
 		3: preload("res://scenes/boss_slime_lord.tscn"),
 	}
+
+	# Tutorial floor: single weak training dummy
+	if floor_number == 0:
+		var dummy = orc_scene.instantiate()
+		dummy.max_health = 50
+		dummy.attack_damage = 5
+		var pos = builder.get_room_center("arena")
+		if pos != Vector3.ZERO:
+			dummy.global_position = pos
+			units_node.add_child(dummy)
+		return
 
 	# Scale difficulty with floor number
 	var enemy_count = 3 + floor_number * 2
@@ -255,3 +275,45 @@ func _add_room_lights() -> void:
 		light.omni_attenuation = 1.5
 		light.shadow_enabled = false  # Performance: skip shadow for point lights
 		add_child(light)
+
+var _skip_tutorial_btn: Button = null
+
+func _setup_tutorial_skip_button() -> void:
+	var canvas = CanvasLayer.new()
+	canvas.layer = 50
+	canvas.name = "TutorialSkipLayer"
+	add_child(canvas)
+
+	_skip_tutorial_btn = Button.new()
+	_skip_tutorial_btn.text = "SKIP TUTORIAL"
+	_skip_tutorial_btn.add_theme_font_size_override("font_size", 16)
+	_skip_tutorial_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_skip_tutorial_btn.offset_left = -180
+	_skip_tutorial_btn.offset_top = -50
+	_skip_tutorial_btn.offset_right = -10
+	_skip_tutorial_btn.offset_bottom = -10
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.2, 0.15, 0.1, 0.8)
+	style.border_color = Color(0.6, 0.45, 0.2, 0.6)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	_skip_tutorial_btn.add_theme_stylebox_override("normal", style)
+	_skip_tutorial_btn.add_theme_color_override("font_color", Color(0.8, 0.7, 0.5))
+	_skip_tutorial_btn.pressed.connect(_on_skip_tutorial)
+	canvas.add_child(_skip_tutorial_btn)
+
+func _on_skip_tutorial() -> void:
+	TutorialManager.skip_tutorial()
+
+func _on_tutorial_completed() -> void:
+	# Remove skip button
+	if _skip_tutorial_btn and is_instance_valid(_skip_tutorial_btn):
+		var parent_canvas = _skip_tutorial_btn.get_parent()
+		if parent_canvas:
+			parent_canvas.queue_free()
+	# Transition to floor 1 — set current_floor to 0 so go_to_next_floor goes to 1
+	FloorManager.current_floor = 0
+	SmusherTimer.dungeon_builder = $DungeonBuilder
+	SmusherTimer.start_timer()
+	FloorManager.go_to_next_floor()

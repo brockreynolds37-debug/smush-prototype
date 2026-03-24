@@ -28,12 +28,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if event.keycode == KEY_Q:
 			hero.cast_spell(0)
+			TutorialManager.notify_event("spell_cast")
 		elif event.keycode == KEY_W:
 			hero.cast_spell(1)
+			TutorialManager.notify_event("spell_cast")
 		elif event.keycode == KEY_E:
 			hero.cast_spell(2)
+			TutorialManager.notify_event("spell_cast")
 		elif event.keycode == KEY_R:
 			hero.cast_spell(3)
+			TutorialManager.notify_event("spell_cast")
 
 func _handle_left_click() -> void:
 	if camera_rig == null:
@@ -66,6 +70,7 @@ func _handle_left_click() -> void:
 
 	if result and result.collider and result.collider.is_in_group("enemies"):
 		hero.set_attack_target(result.collider)
+		TutorialManager.notify_event("enemy_hit")
 		return
 
 	# Check for interactable clicks (chests, barrels)
@@ -82,6 +87,7 @@ func _handle_left_click() -> void:
 	var ground_pos = _get_ground_position(from, dir)
 	if ground_pos != Vector3.ZERO:
 		hero.move_to(ground_pos)
+		TutorialManager.notify_event("hero_moved")
 
 		# Spawn click indicator
 		_spawn_click_indicator(ground_pos)
