@@ -291,6 +291,13 @@ var ITEMS := {
 	},
 
 	# ----- Trinkets -----
+	"torch": {
+		"id": "torch", "name": "Torch", "type": "armor",
+		"equip_slot": "offhand", "rarity": Rarity.UNCOMMON,
+		"base_damage": 2,
+		"model": "", "mesh_color": Color(1.0, 0.7, 0.2),
+		"description": "Restores vision on night floors. A comforting flame.",
+	},
 	"healing_aura_trinket": {
 		"id": "healing_aura_trinket", "name": "Healing Aura Trinket", "type": "armor",
 		"equip_slot": "trinket", "rarity": Rarity.RARE,

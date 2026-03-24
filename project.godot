@@ -41,6 +41,7 @@ AccessibilitySettings="*res://scripts/accessibility_settings.gd"
 BalanceConfig="*res://scripts/balance_config.gd"
 FloorArchetypeManager="*res://scripts/floor_archetype_manager.gd"
 AuraManager="*res://scripts/aura_manager.gd"
+DayNightCycle="*res://scripts/day_night_cycle.gd"
 
 [display]
 
