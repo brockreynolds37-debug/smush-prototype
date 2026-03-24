@@ -92,6 +92,10 @@ func _generate_sounds() -> void:
 	sounds["boss_roar"] = _gen_roar(sample_rate, 0.7, 55.0, 0.7)
 	sounds["victory_fanfare"] = _gen_victory_fanfare(sample_rate, 1.5, 440.0, 0.6)
 
+	# Traps / Hazards
+	sounds["spike_trap"] = _gen_impact(sample_rate, 0.15, 90.0, 0.6)
+	sounds["fire_vent"] = _gen_whoosh(sample_rate, 0.35, 200.0, 1600.0, 0.55)
+
 	# Ambient drone (looping)
 	sounds["dungeon_ambience"] = _gen_ambient_drone(sample_rate, 4.0, 0.15)
 

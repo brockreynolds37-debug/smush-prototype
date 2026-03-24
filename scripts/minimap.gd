@@ -15,6 +15,7 @@ const COLOR_HERO := Color(0.2, 0.9, 0.3, 1.0)
 const COLOR_ENEMY := Color(0.9, 0.15, 0.15, 1.0)
 const COLOR_EXIT := Color(1.0, 0.85, 0.2, 1.0)
 const COLOR_SPAWN := Color(0.3, 0.5, 1.0, 0.8)
+const COLOR_TRAP := Color(1.0, 0.4, 0.1, 0.9)
 
 # Grid data (copied from DungeonBuilder)
 var grid: Dictionary = {}
@@ -156,6 +157,16 @@ func _draw() -> void:
 					from = screen_pos
 					to = screen_pos + Vector2(0, cell_px)
 				draw_line(from, to, COLOR_WALL, 1.5)
+
+	# Draw trap markers (small warning dots on explored trap cells)
+	for cell in explored.keys():
+		if not grid.has(cell):
+			continue
+		var tile_type = grid[cell]
+		if tile_type >= 8 and tile_type <= 10:  # TRAP_SPIKE, TRAP_POISON, TRAP_FIRE
+			var trap_screen := _cell_to_screen(cell)
+			var trap_center := trap_screen + Vector2(cell_px / 2.0, cell_px / 2.0)
+			draw_circle(trap_center, cell_px * 0.4, COLOR_TRAP)
 
 	# Draw exit marker (if explored)
 	if explored.has(exit_cell):

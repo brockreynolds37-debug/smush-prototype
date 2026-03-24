@@ -21,6 +21,9 @@ enum Tile {
 	EXIT = 5,
 	CHEST = 6,
 	BARREL = 7,
+	TRAP_SPIKE = 8,
+	TRAP_POISON = 9,
+	TRAP_FIRE = 10,
 }
 
 # Room definitions: {pos: Vector2i, size: Vector2i, name: String}
@@ -119,6 +122,8 @@ func _define_floor1_layout() -> void:
 			{"type": "barrel", "offset": Vector2i(10, 2)},
 			{"type": "candle", "offset": Vector2i(3, 0)},
 			{"type": "candle", "offset": Vector2i(8, 0)},
+			{"type": "trap_spike", "offset": Vector2i(5, 5)},
+			{"type": "trap_spike", "offset": Vector2i(6, 6)},
 		]},
 
 		# Corridor: Arena → Loot (horizontal)
@@ -146,10 +151,15 @@ func _define_floor1_layout() -> void:
 			{"type": "rocks", "offset": Vector2i(3, 4)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
 			{"type": "candle", "offset": Vector2i(7, 0)},
+			{"type": "trap_poison", "offset": Vector2i(4, 3)},
 		]},
 
-		# Corridor: Guard Room → Boss Room (vertical)
-		{"pos": Vector2i(17, 20), "size": Vector2i(2, 4), "name": "corridor_4"},
+		# Corridor: Guard Room → Boss Room (vertical) — trapped!
+		{"pos": Vector2i(17, 20), "size": Vector2i(2, 4), "name": "corridor_4",
+		 "props": [
+			{"type": "trap_fire", "offset": Vector2i(0, 1)},
+			{"type": "trap_fire", "offset": Vector2i(1, 2)},
+		]},
 
 		# Room 4: Boss room (bottom)
 		{"pos": Vector2i(12, 24), "size": Vector2i(14, 10), "name": "boss",
@@ -207,6 +217,9 @@ func _define_floor2_layout() -> void:
 			{"type": "candle", "offset": Vector2i(0, 0)},
 			{"type": "candle", "offset": Vector2i(9, 0)},
 			{"type": "rocks", "offset": Vector2i(4, 5)},
+			{"type": "trap_spike", "offset": Vector2i(4, 4)},
+			{"type": "trap_spike", "offset": Vector2i(5, 5)},
+			{"type": "trap_poison", "offset": Vector2i(5, 8)},
 		]},
 
 		# Corridor: Central → Side Room (west)
@@ -235,8 +248,12 @@ func _define_floor2_layout() -> void:
 			{"type": "candle", "offset": Vector2i(5, 0)},
 		]},
 
-		# Corridor: Central → Boss Pit
-		{"pos": Vector2i(2, 20), "size": Vector2i(2, 4), "name": "corridor_4"},
+		# Corridor: Central → Boss Pit — fire gauntlet
+		{"pos": Vector2i(2, 20), "size": Vector2i(2, 4), "name": "corridor_4",
+		 "props": [
+			{"type": "trap_fire", "offset": Vector2i(0, 1)},
+			{"type": "trap_fire", "offset": Vector2i(1, 2)},
+		]},
 
 		# Room 4: Boss Pit
 		{"pos": Vector2i(-3, 24), "size": Vector2i(12, 12), "name": "boss",
@@ -300,6 +317,9 @@ func _define_floor3_layout() -> void:
 			{"type": "candle", "offset": Vector2i(7, 0)},
 			{"type": "candle", "offset": Vector2i(0, 7)},
 			{"type": "candle", "offset": Vector2i(7, 7)},
+			{"type": "trap_spike", "offset": Vector2i(3, 3)},
+			{"type": "trap_spike", "offset": Vector2i(4, 4)},
+			{"type": "trap_poison", "offset": Vector2i(3, 6)},
 		]},
 
 		# Corridor: Crossroads → Tomb (west)
@@ -334,7 +354,7 @@ func _define_floor3_layout() -> void:
 		# Corridor: Crossroads → Gauntlet (south)
 		{"pos": Vector2i(2, 17), "size": Vector2i(2, 4), "name": "corridor_4"},
 
-		# Room 4: Gauntlet (long narrow hallway with enemies)
+		# Room 4: Gauntlet (long narrow hallway with enemies + traps)
 		{"pos": Vector2i(-5, 21), "size": Vector2i(16, 6), "name": "gauntlet",
 		 "props": [
 			{"type": "column", "offset": Vector2i(3, 1)},
@@ -347,6 +367,12 @@ func _define_floor3_layout() -> void:
 			{"type": "barrel", "offset": Vector2i(15, 0)},
 			{"type": "candle", "offset": Vector2i(0, 5)},
 			{"type": "candle", "offset": Vector2i(15, 5)},
+			{"type": "trap_fire", "offset": Vector2i(5, 2)},
+			{"type": "trap_fire", "offset": Vector2i(5, 3)},
+			{"type": "trap_spike", "offset": Vector2i(9, 2)},
+			{"type": "trap_spike", "offset": Vector2i(9, 3)},
+			{"type": "trap_poison", "offset": Vector2i(13, 2)},
+			{"type": "trap_poison", "offset": Vector2i(13, 3)},
 		]},
 
 		# Corridor: Gauntlet → Boss Lair
@@ -398,6 +424,9 @@ func _build_grid_from_rooms() -> void:
 			match prop["type"]:
 				"chest": grid[cell] = Tile.CHEST
 				"barrel": grid[cell] = Tile.BARREL
+				"trap_spike": grid[cell] = Tile.TRAP_SPIKE
+				"trap_poison": grid[cell] = Tile.TRAP_POISON
+				"trap_fire": grid[cell] = Tile.TRAP_FIRE
 				# Other props placed on top of floor tiles (handled in geometry pass)
 
 	# Compute grid bounds
@@ -435,14 +464,17 @@ func _generate_geometry() -> void:
 	for cell in grid.keys():
 		_place_walls_for_cell(cell)
 
-	# Generate props from room definitions
+	# Generate props and traps from room definitions
 	for room in rooms:
 		if not room.has("props"):
 			continue
 		var rpos: Vector2i = room["pos"]
 		for prop in room["props"]:
 			var cell := Vector2i(rpos.x + prop["offset"].x, rpos.y + prop["offset"].y)
-			_place_prop(cell, prop["type"])
+			if prop["type"].begins_with("trap_"):
+				_place_trap(cell, prop["type"])
+			else:
+				_place_prop(cell, prop["type"])
 
 	# Place entrance stairs at spawn (visual only — where you arrived from)
 	if floor_number > 1:
@@ -600,6 +632,29 @@ func _place_prop(cell: Vector2i, prop_type: String) -> void:
 		_prop_container.add_child(wrapper)
 	else:
 		_prop_container.add_child(instance)
+
+func _place_trap(cell: Vector2i, trap_type_name: String) -> void:
+	var trap_script = load("res://scripts/trap_hazard.gd")
+	var trap := Area3D.new()
+	trap.set_script(trap_script)
+	trap.position = _cell_to_world(cell)
+
+	# Set trap type enum
+	match trap_type_name:
+		"trap_spike": trap.trap_type = 0   # TrapType.SPIKE_TRAP
+		"trap_poison": trap.trap_type = 1  # TrapType.POISON_POOL
+		"trap_fire": trap.trap_type = 2    # TrapType.FIRE_VENT
+
+	# Collision shape for hero detection
+	var col := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.9
+	shape.height = 2.0
+	col.shape = shape
+	col.position.y = 1.0
+	trap.add_child(col)
+
+	_prop_container.add_child(trap)
 
 func _place_entrance_stairs(cell: Vector2i) -> void:
 	if _stairs_scene == null:
