@@ -43,6 +43,7 @@ FloorArchetypeManager="*res://scripts/floor_archetype_manager.gd"
 AuraManager="*res://scripts/aura_manager.gd"
 DayNightCycle="*res://scripts/day_night_cycle.gd"
 Leaderboard="*res://scripts/leaderboard.gd"
+ReplayManager="*res://scripts/replay_manager.gd"
 
 [display]
 

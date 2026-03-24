@@ -79,6 +79,7 @@ func _on_hero_died() -> void:
 		return
 	game_state = GameState.LOST
 	SaveManager.delete_save()
+	ReplayManager.save_replay()
 	game_over.emit(false)
 
 signal all_enemies_cleared  # Emitted when floor is cleared (enemies dead)
@@ -89,6 +90,7 @@ func on_boss_defeated(_boss_type: String) -> void:
 		if game_state == GameState.PLAYING:
 			game_state = GameState.WON
 			SaveManager.delete_save()
+			ReplayManager.save_replay()
 			game_over.emit(true)
 			return
 
@@ -118,6 +120,7 @@ func reset_game_state() -> void:
 	LootManager.gold = 0
 	LootManager.inventory.clear()
 	LootManager.equipped.clear()
+	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:
 	camera = c
