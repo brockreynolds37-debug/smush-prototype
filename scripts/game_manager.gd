@@ -24,7 +24,8 @@ var run_start_time: float = 0.0
 var run_kills: int = 0
 var run_damage_dealt: int = 0
 var run_gold_earned: int = 0
-const MAX_FLOOR: int = 4
+var MAX_FLOOR: int:
+	get: return BalanceConfig.MAX_FLOOR
 
 # Spell targeting state
 var is_targeting_spell: bool = false

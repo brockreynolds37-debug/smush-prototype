@@ -378,7 +378,8 @@ var LOOT_TABLES := {
 var gold: int = 0
 var inventory: Array[Dictionary] = []  # Array of item dicts
 var equipped: Dictionary = {}  # SlotType int → item dict (persisted for save/load)
-var max_inventory_size: int = 20
+var max_inventory_size: int:
+	get: return BalanceConfig.MAX_INVENTORY_SIZE
 
 # Loot drop scene (built programmatically)
 var _loot_drop_script: GDScript
@@ -466,7 +467,7 @@ func _on_enemy_died(enemy: Node3D) -> void:
 
 	if is_boss:
 		var table: Array = LOOT_TABLES.get("boss", LOOT_TABLES["default"])
-		for _roll in range(3):
+		for _roll in range(BalanceConfig.BOSS_DROP_COUNT):
 			var rolled_item := _roll_weighted(table)
 			if rolled_item.is_empty():
 				continue
@@ -487,7 +488,7 @@ func _on_enemy_died(enemy: Node3D) -> void:
 	elif enemy_type in ["skeleton", "orc"]:
 		table_key = "skeleton"
 
-	if randf() > 0.6:
+	if randf() > BalanceConfig.LOOT_DROP_CHANCE:
 		return
 
 	var table: Array = LOOT_TABLES.get(table_key, LOOT_TABLES["default"])

@@ -48,6 +48,16 @@ var active_anim_player: AnimationPlayer = null
 func _ready() -> void:
 	GameManager.register_enemy(self)
 	spawn_position = global_position
+
+	# Apply BalanceConfig defaults based on enemy archetype
+	_apply_balance_defaults()
+
+	# Scale stats by floor number
+	var floor_num := FloorManager.current_floor
+	if floor_num > 1:
+		max_health = int(max_health * pow(BalanceConfig.ENEMY_HP_SCALE_PER_FLOOR, floor_num - 1))
+		attack_damage = int(attack_damage * pow(BalanceConfig.ENEMY_DAMAGE_SCALE_PER_FLOOR, floor_num - 1))
+
 	current_health = max_health
 
 	# Load model based on enemy type
@@ -358,6 +368,31 @@ func _flash_color(color: Color, duration: float) -> void:
 	await get_tree().create_timer(duration).timeout
 	if not is_dead:
 		_restore_model_materials()
+
+# ---------- BALANCE CONFIG ----------
+
+func _apply_balance_defaults() -> void:
+	if enemy_type in ["goblin_archer"]:
+		max_health = BalanceConfig.ENEMY_RANGED_HP
+		attack_damage = BalanceConfig.ENEMY_RANGED_DAMAGE
+		move_speed = BalanceConfig.ENEMY_RANGED_SPEED
+		aggro_range = BalanceConfig.ENEMY_RANGED_AGGRO_RANGE
+		attack_range = BalanceConfig.ENEMY_RANGED_ATTACK_RANGE
+		attack_cooldown = BalanceConfig.ENEMY_RANGED_ATTACK_COOLDOWN
+	elif enemy_type in ["goblin_shaman"]:
+		max_health = BalanceConfig.ENEMY_MAGE_HP
+		attack_damage = BalanceConfig.ENEMY_MAGE_DAMAGE
+		move_speed = BalanceConfig.ENEMY_MAGE_SPEED
+		aggro_range = BalanceConfig.ENEMY_MAGE_AGGRO_RANGE
+		attack_range = BalanceConfig.ENEMY_MAGE_ATTACK_RANGE
+		attack_cooldown = BalanceConfig.ENEMY_MAGE_ATTACK_COOLDOWN
+	else:
+		max_health = BalanceConfig.ENEMY_MELEE_HP
+		attack_damage = BalanceConfig.ENEMY_MELEE_DAMAGE
+		move_speed = BalanceConfig.ENEMY_MELEE_SPEED
+		aggro_range = BalanceConfig.ENEMY_MELEE_AGGRO_RANGE
+		attack_range = BalanceConfig.ENEMY_MELEE_ATTACK_RANGE
+		attack_cooldown = BalanceConfig.ENEMY_MELEE_ATTACK_COOLDOWN
 
 # ---------- STATUS EFFECTS ----------
 
