@@ -5,6 +5,7 @@ extends PanelContainer
 ## and equipping weapons.
 
 const InventorySlotScript = preload("res://scripts/inventory_slot.gd")
+const ItemTooltipScript = preload("res://scripts/item_tooltip.gd")
 const SlotType = preload("res://scripts/inventory_slot.gd").SlotType
 
 const BAG_COLS := 5
@@ -14,6 +15,7 @@ var bag_slots: Array[Panel] = []
 var equip_slots: Dictionary = {}  # SlotType → Panel
 var tooltip_label: Label
 var equipped_items: Dictionary = {}  # SlotType → item_data
+var _item_tooltip: PanelContainer  # Floating item tooltip
 
 var _selected_slot: Panel = null  # For click-to-move (alt to drag)
 
@@ -62,6 +64,11 @@ func _ready() -> void:
 	tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	main_vbox.add_child(tooltip_label)
 
+	# Item tooltip (floating, child of this panel so it inherits visibility)
+	_item_tooltip = PanelContainer.new()
+	_item_tooltip.set_script(ItemTooltipScript)
+	add_child(_item_tooltip)
+
 	# Connect to LootManager
 	LootManager.inventory_changed.connect(_refresh_bag)
 	_refresh_bag()
@@ -95,6 +102,8 @@ func _build_equipment_panel() -> VBoxContainer:
 		slot.slot_type = st
 		slot.slot_clicked.connect(_on_slot_clicked)
 		slot.item_dropped.connect(_on_item_dropped)
+		slot.slot_hovered.connect(_on_slot_hovered)
+		slot.slot_unhovered.connect(_on_slot_unhovered)
 		vbox.add_child(slot)
 		equip_slots[st] = slot
 
@@ -124,6 +133,8 @@ func _build_bag_grid() -> VBoxContainer:
 		slot.slot_index = i
 		slot.slot_clicked.connect(_on_slot_clicked)
 		slot.item_dropped.connect(_on_item_dropped)
+		slot.slot_hovered.connect(_on_slot_hovered)
+		slot.slot_unhovered.connect(_on_slot_unhovered)
 		grid.add_child(slot)
 		bag_slots.append(slot)
 
@@ -299,11 +310,52 @@ func _update_tooltip(slot: Panel) -> void:
 	tooltip_label.text = "[%s] %s — %s" % [rarity_name, item.get("name", "?"), desc]
 	tooltip_label.add_theme_color_override("font_color", LootManager.RARITY_COLORS.get(rarity, Color.WHITE))
 
+func _on_slot_hovered(slot: Panel) -> void:
+	if not slot.has_item():
+		_item_tooltip.hide_tooltip()
+		return
+	var item: Dictionary = slot.item_data
+	var compare_item: Dictionary = {}
+
+	# Find the equipped item in the same slot for comparison
+	var item_type: String = item.get("type", "")
+	if item_type == "weapon" or item_type == "armor":
+		var target_slot: int = LootManager.get_item_slot_type(item)
+		if target_slot >= 0 and equipped_items.has(target_slot):
+			# Only compare if it's a different item
+			var eq := equipped_items[target_slot]
+			if eq.get("id", "") != item.get("id", "") or eq != item:
+				compare_item = eq
+
+	_item_tooltip.show_item(item, compare_item)
+
+	# Position tooltip relative to the hovered slot
+	var slot_rect := slot.get_global_rect()
+	var my_rect := get_global_rect()
+	# Place tooltip to the right of slot, relative to this panel
+	var tip_x := slot_rect.position.x + slot_rect.size.x + 8 - my_rect.position.x
+	var tip_y := slot_rect.position.y - my_rect.position.y
+
+	# Clamp within viewport
+	var vp_size := get_viewport_rect().size
+	var tip_size := _item_tooltip.size
+	if slot_rect.position.x + slot_rect.size.x + 8 + tip_size.x > vp_size.x:
+		# Flip to left side of slot
+		tip_x = slot_rect.position.x - tip_size.x - 8 - my_rect.position.x
+	if tip_y + my_rect.position.y + tip_size.y > vp_size.y:
+		tip_y = vp_size.y - tip_size.y - 4 - my_rect.position.y
+
+	_item_tooltip.position = Vector2(tip_x, tip_y)
+
+func _on_slot_unhovered(_slot: Panel) -> void:
+	_item_tooltip.hide_tooltip()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_I or event.keycode == KEY_TAB:
 			visible = not visible
 			_selected_slot = null
+			_item_tooltip.hide_tooltip()
 			if visible:
 				_refresh_bag()
 			get_viewport().set_input_as_handled()

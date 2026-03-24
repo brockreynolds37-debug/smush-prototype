@@ -5,6 +5,8 @@ extends Panel
 
 signal slot_clicked(slot: Panel)
 signal item_dropped(from_slot: Panel, to_slot: Panel)
+signal slot_hovered(slot: Panel)
+signal slot_unhovered(slot: Panel)
 
 enum SlotType { BAG, HEAD, CHEST, HANDS, FEET, RING, TRINKET, WEAPON, OFFHAND }
 
@@ -125,9 +127,11 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_MOUSE_ENTER:
 		is_hovered = true
 		queue_redraw()
+		slot_hovered.emit(self)
 	elif what == NOTIFICATION_MOUSE_EXIT:
 		is_hovered = false
 		queue_redraw()
+		slot_unhovered.emit(self)
 
 # Drag-and-drop support
 func _get_drag_data(_at_position: Vector2) -> Variant:
