@@ -16,39 +16,6 @@ var _waiting_for_merchant: bool = false
 ## Active floor archetype — determines gameplay mode for this floor
 var current_archetype: FloorArchetype = null
 
-## Archetype weights by floor tier. Higher floors unlock more variety.
-## Format: [ArchetypeClass, weight]
-static var _archetype_pool: Array = [
-	[CrawlArchetype, 5],       # Most common
-	[EscapeArchetype, 2],      # Occasional
-	[SurvivalArenaArchetype, 3], # Frequent enough to feel real
-]
-
-## Pick an archetype for the given floor. Tutorial and floor 1 are always Crawl.
-static func pick_archetype(floor_num: int) -> FloorArchetype:
-	# Tutorial + Floor 1: always standard crawl
-	if floor_num <= 1:
-		return CrawlArchetype.new()
-
-	# Build weighted pool — Escape unlocks at floor 2, Arena at floor 2
-	var pool: Array = []
-	var total_weight: float = 0.0
-	for entry in _archetype_pool:
-		var weight: float = entry[1]
-		pool.append([entry[0], weight])
-		total_weight += weight
-
-	# Weighted random pick
-	var roll = randf() * total_weight
-	var cumulative: float = 0.0
-	for entry in pool:
-		cumulative += entry[1]
-		if roll <= cumulative:
-			return entry[0].new()
-
-	# Fallback
-	return CrawlArchetype.new()
-
 # Transition overlay (injected by scene script or HUD)
 var _overlay: ColorRect = null
 
@@ -95,6 +62,12 @@ func _transition_to_floor(floor_number: int) -> void:
 	if _loading_screen and _loading_screen.has_method("show_loading"):
 		_loading_screen.show_loading(floor_number)
 		await get_tree().create_timer(0.3).timeout
+
+	# Pick archetype for next floor via FloorArchetypeManager
+	if current_archetype:
+		current_archetype.stop()
+		current_archetype.destroy_hud_overlay()
+	current_archetype = FloorArchetypeManager.get_archetype_for_floor(floor_number)
 
 	# Midpoint — screen is black, swap level content
 	current_floor = floor_number
