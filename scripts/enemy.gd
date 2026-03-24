@@ -64,6 +64,11 @@ func _ready() -> void:
 		max_health = int(max_health * diff_mult)
 		attack_damage = int(attack_damage * diff_mult)
 
+	# Apply NG+ scaling
+	var ngp_hp := NewGamePlus.get_enemy_hp_multiplier()
+	if ngp_hp != 1.0:
+		max_health = int(max_health * ngp_hp)
+
 	current_health = max_health
 
 	# Load model based on enemy type

@@ -132,6 +132,7 @@ func reset_game_state() -> void:
 	BriberySystem.reset()
 	FloorArchetypeManager.reset()
 	SmusherTimer.reset()
+	NewGamePlus.reset_run_state()
 	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:
@@ -176,6 +177,10 @@ const DIFFICULTY_MULT := {
 
 func get_difficulty_multiplier() -> float:
 	return DIFFICULTY_MULT.get(difficulty, 1.0)
+
+## Combined multiplier for enemy HP: difficulty * NG+ scaling
+func get_enemy_hp_multiplier() -> float:
+	return get_difficulty_multiplier() * NewGamePlus.get_enemy_hp_multiplier()
 
 func get_difficulty_name() -> String:
 	return DIFFICULTY_NAMES.get(difficulty, "Normal")

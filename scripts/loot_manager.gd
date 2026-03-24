@@ -417,6 +417,8 @@ func roll_item_stats(base_item: Dictionary) -> Dictionary:
 	# Slight randomness: ±15%
 	var variance := randf_range(0.85, 1.15)
 	mult *= variance
+	# NG+ loot quality boost
+	mult *= NewGamePlus.get_loot_quality_multiplier()
 
 	# Roll each stat that starts with "base_"
 	var stat_desc_parts: Array[String] = []
@@ -586,17 +588,17 @@ func _apply_consumable(item_def: Dictionary) -> void:
 	if hero == null or hero.is_dead:
 		return
 	if item_def["id"] == "health_potion":
-		var heal := item_def.get("heal_amount", 100)
+		var heal: int = item_def.get("heal_amount", 100)
 		hero.current_health = mini(hero.current_health + heal, hero.max_health)
 		hero.health_changed.emit(hero.current_health, hero.max_health)
 		GameManager.request_damage_number(hero.global_position + Vector3.UP * 2.5, heal, false)
 	elif item_def["id"] == "mana_potion":
-		var mana := item_def.get("mana_amount", 60)
+		var mana: int = item_def.get("mana_amount", 60)
 		hero.current_mana = mini(hero.current_mana + mana, hero.max_mana)
 		hero.mana_changed.emit(hero.current_mana, hero.max_mana)
 	elif item_def["id"] == "elixir_vial":
-		var heal := item_def.get("heal_amount", 80)
-		var mana := item_def.get("mana_amount", 50)
+		var heal: int = item_def.get("heal_amount", 80)
+		var mana: int = item_def.get("mana_amount", 50)
 		hero.current_health = mini(hero.current_health + heal, hero.max_health)
 		hero.health_changed.emit(hero.current_health, hero.max_health)
 		hero.current_mana = mini(hero.current_mana + mana, hero.max_mana)
@@ -605,7 +607,7 @@ func _apply_consumable(item_def: Dictionary) -> void:
 
 ## Remove a specific item from inventory by id. Removes first match found.
 func remove_item(item_def: Dictionary) -> void:
-	var target_id := item_def.get("id", "")
+	var target_id: String = item_def.get("id", "")
 	for i in range(inventory.size()):
 		if inventory[i].get("id", "") == target_id:
 			inventory.remove_at(i)

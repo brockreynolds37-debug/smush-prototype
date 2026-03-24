@@ -41,7 +41,7 @@ func _build_3d_scene() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.08, 0.06, 0.12)
 	environment.ambient_light_energy = 0.2
-	environment.tonemap_mode = Environment.TONE_MAP_ACES
+	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.6
 	environment.glow_bloom = 0.15
@@ -171,6 +171,12 @@ func _build_ui() -> void:
 	var new_game_btn = _make_button("NEW GAME", SaveManager.has_save())
 	new_game_btn.pressed.connect(_on_new_game)
 	btn_box.add_child(new_game_btn)
+
+	# New Game+ button (only if game beaten at least once)
+	if NewGamePlus.has_completed_game:
+		var ngplus_btn = _make_button(String.chr(9812) + " " + NewGamePlus.get_ngplus_label())
+		ngplus_btn.pressed.connect(_on_new_game_plus)
+		btn_box.add_child(ngplus_btn)
 
 	# Difficulty selector row
 	var diff_row = HBoxContainer.new()
@@ -330,10 +336,24 @@ func _on_new_game() -> void:
 	is_transitioning = true
 	SaveManager.delete_save()
 	GameManager.reset_game_state()
+	NewGamePlus.start_normal_run()
 	# First-time players get a tutorial floor before character select
 	if TutorialManager.should_show_tutorial():
 		FloorManager.current_floor = 0
 		TutorialManager.is_tutorial_active = true
+	_fade_to_scene("res://scenes/character_select.tscn")
+
+func _on_new_game_plus() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
+	SaveManager.delete_save()
+	GameManager.reset_game_state()
+	NewGamePlus.start_ngplus_run()
+	# Apply NG+ starting VP
+	AudienceManager.total_vp = NewGamePlus.get_starting_vp()
+	# Apply NG+ timer speed
+	SmusherTimer.time_scale = NewGamePlus.get_timer_speed_multiplier()
 	_fade_to_scene("res://scenes/character_select.tscn")
 
 func _fade_to_scene(scene_path: String) -> void:

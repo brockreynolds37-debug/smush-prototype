@@ -101,6 +101,10 @@ func _gather_save_data() -> Dictionary:
 			"floor_history": SolutionPathTracker.floor_history.duplicate(true),
 			"last_three": SolutionPathTracker.last_three_paths.duplicate(),
 		},
+		"ngplus": {
+			"is_ngplus_run": NewGamePlus.is_ngplus_run,
+			"ngplus_level": NewGamePlus.ngplus_level,
+		},
 	}
 
 func apply_save_data(data: Dictionary) -> void:
@@ -173,6 +177,12 @@ func apply_save_data(data: Dictionary) -> void:
 		SolutionPathTracker.last_three_paths.clear()
 		for p in sp_data.get("last_three", []):
 			SolutionPathTracker.last_three_paths.append(p)
+
+	# Restore NG+ state
+	var ngp_data: Dictionary = data.get("ngplus", {})
+	if not ngp_data.is_empty():
+		NewGamePlus.is_ngplus_run = ngp_data.get("is_ngplus_run", false)
+		NewGamePlus.ngplus_level = int(ngp_data.get("ngplus_level", 0))
 
 func apply_hero_state(data: Dictionary) -> void:
 	## Call after hero is spawned to restore HP/Mana from save.

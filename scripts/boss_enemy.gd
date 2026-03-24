@@ -65,6 +65,11 @@ var active_model: Node3D = null
 func _ready() -> void:
 	GameManager.register_enemy(self)
 	spawn_position = global_position
+
+	# Apply NG+ HP scaling
+	var ngp_hp := NewGamePlus.get_enemy_hp_multiplier()
+	if ngp_hp != 1.0:
+		max_health = int(max_health * ngp_hp)
 	current_health = max_health
 
 	_load_boss_model()

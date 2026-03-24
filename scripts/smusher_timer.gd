@@ -105,6 +105,8 @@ func start_timer(duration: float = DEFAULT_DURATION) -> void:
 	_collapsed_rooms.clear()
 	_warned_5min = false
 	_warned_1min = false
+	# Apply NG+ timer speed (stacks with archetype time_scale)
+	time_scale = NewGamePlus.get_timer_speed_multiplier()
 	_build_collapse_order()
 	time_updated.emit(time_remaining)
 
