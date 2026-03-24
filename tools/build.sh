@@ -12,22 +12,24 @@ mkdir -p "$PROJECT_DIR/builds/windows"
 mkdir -p "$PROJECT_DIR/builds/linux"
 mkdir -p "$PROJECT_DIR/builds/macos"
 
+BUILD_NAME="smush_v0.1_prototype"
+
 build_windows() {
   echo "==> Exporting Windows..."
-  "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Windows Desktop" "builds/windows/Smush.exe"
-  echo "    Done: builds/windows/Smush.exe"
+  "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Windows Desktop" "builds/windows/${BUILD_NAME}.exe"
+  echo "    Done: builds/windows/${BUILD_NAME}.exe"
 }
 
 build_linux() {
   echo "==> Exporting Linux..."
-  "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Linux" "builds/linux/Smush.x86_64"
-  echo "    Done: builds/linux/Smush.x86_64"
+  "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Linux" "builds/linux/${BUILD_NAME}.x86_64"
+  echo "    Done: builds/linux/${BUILD_NAME}.x86_64"
 }
 
 build_macos() {
   echo "==> Exporting macOS..."
-  "$GODOT" --headless --path "$PROJECT_DIR" --export-release "macOS" "builds/macos/Smush.zip"
-  echo "    Done: builds/macos/Smush.zip"
+  "$GODOT" --headless --path "$PROJECT_DIR" --export-release "macOS" "builds/macos/${BUILD_NAME}_macos.zip"
+  echo "    Done: builds/macos/${BUILD_NAME}_macos.zip"
 }
 
 TARGET="${1:-all}"
