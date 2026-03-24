@@ -26,6 +26,7 @@ func strike(origin_pos: Vector3) -> void:
 	# Damage primary target
 	if primary.has_method("take_damage"):
 		primary.take_damage(damage)
+		RunStats.record_damage_dealt(damage)
 	chain_targets.append(primary)
 
 	# Draw bolt line from sky to target
@@ -41,6 +42,7 @@ func strike(origin_pos: Vector3) -> void:
 			break
 		if next_target.has_method("take_damage"):
 			next_target.take_damage(current_damage)
+			RunStats.record_damage_dealt(current_damage)
 		_draw_bolt_line(current_pos + Vector3.UP * 1.0, next_target.global_position + Vector3.UP * 1.0)
 		# Spawn sparks at chain point
 		_spawn_chain_sparks(next_target.global_position)

@@ -63,6 +63,11 @@ var _original_materials: Dictionary = {}
 var _char_primary_color: Color = Color(0.15, 0.25, 0.5)
 var _char_secondary_color: Color = Color(0.87, 0.72, 0.58)
 
+# Status effects
+var _base_move_speed: float = 8.0
+var _is_stunned: bool = false
+var _slow_amount: float = 0.0  # 0.0 = no slow, 0.5 = 50% slow
+
 func _ready() -> void:
 	GameManager.register_hero(self)
 	target_position = global_position
@@ -93,6 +98,8 @@ func _ready() -> void:
 	# Set up the initial model
 	_swap_model(AnimState.IDLE, false)  # Don't play for idle — we pause it
 	original_scale = model.scale
+
+	_base_move_speed = move_speed
 
 	nav_agent.path_desired_distance = 0.5
 	nav_agent.target_desired_distance = 0.5
@@ -190,6 +197,13 @@ func _find_mesh_instances(node: Node) -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_dead:
+		return
+
+	# Stunned: can't do anything, just stand there
+	if _is_stunned:
+		velocity = Vector3.ZERO
+		current_speed = 0.0
+		move_and_slide()
 		return
 
 	_process_cooldowns(delta)
@@ -293,7 +307,9 @@ func _get_spell_power() -> float:
 
 func _apply_melee_damage() -> void:
 	if attack_target and is_instance_valid(attack_target) and attack_target.has_method("take_damage"):
-		attack_target.take_damage(_get_melee_damage())
+		var dmg = _get_melee_damage()
+		attack_target.take_damage(dmg)
+		RunStats.record_damage_dealt(dmg)
 		GameManager.request_screen_shake(3.0, 0.15)
 
 func set_attack_target(target: Node3D) -> void:
@@ -326,6 +342,7 @@ func _cast_strike() -> void:
 		spell_cooldowns[0] = spell_max_cooldowns[0]
 		spell_cast.emit(0)
 		AudienceManager.on_spell_cast(0)
+		RunStats.record_spell_cast(0)
 	else:
 		target = GameManager.get_nearest_enemy(global_position, 15.0)
 		if target:
@@ -349,6 +366,7 @@ func cast_fireball_at(target_pos: Vector3) -> void:
 	spell_cooldowns[1] = spell_max_cooldowns[1]
 	spell_cast.emit(1)
 	AudienceManager.on_spell_cast(1)
+	RunStats.record_spell_cast(1)
 
 	anim_state = AnimState.CAST
 	AudioManager.on_hero_cast_fireball()
@@ -381,6 +399,7 @@ func _cast_heal() -> void:
 	spell_cooldowns[2] = spell_max_cooldowns[2]
 	spell_cast.emit(2)
 	AudienceManager.on_spell_cast(2)
+	RunStats.record_spell_cast(2)
 
 	anim_state = AnimState.CAST
 	_set_model_color(Color(0.2, 1.0, 0.3))
@@ -421,6 +440,7 @@ func _cast_ground_slam() -> void:
 	spell_cooldowns[3] = spell_max_cooldowns[3]
 	spell_cast.emit(3)
 	AudienceManager.on_spell_cast(3)
+	RunStats.record_spell_cast(3)
 
 	anim_state = AnimState.CAST
 	AudioManager.on_hero_cast_ground_slam()
@@ -436,6 +456,10 @@ func _cast_ground_slam() -> void:
 		for e in enemies:
 			if e.has_method("take_damage"):
 				e.take_damage(slam_damage)
+				RunStats.record_damage_dealt(slam_damage)
+			# Ground slam applies slow + stun
+			StatusEffectManager.apply_slow(e, 3.0, 0.5)
+			StatusEffectManager.apply_stun(e, 1.0)
 		AudienceManager.on_aoe_hit(enemies.size())
 		_spawn_slam_particles()
 	)
@@ -463,6 +487,7 @@ func take_damage(amount: int) -> void:
 	health_changed.emit(current_health, max_health)
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.5, amount, false)
 	AudioManager.on_hero_take_damage()
+	RunStats.record_damage_taken(amount)
 
 	_flash_color(Color.WHITE, 0.08)
 
@@ -564,3 +589,24 @@ func _on_mana_regen() -> void:
 	if not is_dead and current_mana < max_mana:
 		current_mana = mini(current_mana + 5, max_mana)
 		mana_changed.emit(current_mana, max_mana)
+
+# ---------- STATUS EFFECTS ----------
+
+func _apply_status_slow(slow_pct: float) -> void:
+	_slow_amount = slow_pct
+	move_speed = _base_move_speed * (1.0 - _slow_amount)
+	nav_agent.max_speed = move_speed
+
+func _remove_status_slow() -> void:
+	_slow_amount = 0.0
+	move_speed = _base_move_speed
+	nav_agent.max_speed = move_speed
+
+func _apply_status_stun(stunned: bool) -> void:
+	_is_stunned = stunned
+	if stunned:
+		is_moving = false
+		is_casting = false
+		is_attacking = false
+		current_speed = 0.0
+		velocity = Vector3.ZERO

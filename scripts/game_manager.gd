@@ -36,6 +36,7 @@ func request_damage_number(pos: Vector3, amount: int, is_crit: bool = false) -> 
 
 func start_run() -> void:
 	run_start_time = Time.get_ticks_msec() / 1000.0
+	RunStats.start_run()
 
 func get_run_elapsed() -> float:
 	return Time.get_ticks_msec() / 1000.0 - run_start_time
@@ -95,7 +96,9 @@ func reset_game_state() -> void:
 	run_start_time = 0.0
 	XpManager.reset()
 	AudienceManager.reset()
+	StatusEffectManager.reset()
 	FloorManager.reset()
+	RunStats.reset()
 
 func register_camera(c: Node3D) -> void:
 	camera = c

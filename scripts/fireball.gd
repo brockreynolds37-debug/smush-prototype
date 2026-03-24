@@ -60,6 +60,9 @@ func _explode() -> void:
 	for e in enemies:
 		if e.has_method("take_damage"):
 			e.take_damage(final_damage)
+			RunStats.record_damage_dealt(final_damage)
+		# Fireball applies a burn (poison DOT) to enemies hit
+		StatusEffectManager.apply_poison(e, 4.0, 6, 1.0)
 
 	# Explosion sound
 	AudioManager.on_fireball_explode()

@@ -249,6 +249,7 @@ func pickup_item(item_def: Dictionary) -> void:
 			item_picked_up.emit(item_def)
 
 func _apply_consumable(item_def: Dictionary) -> void:
+	RunStats.record_potion_used()
 	var hero = GameManager.hero
 	if hero == null or hero.is_dead:
 		return

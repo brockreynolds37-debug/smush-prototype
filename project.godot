@@ -29,6 +29,8 @@ AudioManager="*res://scripts/audio_manager.gd"
 SmusherTimer="*res://scripts/smusher_timer.gd"
 XpManager="*res://scripts/xp_manager.gd"
 AudienceManager="*res://scripts/audience_manager.gd"
+StatusEffectManager="*res://scripts/status_effect_manager.gd"
+RunStats="*res://scripts/run_stats.gd"
 
 [display]
 

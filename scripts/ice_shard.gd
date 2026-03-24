@@ -57,15 +57,9 @@ func _impact() -> void:
 	for e in enemies:
 		if e.has_method("take_damage"):
 			e.take_damage(damage)
-		# Apply slow effect (reduce move speed temporarily)
-		if "move_speed" in e:
-			var original_speed: float = e.move_speed
-			e.move_speed = original_speed * 0.4
-			# Restore speed after duration
-			get_tree().create_timer(slow_duration).timeout.connect(func():
-				if is_instance_valid(e) and not e.is_dead:
-					e.move_speed = original_speed
-			)
+			RunStats.record_damage_dealt(damage)
+		# Apply slow via status effect system
+		StatusEffectManager.apply_slow(e, slow_duration, 0.6)
 
 	# Impact sound
 	AudioManager.on_hero_cast_ice_shard()

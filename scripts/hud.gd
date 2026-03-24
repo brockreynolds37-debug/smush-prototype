@@ -35,6 +35,10 @@ var _active_boss: Node3D = null
 var _edge_pulse_tween: Tween = null
 var _timer_flash_tween: Tween = null
 
+# Status effect icon display
+var _status_container: HBoxContainer = null
+var _status_icons: Dictionary = {}  # EffectType -> Panel
+
 const FLOOR_NAMES := {
 	1: "The Sift",
 	2: "The Crucible",
@@ -77,6 +81,10 @@ func _ready() -> void:
 	AudienceManager.mood_changed.connect(_on_mood_changed)
 	AudienceManager.audience_comment.connect(_on_audience_comment)
 	_update_vp_display()
+	# Status effects — create icon container below health bar
+	_setup_status_icons()
+	StatusEffectManager.effect_applied.connect(_on_status_effect_applied)
+	StatusEffectManager.effect_removed.connect(_on_status_effect_removed)
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -147,16 +155,27 @@ func _on_game_over(won: bool) -> void:
 		game_over_label.text = "DEFEATED"
 		game_over_overlay.color = Color(0.12, 0.0, 0.0, 0.85)
 
-	# Build stats text
+	# Build stats text from RunStats
 	var char_name = CharacterData.get_selected().get("name", "Hero")
+	var s = RunStats.get_summary()
 	var stats_text = ""
 	stats_text += "%s  —  Level %d\n" % [char_name, XpManager.current_level]
 	stats_text += "Floor Reached: %d\n" % FloorManager.max_floor_reached
-	stats_text += "Time: %s\n" % GameManager.get_run_time_string()
-	stats_text += "Enemies Slain: %d\n" % GameManager.run_kills
-	stats_text += "Gold Earned: %d\n" % LootManager.gold
-	stats_text += "Viewership Points: %d\n" % AudienceManager.total_vp
-	stats_text += "Audience Mood: %s" % AudienceManager.get_mood_name()
+	stats_text += "Time: %s\n" % s["run_time"]
+	stats_text += "\n"
+	stats_text += "Enemies Slain: %d\n" % s["total_kills"]
+	if s["boss_kills"] > 0:
+		stats_text += "Bosses Defeated: %d\n" % s["boss_kills"]
+	stats_text += "Damage Dealt: %d\n" % s["damage_dealt"]
+	stats_text += "Damage Taken: %d\n" % s["damage_taken"]
+	if s["largest_hit"] > 0:
+		stats_text += "Biggest Hit: %d\n" % s["largest_hit"]
+	stats_text += "\n"
+	stats_text += "Spells Cast: %d\n" % s["total_spells"]
+	stats_text += "Gold Earned: %d\n" % s["gold_earned"]
+	stats_text += "Items Collected: %d\n" % s["items_collected"]
+	stats_text += "\n"
+	stats_text += "VP: %d  —  %s" % [AudienceManager.total_vp, AudienceManager.get_mood_name()]
 	var stats_label = game_over_overlay.get_node_or_null("StatsLabel")
 	if stats_label:
 		stats_label.text = stats_text
@@ -357,6 +376,81 @@ func _update_vp_display() -> void:
 		vp_label.text = "VP: %d" % AudienceManager.total_vp
 		# Brief flash on VP gain
 		vp_label.add_theme_color_override("font_color", AudienceManager.get_mood_color())
+
+# ---------- STATUS EFFECTS ----------
+
+func _setup_status_icons() -> void:
+	_status_container = HBoxContainer.new()
+	_status_container.anchors_preset = Control.PRESET_TOP_LEFT
+	_status_container.offset_left = 140.0
+	_status_container.offset_top = 85.0
+	_status_container.offset_right = 350.0
+	_status_container.offset_bottom = 115.0
+	_status_container.add_theme_constant_override("separation", 6)
+	_status_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_status_container)
+
+func _on_status_effect_applied(target: Node3D, etype: int, _duration: float) -> void:
+	# Only show hero's status effects on HUD
+	if target != GameManager.hero:
+		return
+	if _status_icons.has(etype):
+		return  # Already showing
+
+	var icon := PanelContainer.new()
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# Colored background
+	var style := StyleBoxFlat.new()
+	var color: Color = StatusEffectManager.EFFECT_COLORS[etype]
+	style.bg_color = Color(color.r, color.g, color.b, 0.7)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	style.border_color = Color(1, 1, 1, 0.5)
+	icon.add_theme_stylebox_override("panel", style)
+
+	# Label with effect symbol
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	match etype:
+		StatusEffectManager.EffectType.POISON:
+			label.text = "P"
+		StatusEffectManager.EffectType.SLOW:
+			label.text = "S"
+		StatusEffectManager.EffectType.STUN:
+			label.text = "!"
+	icon.add_child(label)
+
+	_status_container.add_child(icon)
+	_status_icons[etype] = icon
+
+	# Pop-in animation
+	icon.scale = Vector2(0.3, 0.3)
+	var tween = create_tween()
+	tween.tween_property(icon, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+func _on_status_effect_removed(target: Node3D, etype: int) -> void:
+	if target != GameManager.hero:
+		return
+	if not _status_icons.has(etype):
+		return
+
+	var icon = _status_icons[etype]
+	_status_icons.erase(etype)
+
+	if is_instance_valid(icon):
+		var tween = create_tween()
+		tween.tween_property(icon, "scale", Vector2(0.0, 0.0), 0.1)
+		tween.tween_callback(icon.queue_free)
 
 func _on_retry_pressed() -> void:
 	GameManager.reset_game_state()
