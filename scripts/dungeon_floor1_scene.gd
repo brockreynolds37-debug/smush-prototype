@@ -7,6 +7,7 @@ var _transition_overlay: ColorRect = null
 var _merchant_ui: CanvasLayer = null
 var _deep_effects: CanvasLayer = null
 var _sponsor_ui: CanvasLayer = null
+var _loading_screen: CanvasLayer = null
 
 func _ready() -> void:
 	# Connect input handler to camera
@@ -57,6 +58,14 @@ func _ready() -> void:
 	_sponsor_ui.name = "SponsorSystem"
 	add_child(_sponsor_ui)
 	_sponsor_ui.sponsor_closed.connect(FloorManager.on_merchant_closed)
+
+	# Loading screen between floors (tips + floor name)
+	var loading_script = preload("res://scripts/loading_screen.gd")
+	_loading_screen = CanvasLayer.new()
+	_loading_screen.set_script(loading_script)
+	_loading_screen.name = "LoadingScreen"
+	add_child(_loading_screen)
+	FloorManager._loading_screen = _loading_screen
 
 	# Wire Smusher Timer to dungeon builder and start it
 	SmusherTimer.dungeon_builder = $DungeonBuilder

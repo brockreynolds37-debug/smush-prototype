@@ -16,6 +16,9 @@ var _waiting_for_merchant: bool = false
 # Transition overlay (injected by scene script or HUD)
 var _overlay: ColorRect = null
 
+# Loading screen (injected by scene script)
+var _loading_screen: CanvasLayer = null
+
 func set_overlay(overlay: ColorRect) -> void:
 	_overlay = overlay
 	_overlay.color = Color(0, 0, 0, 1)
@@ -52,18 +55,28 @@ func _transition_to_floor(floor_number: int) -> void:
 	while _waiting_for_merchant:
 		await get_tree().process_frame
 
+	# Show loading screen with floor name and tip
+	if _loading_screen and _loading_screen.has_method("show_loading"):
+		_loading_screen.show_loading(floor_number)
+		await get_tree().create_timer(0.3).timeout
+
 	# Midpoint — screen is black, swap level content
 	current_floor = floor_number
 	max_floor_reached = maxi(max_floor_reached, floor_number)
 	transition_fade_midpoint.emit()
 
-	# Small pause while black
-	await get_tree().create_timer(0.3).timeout
+	# Hold loading screen for minimum display time (masks rebuild stutter)
+	await get_tree().create_timer(1.0).timeout
 
 	floor_changed.emit(current_floor)
 
 	# Auto-save after floor transition
 	SaveManager.save_game()
+
+	# Hide loading screen, then fade back in
+	if _loading_screen and _loading_screen.has_method("hide_loading"):
+		_loading_screen.hide_loading()
+		await get_tree().create_timer(0.4).timeout
 
 	# Fade back in
 	if _overlay:
