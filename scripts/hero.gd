@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 ## Hero unit — click-to-move, spell casting, WC3-style feel.
+## Uses multiple animated GLB models (one per animation state).
 
 signal health_changed(current: int, maximum: int)
 signal mana_changed(current: int, maximum: int)
@@ -28,6 +29,7 @@ var nav_path_index: int = 0
 
 # Combat
 var attack_target: Node3D = null
+var is_attacking: bool = false
 var is_casting: bool = false
 var cast_timer: float = 0.0
 
@@ -40,8 +42,9 @@ var spell_names: Array[String] = ["Strike", "Fireball", "Heal", "Ground Slam"]
 # Animation state
 enum AnimState { IDLE, WALK, ATTACK, CAST, DEATH }
 var anim_state: AnimState = AnimState.IDLE
+var prev_anim_state: AnimState = AnimState.IDLE
 
-# References — model is the GLB scene root (Node3D), used for scale tweens
+# Model container — holds the active animated GLB scene
 @onready var model: Node3D = $HeroModel
 @onready var selection_circle: MeshInstance3D = $SelectionCircle
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
@@ -49,15 +52,31 @@ var anim_state: AnimState = AnimState.IDLE
 @onready var attack_timer_node: Timer = $AttackTimer
 @onready var cast_timer_node: Timer = $CastTimer
 
+# Animated GLB scenes — each has full model + one animation
+var anim_scenes: Dictionary = {}
+var active_model: Node3D = null
+var active_anim_player: AnimationPlayer = null
+
 var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
-var _original_materials: Dictionary = {}  # MeshInstance3D -> Array of original materials
+var _original_materials: Dictionary = {}
 
 func _ready() -> void:
 	GameManager.register_hero(self)
 	target_position = global_position
+
+	# Preload animated GLB scenes
+	anim_scenes = {
+		AnimState.IDLE: preload("res://assets/models/fat-nate/walking.glb"),
+		AnimState.WALK: preload("res://assets/models/fat-nate/walking.glb"),
+		AnimState.ATTACK: preload("res://assets/models/fat-nate/sword_slash.glb"),
+		AnimState.CAST: preload("res://assets/models/fat-nate/punch_combo.glb"),
+		AnimState.DEATH: preload("res://assets/models/fat-nate/dead.glb"),
+	}
+
+	# Set up the initial model
+	_swap_model(AnimState.IDLE, false)  # Don't play for idle — we pause it
 	original_scale = model.scale
-	_cache_mesh_instances()
 
 	nav_agent.path_desired_distance = 0.5
 	nav_agent.target_desired_distance = 0.5
@@ -73,11 +92,73 @@ func _ready() -> void:
 	mana_timer.timeout.connect(_on_mana_regen)
 	add_child(mana_timer)
 
+func _swap_model(state: AnimState, play_anim: bool = true) -> void:
+	# Remove old model children IMMEDIATELY (not deferred) to avoid
+	# visual artifacts when new children are added in the same frame
+	for child in model.get_children():
+		model.remove_child(child)
+		child.free()
+
+	# Instance the GLB scene for this state
+	var scene = anim_scenes.get(state)
+	if scene == null:
+		scene = anim_scenes[AnimState.IDLE]
+
+	active_model = scene.instantiate()
+	model.add_child(active_model)
+
+	# Find the AnimationPlayer inside the GLB scene
+	active_anim_player = _find_animation_player(active_model)
+
+	if active_anim_player and play_anim:
+		# Play the first animation found
+		var anims = active_anim_player.get_animation_list()
+		if anims.size() > 0:
+			active_anim_player.play(anims[0])
+	elif active_anim_player and not play_anim:
+		# For idle: play walk anim at very slow speed for subtle movement
+		var anims = active_anim_player.get_animation_list()
+		if anims.size() > 0:
+			active_anim_player.play(anims[0])
+			active_anim_player.speed_scale = 0.3
+
+	# Recache mesh instances for color flash
+	_cache_mesh_instances()
+
+	# Apply programmatic materials to Fat Nate (untextured GLB models)
+	_apply_hero_materials()
+
+func _apply_hero_materials() -> void:
+	for mi in _cached_mesh_instances:
+		for i in range(mi.mesh.get_surface_count() if mi.mesh else 0):
+			var mat = StandardMaterial3D.new()
+			var surface_name = mi.mesh.surface_get_material(i).resource_name if mi.mesh.surface_get_material(i) else ""
+			if "Dots" in surface_name or i == 0:
+				# Outfit/dots pattern — dark blue
+				mat.albedo_color = Color(0.15, 0.25, 0.5)
+				mat.roughness = 0.8
+			else:
+				# Skin/body — warm flesh tone
+				mat.albedo_color = Color(0.87, 0.72, 0.58)
+				mat.roughness = 0.7
+			mat.emission_enabled = true
+			mat.emission = mat.albedo_color * 0.15
+			mat.emission_energy_multiplier = 0.3
+			mi.set_surface_override_material(i, mat)
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node as AnimationPlayer
+	for child in node.get_children():
+		var result = _find_animation_player(child)
+		if result:
+			return result
+	return null
+
 func _cache_mesh_instances() -> void:
 	_cached_mesh_instances.clear()
 	_original_materials.clear()
 	_find_mesh_instances(model)
-	# Store original materials for color flash restoration
 	for mi in _cached_mesh_instances:
 		var mats: Array = []
 		for i in range(mi.get_surface_override_material_count()):
@@ -100,7 +181,7 @@ func _physics_process(delta: float) -> void:
 	_process_cooldowns(delta)
 	_process_casting(delta)
 
-	if not is_casting:
+	if not is_casting and not is_attacking:
 		_process_movement(delta)
 
 	_update_animation_state()
@@ -158,6 +239,7 @@ func move_to(world_pos: Vector3) -> void:
 	target_position = world_pos
 	nav_agent.target_position = world_pos
 	is_moving = true
+	is_attacking = false
 	attack_target = null
 	_play_acknowledge_bounce()
 
@@ -170,14 +252,20 @@ func _play_acknowledge_bounce() -> void:
 func _perform_melee_attack() -> void:
 	if not attack_timer_node.is_stopped():
 		return
+	is_attacking = true
 	anim_state = AnimState.ATTACK
 	attack_timer_node.start(0.8)
 
+	# Swap to sword_slash animation model
+	_swap_model(AnimState.ATTACK, true)
+
+	# Squash/stretch juice on top of the animation
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * Vector3(1.3, 0.8, 1.3), 0.15)
 	tween.tween_callback(_apply_melee_damage)
 	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.1)
 	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_callback(func(): is_attacking = false)
 
 func _apply_melee_damage() -> void:
 	if attack_target and is_instance_valid(attack_target) and attack_target.has_method("take_damage"):
@@ -342,10 +430,8 @@ func take_damage(amount: int) -> void:
 	health_changed.emit(current_health, max_health)
 	GameManager.request_damage_number(global_position + Vector3.UP * 2.5, amount, false)
 
-	# Hit flash
 	_flash_color(Color.WHITE, 0.08)
 
-	# Hit squash
 	var tween = create_tween()
 	tween.tween_property(model, "scale", original_scale * Vector3(1.15, 0.85, 1.15), 0.05)
 	tween.tween_property(model, "scale", original_scale, 0.1)
@@ -359,10 +445,50 @@ func _die() -> void:
 	anim_state = AnimState.DEATH
 	velocity = Vector3.ZERO
 
+	# Swap to death model
+	_swap_model(AnimState.DEATH, true)
+
 	var tween = create_tween()
-	tween.tween_property(model, "scale", Vector3(1.5, 0.1, 1.5), 0.5)
+	tween.tween_interval(1.5)  # Let death animation play
 	tween.tween_property(model, "scale", Vector3(0.01, 0.01, 0.01), 0.3)
 	hero_died.emit()
+
+# ---------- ANIMATION STATE MACHINE ----------
+
+func _update_animation_state() -> void:
+	var new_state: AnimState
+
+	if is_dead:
+		new_state = AnimState.DEATH
+	elif is_casting:
+		new_state = AnimState.CAST
+	elif is_attacking:
+		new_state = AnimState.ATTACK
+	elif current_speed > 0.5:
+		new_state = AnimState.WALK
+	else:
+		new_state = AnimState.IDLE
+
+	# Only swap model when state changes (avoid constant re-instancing)
+	if new_state != prev_anim_state:
+		prev_anim_state = new_state
+		anim_state = new_state
+
+		match new_state:
+			AnimState.IDLE:
+				_swap_model(AnimState.IDLE, false)  # Slow walk as idle
+			AnimState.WALK:
+				_swap_model(AnimState.WALK, true)
+				if active_anim_player:
+					active_anim_player.speed_scale = 1.0
+			AnimState.ATTACK:
+				pass  # Handled in _perform_melee_attack()
+			AnimState.CAST:
+				_swap_model(AnimState.CAST, true)
+			AnimState.DEATH:
+				pass  # Handled in _die()
+	else:
+		anim_state = new_state
 
 # ---------- UTILITIES ----------
 
@@ -374,20 +500,6 @@ func _process_cooldowns(delta: float) -> void:
 
 func _process_casting(_delta: float) -> void:
 	pass
-
-func _update_animation_state() -> void:
-	if is_dead:
-		anim_state = AnimState.DEATH
-	elif is_casting:
-		anim_state = AnimState.CAST
-	elif current_speed > 0.5:
-		anim_state = AnimState.WALK
-		# Walk bob on the model
-		model.position.y = sin(Time.get_ticks_msec() * 0.01) * 0.05
-	else:
-		anim_state = AnimState.IDLE
-		# Idle breathing
-		model.position.y = sin(Time.get_ticks_msec() * 0.003) * 0.03
 
 func _set_model_color(color: Color) -> void:
 	for mi in _cached_mesh_instances:
@@ -404,9 +516,9 @@ func _set_model_color(color: Color) -> void:
 				mat.albedo_color = color
 
 func _restore_model_materials() -> void:
-	for mi in _cached_mesh_instances:
-		for i in range(mi.get_surface_override_material_count()):
-			mi.set_surface_override_material(i, null)
+	# Re-apply hero materials instead of clearing to null, since Fat Nate
+	# has no embedded textures and would revert to default gray
+	_apply_hero_materials()
 
 func _flash_color(color: Color, duration: float) -> void:
 	_set_model_color(color)

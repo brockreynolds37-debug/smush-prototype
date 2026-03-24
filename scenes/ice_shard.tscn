@@ -1,0 +1,60 @@
+[gd_scene load_steps=8 format=3 uid="uid://ice_shard_scene"]
+
+[ext_resource type="Script" path="res://scripts/ice_shard.gd" id="1_ice_shard"]
+
+[sub_resource type="PrismMesh" id="SubResource_shard_mesh"]
+size = Vector3(0.2, 0.6, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_shard_mat"]
+albedo_color = Color(0.5, 0.8, 1.0, 0.85)
+transparency = 1
+emission_enabled = true
+emission = Color(0.3, 0.6, 1.0, 1)
+emission_energy_multiplier = 3.0
+rim_enabled = true
+rim = 0.8
+rim_tint = 0.5
+refraction_enabled = true
+refraction_scale = 0.05
+
+[sub_resource type="Gradient" id="SubResource_frost_gradient"]
+offsets = PackedFloat32Array(0, 0.4, 0.8, 1)
+colors = PackedColorArray(0.7, 0.9, 1, 1, 0.4, 0.7, 1, 0.8, 0.2, 0.4, 0.8, 0.4, 0.1, 0.2, 0.5, 0)
+
+[sub_resource type="GradientTexture1D" id="SubResource_frost_grad_tex"]
+gradient = SubResource("SubResource_frost_gradient")
+
+[sub_resource type="ParticleProcessMaterial" id="SubResource_frost_trail_mat"]
+direction = Vector3(0, 0.2, 0)
+spread = 20.0
+initial_velocity_min = 0.2
+initial_velocity_max = 0.8
+gravity = Vector3(0, -0.3, 0)
+scale_min = 0.08
+scale_max = 0.25
+color_ramp = SubResource("SubResource_frost_grad_tex")
+
+[sub_resource type="SphereMesh" id="SubResource_frost_mesh"]
+radius = 0.06
+height = 0.12
+
+[node name="IceShard" type="Node3D"]
+script = ExtResource("1_ice_shard")
+
+[node name="ShardMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0)
+mesh = SubResource("SubResource_shard_mesh")
+surface_material_override/0 = SubResource("SubResource_shard_mat")
+
+[node name="FrostTrail" type="GPUParticles3D" parent="."]
+amount = 24
+lifetime = 0.5
+emitting = true
+process_material = SubResource("SubResource_frost_trail_mat")
+draw_pass_1 = SubResource("SubResource_frost_mesh")
+
+[node name="IceLight" type="OmniLight3D" parent="."]
+light_color = Color(0.4, 0.7, 1.0, 1)
+light_energy = 2.0
+omni_range = 5.0
+omni_attenuation = 1.5

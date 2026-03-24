@@ -7,10 +7,15 @@ signal screen_shake_requested(intensity: float, duration: float)
 signal damage_number_requested(position: Vector3, amount: int, is_crit: bool)
 signal enemy_died(enemy: Node3D)
 signal hero_target_changed(target: Node3D)
+signal game_over(won: bool)
+
+enum GameState { PLAYING, WON, LOST }
+var game_state: GameState = GameState.PLAYING
 
 var hero: Node3D = null
 var enemies: Array[Node3D] = []
 var camera: Node3D = null
+var total_enemies_spawned: int = 0
 
 # Spell targeting state
 var is_targeting_spell: bool = false
@@ -24,13 +29,37 @@ func request_damage_number(pos: Vector3, amount: int, is_crit: bool = false) -> 
 
 func register_hero(h: Node3D) -> void:
 	hero = h
+	if h.has_signal("hero_died"):
+		h.hero_died.connect(_on_hero_died)
 
 func register_enemy(e: Node3D) -> void:
 	enemies.append(e)
+	total_enemies_spawned += 1
 
 func unregister_enemy(e: Node3D) -> void:
 	enemies.erase(e)
 	enemy_died.emit(e)
+	_check_win_condition()
+
+func _on_hero_died() -> void:
+	if game_state != GameState.PLAYING:
+		return
+	game_state = GameState.LOST
+	game_over.emit(false)
+
+func _check_win_condition() -> void:
+	if game_state != GameState.PLAYING:
+		return
+	# Win when all enemies are dead (and at least some were spawned)
+	if total_enemies_spawned > 0 and enemies.size() == 0:
+		game_state = GameState.WON
+		game_over.emit(true)
+
+func reset_game_state() -> void:
+	game_state = GameState.PLAYING
+	total_enemies_spawned = 0
+	enemies.clear()
+	hero = null
 
 func register_camera(c: Node3D) -> void:
 	camera = c

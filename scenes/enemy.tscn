@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://enemy_scene"]
+[gd_scene load_steps=4 format=3 uid="uid://enemy_scene"]
 
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="1_enemy"]
-[ext_resource type="PackedScene" uid="uid://orc_grunt_glb" path="res://assets/models/orc_grunt.glb" id="2_model"]
 
 [sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
 size = Vector2(1.6, 1.6)
@@ -21,8 +20,9 @@ height = 1.4
 collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_enemy")
+enemy_type = "goblin"
 
-[node name="EnemyModel" parent="." instance=ExtResource("2_model")]
+[node name="EnemyModel" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="SelectionCircle" type="MeshInstance3D" parent="."]

@@ -1,0 +1,48 @@
+[gd_scene load_steps=4 format=3 uid="uid://enemy_goblin_archer_scene"]
+
+[ext_resource type="Script" path="res://scripts/enemy.gd" id="1_enemy"]
+
+[sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
+size = Vector2(1.2, 1.2)
+
+[sub_resource type="StandardMaterial3D" id="SubResource_sel_mat"]
+transparency = 1
+albedo_color = Color(0.2, 0.7, 0.2, 0.4)
+emission_enabled = true
+emission = Color(0.2, 0.7, 0.2, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="CapsuleShape3D" id="SubResource_enemy_col"]
+radius = 0.3
+height = 1.1
+
+[node name="Enemy" type="CharacterBody3D" groups=["enemies"]]
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1_enemy")
+max_health = 70
+move_speed = 4.5
+aggro_range = 16.0
+attack_range = 2.5
+attack_damage = 14
+attack_cooldown = 1.8
+enemy_type = "goblin_archer"
+
+[node name="EnemyModel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="SelectionCircle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("SubResource_sel_mesh")
+surface_material_override/0 = SubResource("SubResource_sel_mat")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("SubResource_enemy_col")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+
+[node name="AttackTimer" type="Timer" parent="."]
+one_shot = true

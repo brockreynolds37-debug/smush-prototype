@@ -12,6 +12,7 @@ var has_arrived: bool = false
 
 @onready var mesh: MeshInstance3D = $FireballMesh
 @onready var particles: GPUParticles3D = $TrailParticles
+@onready var fire_light: OmniLight3D = $FireLight
 
 func launch(target: Vector3) -> void:
 	target_position = target
@@ -45,6 +46,9 @@ func _explode() -> void:
 		mesh.visible = false
 	if particles:
 		particles.emitting = false
+	if fire_light:
+		var light_tween = create_tween()
+		light_tween.tween_property(fire_light, "light_energy", 0.0, 0.3)
 
 	# Damage enemies in AoE
 	var enemies = GameManager.get_enemies_in_range(global_position, aoe_radius)

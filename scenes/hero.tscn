@@ -1,8 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://hero_scene"]
+[gd_scene load_steps=8 format=3 uid="uid://hero_scene"]
 
 [ext_resource type="Script" path="res://scripts/hero.gd" id="1_hero"]
 [ext_resource type="Script" path="res://scripts/unit_health_bar.gd" id="2_hbar"]
-[ext_resource type="PackedScene" uid="uid://fat_nate_glb" path="res://assets/models/fat_nate.glb" id="3_model"]
 
 [sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
 size = Vector2(2.0, 2.0)
@@ -39,7 +38,7 @@ collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_hero")
 
-[node name="HeroModel" parent="." instance=ExtResource("3_model")]
+[node name="HeroModel" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="SelectionCircle" type="MeshInstance3D" parent="."]

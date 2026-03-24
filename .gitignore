@@ -1,0 +1,8 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-specific ignores
+*.translation
+
+# Imported textures, models, etc.
+# Keep .import files so Godot can reimport on other machines

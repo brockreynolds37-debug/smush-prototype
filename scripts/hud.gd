@@ -14,14 +14,20 @@ extends CanvasLayer
 @onready var cooldown_e: ColorRect = %CooldownE
 @onready var cooldown_r: ColorRect = %CooldownR
 @onready var minimap_frame: ColorRect = %MinimapFrame
+@onready var game_over_overlay: ColorRect = $GameOverOverlay
+@onready var game_over_label: Label = $GameOverOverlay/GameOverLabel
+@onready var restart_label: Label = $GameOverOverlay/RestartLabel
 
 var cooldown_labels: Array[ColorRect] = []
 
 func _ready() -> void:
 	cooldown_labels = [cooldown_q, cooldown_w, cooldown_e, cooldown_r]
+	if game_over_overlay:
+		game_over_overlay.visible = false
 	# Connect to hero when available
 	await get_tree().process_frame
 	_connect_hero()
+	GameManager.game_over.connect(_on_game_over)
 
 func _connect_hero() -> void:
 	var hero = GameManager.hero
@@ -49,3 +55,23 @@ func _on_cooldown_updated(spell_index: int, remaining: float, total: float) -> v
 			cd_rect.size.y = 60 * ratio
 		else:
 			cd_rect.visible = false
+
+func _on_game_over(won: bool) -> void:
+	if game_over_overlay:
+		game_over_overlay.visible = true
+		if won:
+			game_over_label.text = "VICTORY!"
+			game_over_overlay.color = Color(0.0, 0.1, 0.0, 0.7)
+		else:
+			game_over_label.text = "DEFEATED"
+			game_over_overlay.color = Color(0.15, 0.0, 0.0, 0.7)
+		# Fade in the overlay
+		game_over_overlay.modulate = Color(1, 1, 1, 0)
+		var tween = create_tween()
+		tween.tween_property(game_over_overlay, "modulate", Color(1, 1, 1, 1), 1.0)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+		if GameManager.game_state != GameManager.GameState.PLAYING:
+			get_tree().reload_current_scene()
+			GameManager.reset_game_state()

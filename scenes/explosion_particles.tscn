@@ -1,23 +1,58 @@
-[gd_scene load_steps=3 format=3 uid="uid://explosion_particles"]
+[gd_scene load_steps=7 format=3 uid="uid://explosion_particles"]
+
+[sub_resource type="Gradient" id="SubResource_exp_gradient"]
+offsets = PackedFloat32Array(0, 0.25, 0.6, 1)
+colors = PackedColorArray(1, 0.95, 0.5, 1, 1, 0.5, 0, 1, 0.7, 0.1, 0, 0.7, 0.15, 0.02, 0, 0)
+
+[sub_resource type="GradientTexture1D" id="SubResource_exp_grad_tex"]
+gradient = SubResource("SubResource_exp_gradient")
 
 [sub_resource type="ParticleProcessMaterial" id="SubResource_exp_mat"]
 direction = Vector3(0, 0.5, 0)
 spread = 180.0
-initial_velocity_min = 3.0
-initial_velocity_max = 8.0
-gravity = Vector3(0, -5, 0)
-scale_min = 0.2
-scale_max = 0.6
-color = Color(1.0, 0.4, 0.0, 1)
+initial_velocity_min = 4.0
+initial_velocity_max = 10.0
+gravity = Vector3(0, -6, 0)
+scale_min = 0.15
+scale_max = 0.5
+color_ramp = SubResource("SubResource_exp_grad_tex")
 
 [sub_resource type="SphereMesh" id="SubResource_exp_mesh"]
 radius = 0.12
 height = 0.24
 
+[sub_resource type="ParticleProcessMaterial" id="SubResource_ring_mat"]
+direction = Vector3(0, 0.1, 0)
+spread = 180.0
+initial_velocity_min = 6.0
+initial_velocity_max = 9.0
+gravity = Vector3(0, -2, 0)
+scale_min = 0.08
+scale_max = 0.2
+color = Color(1.0, 0.8, 0.2, 0.8)
+
+[sub_resource type="SphereMesh" id="SubResource_ring_mesh"]
+radius = 0.06
+height = 0.12
+
 [node name="ExplosionParticles" type="GPUParticles3D"]
-amount = 50
-lifetime = 0.8
+amount = 80
+lifetime = 0.9
 one_shot = true
 explosiveness = 1.0
 process_material = SubResource("SubResource_exp_mat")
 draw_pass_1 = SubResource("SubResource_exp_mesh")
+
+[node name="RingParticles" type="GPUParticles3D" parent="."]
+amount = 40
+lifetime = 0.6
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("SubResource_ring_mat")
+draw_pass_1 = SubResource("SubResource_ring_mesh")
+
+[node name="FlashLight" type="OmniLight3D" parent="."]
+light_color = Color(1.0, 0.6, 0.1, 1)
+light_energy = 5.0
+omni_range = 8.0
+omni_attenuation = 2.0

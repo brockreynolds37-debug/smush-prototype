@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://enemy_skeleton_scene"]
+[gd_scene load_steps=4 format=3 uid="uid://enemy_skeleton_scene"]
 
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="1_enemy"]
-[ext_resource type="PackedScene" uid="uid://skeleton_warrior_glb" path="res://assets/models/skeleton_warrior.glb" id="2_model"]
 
 [sub_resource type="PlaneMesh" id="SubResource_sel_mesh"]
 size = Vector2(1.6, 1.6)
@@ -24,8 +23,9 @@ script = ExtResource("1_enemy")
 max_health = 100
 move_speed = 6.0
 attack_damage = 12
+enemy_type = "orc"
 
-[node name="EnemyModel" parent="." instance=ExtResource("2_model")]
+[node name="EnemyModel" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="SelectionCircle" type="MeshInstance3D" parent="."]

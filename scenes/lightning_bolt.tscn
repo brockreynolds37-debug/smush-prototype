@@ -1,0 +1,41 @@
+[gd_scene load_steps=5 format=3 uid="uid://lightning_bolt_scene"]
+
+[ext_resource type="Script" path="res://scripts/lightning_bolt.gd" id="1_lightning"]
+
+[sub_resource type="Gradient" id="SubResource_bolt_gradient"]
+offsets = PackedFloat32Array(0, 0.15, 0.5, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0.6, 0.5, 1, 1, 0.3, 0.2, 0.8, 0.6, 0.1, 0.05, 0.3, 0)
+
+[sub_resource type="GradientTexture1D" id="SubResource_bolt_grad_tex"]
+gradient = SubResource("SubResource_bolt_gradient")
+
+[sub_resource type="ParticleProcessMaterial" id="SubResource_spark_mat"]
+direction = Vector3(0, 1, 0)
+spread = 180.0
+initial_velocity_min = 2.0
+initial_velocity_max = 6.0
+gravity = Vector3(0, -3, 0)
+scale_min = 0.05
+scale_max = 0.2
+color_ramp = SubResource("SubResource_bolt_grad_tex")
+
+[sub_resource type="SphereMesh" id="SubResource_spark_mesh"]
+radius = 0.05
+height = 0.1
+
+[node name="LightningBolt" type="Node3D"]
+script = ExtResource("1_lightning")
+
+[node name="SparkParticles" type="GPUParticles3D" parent="."]
+amount = 50
+lifetime = 0.4
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("SubResource_spark_mat")
+draw_pass_1 = SubResource("SubResource_spark_mesh")
+
+[node name="BoltLight" type="OmniLight3D" parent="."]
+light_color = Color(0.6, 0.5, 1.0, 1)
+light_energy = 6.0
+omni_range = 10.0
+omni_attenuation = 1.5
