@@ -54,6 +54,7 @@ CrossFloorConsequences="*res://scripts/cross_floor_consequences.gd"
 AudienceBlocs="*res://scripts/audience_blocs.gd"
 BriberySystem="*res://scripts/bribery_system.gd"
 NetworkManager="*res://scripts/network_manager.gd"
+AchievementManager="*res://scripts/achievement_manager.gd"
 
 [display]
 

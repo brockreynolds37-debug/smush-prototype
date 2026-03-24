@@ -149,6 +149,8 @@ func _execute(cmd: String) -> void:
 			_cmd_bribes()
 		"replays":
 			_cmd_replays()
+		"achievements", "ach":
+			_cmd_achievements()
 		"clear", "cls":
 			_output.clear()
 		# ── CHEAT CODES (debug only) ──
@@ -188,6 +190,7 @@ func _cmd_help() -> void:
 	_print_line("-blocs      Show audience civilization blocs")
 	_print_line("-bribe      Show bribery and negotiation stats")
 	_print_line("-replays  List saved replays")
+	_print_line("-ach      Show achievement progress")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
 		_print_line("[color=yellow]── Cheats (debug only) ──[/color]")
@@ -334,6 +337,16 @@ func _cmd_consequences() -> void:
 	var discount := CrossFloorConsequences.get_vendor_discount()
 	if discount != 1.0:
 		_print_line("Vendor price mult: %.2fx" % discount)
+
+func _cmd_achievements() -> void:
+	var achs := AchievementManager.get_all()
+	var unlocked := AchievementManager.get_unlocked_count()
+	var total := AchievementManager.get_total_count()
+	_print_line("[color=cyan]── Achievements (%d/%d) ──[/color]" % [unlocked, total])
+	for id in achs:
+		var a: Dictionary = achs[id]
+		var status := "[color=green]✓[/color]" if a["unlocked"] else "[color=gray]✗[/color]"
+		_print_line("  %s %s %s — %s" % [status, a["icon"], a["title"], a["description"]])
 
 # ── CHEAT CODES ──
 
