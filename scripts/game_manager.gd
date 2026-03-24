@@ -124,6 +124,7 @@ func reset_game_state() -> void:
 	SolutionPathTracker.reset()
 	DisguiseSystem.reset()
 	FactionManager.reset()
+	CrossFloorConsequences.reset()
 	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:

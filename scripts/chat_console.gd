@@ -141,6 +141,8 @@ func _execute(cmd: String) -> void:
 			_cmd_path()
 		"faction", "factions", "rep":
 			_cmd_factions()
+		"consequence", "consequences", "tags":
+			_cmd_consequences()
 		"replays":
 			_cmd_replays()
 		"clear", "cls":
@@ -178,6 +180,7 @@ func _cmd_help() -> void:
 	_print_line("-archetype  Show current floor archetype")
 	_print_line("-path       Show current solution path")
 	_print_line("-faction    Show faction reputation")
+	_print_line("-tags       Show cross-floor consequence tags")
 	_print_line("-replays  List saved replays")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
@@ -296,6 +299,23 @@ func _cmd_replays() -> void:
 			r.get("floors_cleared", 0),
 			r.get("total_kills", 0),
 		])
+
+func _cmd_consequences() -> void:
+	_print_line("[color=cyan]── Cross-Floor Consequences ──[/color]")
+	if CrossFloorConsequences.tags.is_empty():
+		_print_line("No choice tags set yet.")
+	else:
+		for tag in CrossFloorConsequences.tags:
+			var info: Dictionary = CrossFloorConsequences.tags[tag]
+			_print_line("  [%s] set on floor %d" % [tag, info.get("floor_set", 0)])
+	var effects := CrossFloorConsequences.get_active_effects()
+	if not effects.is_empty():
+		_print_line("[color=yellow]Active effects:[/color]")
+		for e in effects:
+			_print_line("  %s: %s" % [e.get("type", "?"), e.get("data", {}).get("reason", "")])
+	var discount := CrossFloorConsequences.get_vendor_discount()
+	if discount != 1.0:
+		_print_line("Vendor price mult: %.2fx" % discount)
 
 # ── CHEAT CODES ──
 

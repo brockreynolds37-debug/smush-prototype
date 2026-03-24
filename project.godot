@@ -50,6 +50,7 @@ RunModifiers="*res://scripts/run_modifiers.gd"
 SolutionPathTracker="*res://scripts/solution_path_tracker.gd"
 DisguiseSystem="*res://scripts/disguise_system.gd"
 FactionManager="*res://scripts/faction_manager.gd"
+CrossFloorConsequences="*res://scripts/cross_floor_consequences.gd"
 NetworkManager="*res://scripts/network_manager.gd"
 
 [display]
