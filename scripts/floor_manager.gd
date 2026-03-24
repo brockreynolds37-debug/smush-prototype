@@ -88,6 +88,11 @@ func _transition_to_floor(floor_number: int) -> void:
 		_loading_screen.hide_loading()
 		await get_tree().create_timer(0.4).timeout
 
+	# Floor cinematic — dramatic archetype reveal (skippable)
+	if current_archetype and FloorCinematic:
+		FloorCinematic.play(current_archetype, floor_number)
+		await FloorCinematic.cinematic_finished
+
 	# Fade back in
 	if _overlay:
 		var fade_in = create_tween()

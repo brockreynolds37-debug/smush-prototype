@@ -45,6 +45,7 @@ DayNightCycle="*res://scripts/day_night_cycle.gd"
 Leaderboard="*res://scripts/leaderboard.gd"
 ReplayManager="*res://scripts/replay_manager.gd"
 ChatConsole="*res://scripts/chat_console.gd"
+FloorCinematic="*res://scripts/floor_cinematic.gd"
 
 [display]
 
