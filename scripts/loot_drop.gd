@@ -14,6 +14,7 @@ var _spawn_tween_done: bool = false
 var _despawn_timer: float = 60.0
 
 func _ready() -> void:
+	add_to_group("loot_drops")
 	# Read item data from meta (set by LootManager before adding to tree)
 	item_data = get_meta("item_data", {})
 

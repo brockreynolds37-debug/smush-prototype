@@ -30,6 +30,7 @@ func spawn_impact_sparks(pos: Vector3, color: Color = Color(1.0, 0.8, 0.3), coun
 
 		spark.global_position = pos
 		get_tree().root.add_child(spark)
+		PerformanceMonitor.register_temp_vfx(spark)
 
 		var dir := Vector3(randf_range(-1.0, 1.0), randf_range(0.3, 1.5), randf_range(-1.0, 1.0)).normalized()
 		var target := pos + dir * randf_range(1.5, 3.0)
@@ -61,6 +62,7 @@ func spawn_spell_impact(pos: Vector3, spell_color: Color, radius: float = 2.0) -
 	mat.emission_energy_multiplier = 2.0
 	ring.set_surface_override_material(0, mat)
 	get_tree().root.add_child(ring)
+	PerformanceMonitor.register_temp_vfx(ring)
 
 	var tween := ring.create_tween()
 	tween.tween_property(ring, "scale", Vector3(radius, radius, radius), 0.3).set_ease(Tween.EASE_OUT)
@@ -95,6 +97,7 @@ func spawn_heal_glow(target: Node3D) -> void:
 		var offset := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
 		particle.global_position = target.global_position + offset
 		get_tree().root.add_child(particle)
+		PerformanceMonitor.register_temp_vfx(particle)
 
 		var rise := particle.global_position + Vector3(0, randf_range(2.0, 3.5), 0)
 		var tween := particle.create_tween()
@@ -112,6 +115,7 @@ func spawn_heal_glow(target: Node3D) -> void:
 	glow.omni_attenuation = 2.0
 	glow.global_position = target.global_position + Vector3.UP * 1.0
 	get_tree().root.add_child(glow)
+	PerformanceMonitor.register_temp_vfx(glow)
 
 	var light_tween := glow.create_tween()
 	light_tween.tween_property(glow, "light_energy", 0.0, 1.0)
@@ -149,6 +153,7 @@ func _spawn_level_up_burst(target: Node3D) -> void:
 	mat.no_depth_test = true
 	pillar.set_surface_override_material(0, mat)
 	get_tree().root.add_child(pillar)
+	PerformanceMonitor.register_temp_vfx(pillar)
 
 	var tween := pillar.create_tween()
 	tween.tween_property(pillar, "scale", Vector3(2.0, 1.5, 2.0), 0.3).set_ease(Tween.EASE_OUT)
@@ -166,6 +171,7 @@ func _spawn_level_up_burst(target: Node3D) -> void:
 	burst_light.omni_range = 10.0
 	burst_light.global_position = target.global_position + Vector3.UP * 2.0
 	get_tree().root.add_child(burst_light)
+	PerformanceMonitor.register_temp_vfx(burst_light)
 
 	var lt := burst_light.create_tween()
 	lt.tween_property(burst_light, "light_energy", 0.0, 0.6)
@@ -235,11 +241,12 @@ func _spawn_dust_burst() -> void:
 		mat.roughness = 1.0
 		dust.set_surface_override_material(0, mat)
 
-		var start := hero.global_position + Vector3(randf_range(-3.0, 3.0), 0.0, randf_range(-3.0, 3.0))
+		var start: Vector3 = hero.global_position + Vector3(randf_range(-3.0, 3.0), 0.0, randf_range(-3.0, 3.0))
 		dust.global_position = start
 		get_tree().root.add_child(dust)
+		PerformanceMonitor.register_temp_vfx(dust)
 
-		var target := start + Vector3(randf_range(-1.0, 1.0), randf_range(1.0, 3.0), randf_range(-1.0, 1.0))
+		var target: Vector3 = start + Vector3(randf_range(-1.0, 1.0), randf_range(1.0, 3.0), randf_range(-1.0, 1.0))
 		var tween := dust.create_tween()
 		tween.tween_property(dust, "global_position", target, randf_range(0.5, 1.0))
 		tween.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.8)

@@ -24,6 +24,13 @@ var _lod_timer: float = 0.0
 const MAX_ACTIVE_PARTICLES := 8
 var _active_particle_systems: Array[GPUParticles3D] = []
 
+# VFX temp node limiter (MeshInstance3D sparks, dust, etc.)
+const MAX_TEMP_VFX_NODES := 32
+var _temp_vfx_nodes: Array[Node] = []
+
+# Dynamic shadow distance
+var _last_zoom: float = 18.0
+
 func _ready() -> void:
 	_build_fps_overlay()
 
@@ -51,12 +58,15 @@ func _process(delta: float) -> void:
 		else:
 			_fps_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 
-	# LOD checks + particle cull
+	# LOD checks + particle cull + VFX cull
 	_lod_timer += delta
 	if _lod_timer >= LOD_CHECK_INTERVAL:
 		_lod_timer = 0.0
 		_update_lod()
+		_update_loot_lod()
 		_enforce_particle_limit()
+		_enforce_temp_vfx_limit()
+		_update_dynamic_shadows()
 
 	# Periodic frame time logging
 	_log_timer += delta
@@ -178,6 +188,82 @@ func _enforce_particle_limit() -> void:
 		for i in range(MAX_ACTIVE_PARTICLES, emitting.size()):
 			emitting[i].emitting = false
 
+# ── LOOT DROP LOD ──
+
+func _update_loot_lod() -> void:
+	var camera := get_viewport().get_camera_3d()
+	if not camera:
+		return
+	var cam_pos := camera.global_position
+	var loot_nodes := get_tree().get_nodes_in_group("loot_drops")
+	for loot in loot_nodes:
+		if not is_instance_valid(loot) or not loot is Node3D:
+			continue
+		var dist := cam_pos.distance_to(loot.global_position)
+		if dist > LOD_DISTANCE_LOW:
+			loot.visible = false
+			loot.set_process(false)
+		elif dist > LOD_DISTANCE_MED:
+			loot.visible = true
+			loot.set_process(true)
+			# Disable glow light at medium distance
+			var glow = loot.get("_glow_light")
+			if glow and is_instance_valid(glow):
+				glow.visible = false
+		else:
+			loot.visible = true
+			loot.set_process(true)
+			var glow = loot.get("_glow_light")
+			if glow and is_instance_valid(glow):
+				glow.visible = true
+
+# ── TEMP VFX NODE LIMITER ──
+
+func register_temp_vfx(node: Node) -> bool:
+	_temp_vfx_nodes = _temp_vfx_nodes.filter(func(n): return is_instance_valid(n))
+	if _temp_vfx_nodes.size() >= MAX_TEMP_VFX_NODES:
+		# Kill oldest
+		var oldest: Node = _temp_vfx_nodes[0]
+		if is_instance_valid(oldest):
+			oldest.queue_free()
+		_temp_vfx_nodes.remove_at(0)
+	_temp_vfx_nodes.append(node)
+	return true
+
+func _enforce_temp_vfx_limit() -> void:
+	_temp_vfx_nodes = _temp_vfx_nodes.filter(func(n): return is_instance_valid(n))
+	while _temp_vfx_nodes.size() > MAX_TEMP_VFX_NODES:
+		var oldest: Node = _temp_vfx_nodes[0]
+		if is_instance_valid(oldest):
+			oldest.queue_free()
+		_temp_vfx_nodes.remove_at(0)
+
+# ── DYNAMIC SHADOW DISTANCE ──
+
+func _update_dynamic_shadows() -> void:
+	var camera := get_viewport().get_camera_3d()
+	if not camera:
+		return
+	# Directional shadow max distance scales with zoom level
+	var env := get_viewport().get_camera_3d().get_world_3d().environment
+	if not env:
+		return
+	# Closer zoom = smaller shadow distance needed
+	var zoom_dist: float = camera.position.z if camera.position.z > 0 else 18.0
+	var shadow_dist := clampf(zoom_dist * 2.5, 20.0, 80.0)
+	# DirectionalLight3D shadow distance is set per-light, not on environment
+	# Instead, control shadow quality by adjusting rendering settings
+	var vp := get_viewport()
+	if vp:
+		# Enable/disable shadow detail based on FPS
+		var fps := Performance.get_monitor(Performance.TIME_FPS)
+		if fps < 30.0:
+			vp.positional_shadow_atlas_size = 1024
+		elif fps < 50.0:
+			vp.positional_shadow_atlas_size = 2048
+		else:
+			vp.positional_shadow_atlas_size = 4096
+
 func get_active_particle_count() -> int:
 	_active_particle_systems = _active_particle_systems.filter(
 		func(p): return is_instance_valid(p) and p.emitting
@@ -209,9 +295,11 @@ func get_frame_stats_summary() -> String:
 		max_fps = max(max_fps, f)
 	if _frame_times.is_empty():
 		min_fps = 0.0
-	return "Avg: %.1f FPS (%.1fms) | Min: %.0f | Max: %.0f | Particles: %d/%d" % [
+	var temp_vfx_count := _temp_vfx_nodes.filter(func(n): return is_instance_valid(n)).size()
+	return "Avg: %.1f FPS (%.1fms) | Min: %.0f | Max: %.0f | Particles: %d/%d | VFX: %d/%d" % [
 		avg_fps, avg_ms, min_fps, max_fps,
-		get_active_particle_count(), MAX_ACTIVE_PARTICLES
+		get_active_particle_count(), MAX_ACTIVE_PARTICLES,
+		temp_vfx_count, MAX_TEMP_VFX_NODES
 	]
 
 func _log_frame_stats() -> void:
