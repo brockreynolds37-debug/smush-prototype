@@ -48,6 +48,7 @@ ChatConsole="*res://scripts/chat_console.gd"
 FloorCinematic="*res://scripts/floor_cinematic.gd"
 RunModifiers="*res://scripts/run_modifiers.gd"
 SolutionPathTracker="*res://scripts/solution_path_tracker.gd"
+DisguiseSystem="*res://scripts/disguise_system.gd"
 
 [display]
 
