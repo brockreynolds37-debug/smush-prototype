@@ -165,6 +165,7 @@ func _ready() -> void:
 	_place_forge_station()
 	_place_secret_triggers()
 	_place_easter_egg_pillar()
+	_place_env_interactables()
 
 func _load_assets() -> void:
 	_floor_scene = load("res://assets/models/dungeon/kenney_floor.glb")
@@ -1298,3 +1299,46 @@ func _place_easter_egg_pillar() -> void:
 	var spawn_pos = get_spawn_position()
 	pillar.position = spawn_pos + Vector3(-3.0, 0.0, 0.0)
 	add_child(pillar)
+
+# ---------- ENVIRONMENTAL INTERACTABLES ----------
+
+var _env_script: GDScript = null
+
+func _place_env_interactables() -> void:
+	if floor_number <= 0:
+		return
+	if _env_script == null:
+		_env_script = load("res://scripts/env_interactable.gd")
+
+	# Place 2-4 environmental objects per floor in non-spawn rooms
+	var env_count := 2 + floor_number  # Scales with depth
+	env_count = mini(env_count, 6)
+	var placed := 0
+	var env_types := [0, 1, 2, 3]  # OIL_BARREL, HANGING_CAGE, PRESSURE_PLATE, SUPPORT_PILLAR
+
+	for room in rooms:
+		if placed >= env_count:
+			break
+		if room["name"] == "spawn" or room["name"] == "boss":
+			continue
+		# 40% chance per eligible room
+		if randf() > 0.40:
+			continue
+
+		var rpos: Vector2i = room["pos"]
+		var rsize: Vector2i = room["size"]
+		# Place near room center with offset
+		var cx := rpos.x + rsize.x / 2
+		var cy := rpos.y + rsize.y / 2
+		var offset_x := randi_range(-1, 1)
+		var offset_y := randi_range(-1, 1)
+		var cell := Vector2i(cx + offset_x, cy + offset_y)
+
+		var env_obj := StaticBody3D.new()
+		env_obj.set_script(_env_script)
+		var type_idx: int = env_types[placed % env_types.size()]
+		env_obj.env_type = type_idx
+		env_obj.name = "EnvObj_%s_%d" % [room["name"], placed]
+		env_obj.position = _cell_to_world(cell)
+		add_child(env_obj)
+		placed += 1
