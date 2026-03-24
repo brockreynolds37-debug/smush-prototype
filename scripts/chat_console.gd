@@ -139,6 +139,8 @@ func _execute(cmd: String) -> void:
 			_cmd_archetype()
 		"path", "paths":
 			_cmd_path()
+		"faction", "factions", "rep":
+			_cmd_factions()
 		"replays":
 			_cmd_replays()
 		"clear", "cls":
@@ -175,6 +177,7 @@ func _cmd_help() -> void:
 	_print_line("-vp       Show audience VP and mood")
 	_print_line("-archetype  Show current floor archetype")
 	_print_line("-path       Show current solution path")
+	_print_line("-faction    Show faction reputation")
 	_print_line("-replays  List saved replays")
 	_print_line("-clear    Clear console output")
 	if OS.is_debug_build():
@@ -274,6 +277,11 @@ func _cmd_path() -> void:
 	var history := SolutionPathTracker.floor_history
 	if not history.is_empty():
 		_print_line("History: %s" % ", ".join(SolutionPathTracker.last_three_paths))
+
+func _cmd_factions() -> void:
+	_print_line("[color=cyan]── Faction Reputation ──[/color]")
+	var summary := FactionManager.get_reputation_summary()
+	_print_line(summary)
 
 func _cmd_replays() -> void:
 	var replays := ReplayManager.list_replays()
