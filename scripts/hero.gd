@@ -391,6 +391,8 @@ func _get_melee_damage() -> int:
 	# Berserker Rage: +50% damage below 30% HP
 	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
 		dmg = int(dmg * 1.5)
+	# Alt spell set buff multipliers (War Cry, Blood Frenzy)
+	dmg = int(dmg * _get_buff_damage_multiplier())
 	return dmg
 
 func _get_spell_power() -> float:
@@ -401,6 +403,8 @@ func _get_spell_power() -> float:
 	# Berserker Rage: +50% spell power below 30% HP
 	if _trait_id == "berserker_rage" and float(current_health) / float(max_health) < 0.3:
 		power *= 1.5
+	# Alt spell set buff multipliers (War Cry, Blood Frenzy)
+	power *= _get_buff_damage_multiplier()
 	return power
 
 func _apply_melee_damage() -> void:
@@ -607,6 +611,19 @@ func _spawn_slam_particles() -> void:
 func take_damage(amount: int) -> void:
 	if is_dead:
 		return
+
+	# Holy Shield: absorb all damage while active
+	if _buff_holy_shield:
+		GameManager.request_damage_number(global_position + Vector3.UP * 2.5, 0, false)
+		_flash_color(Color(1.0, 0.9, 0.5), 0.1)
+		return
+
+	# Smoke Bomb: 60% dodge chance while active
+	if _buff_smoke_bomb:
+		if randf() < 0.6:
+			GameManager.request_damage_number(global_position + Vector3.UP * 2.5, 0, false)
+			_flash_color(Color(0.4, 0.4, 0.5), 0.1)
+			return
 
 	# Phase Walk: chance to dodge entirely (uses charges)
 	if _trait_id == "phase_walk" and _phase_walk_charges > 0:

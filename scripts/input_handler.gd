@@ -56,8 +56,10 @@ func _handle_left_click() -> void:
 	if GameManager.is_targeting_spell:
 		var ground_pos = _get_ground_position(from, dir)
 		match GameManager.targeting_spell_id:
-			1:  # Fireball
+			1:  # Fireball (default spell set)
 				hero.cast_fireball_at(ground_pos)
+			100:  # Alt spell set targeted spells
+				hero.cast_alt_targeted_at(ground_pos)
 		GameManager.is_targeting_spell = false
 		GameManager.targeting_spell_id = -1
 		return
