@@ -127,6 +127,7 @@ func reset_game_state() -> void:
 	CrossFloorConsequences.reset()
 	AudienceBlocs.reset()
 	BriberySystem.reset()
+	FloorArchetypeManager.reset()
 	ReplayManager.start_recording()
 
 func register_camera(c: Node3D) -> void:
