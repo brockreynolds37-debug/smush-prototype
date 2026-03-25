@@ -13,9 +13,11 @@ signal game_over(won: bool)
 
 enum GameState { PLAYING, WON, LOST }
 enum Difficulty { EASY, NORMAL, HARD, INSANE }
+enum GameMode { DUNGEON, SURVIVAL }
 
 var game_state: GameState = GameState.PLAYING
 var difficulty: Difficulty = Difficulty.NORMAL
+var game_mode: GameMode = GameMode.DUNGEON
 
 var hero: Node3D = null
 var enemies: Array[Node3D] = []

@@ -8,6 +8,7 @@ signal mana_changed(current: int, maximum: int)
 signal spell_cast(spell_index: int)
 signal spell_cooldown_updated(spell_index: int, remaining: float, total: float)
 signal spell_unlocked(spell_index: int)
+signal spell_failed(reason: String)
 signal hero_died()
 
 @export var move_speed: float = 5.0
@@ -135,22 +136,32 @@ func _ready() -> void:
 							mc_arr[2] if mc_arr.size() > 2 else 40,
 							mc_arr[3] if mc_arr.size() > 3 else 60]
 
-	# Build animation scene map from selected character
-	var base_model = load(char_data["model_path"])
-	var attack_model = load(char_data["attack_model"]) if char_data["attack_model"] != "" else base_model
-	var death_model = load(char_data["death_model"]) if char_data["death_model"] != "" else base_model
-	var cast_model = load(char_data["cast_model"]) if char_data["cast_model"] != "" else base_model
+	# Use KayKit Rig files which contain real skeletal animations
+	var idle_rig = load("res://assets/models/kaykit/adventurers/Rig_Medium_General.glb")
+	var walk_rig = load("res://assets/models/kaykit/adventurers/Rig_Medium_MovementBasic.glb")
+	var combat_rig = load("res://assets/models/kaykit/animations/Rig_Medium_CombatMelee.glb")
+	var special_rig = load("res://assets/models/kaykit/animations/Rig_Medium_Special.glb")
 
-	anim_scenes = {
-		AnimState.IDLE: base_model,
-		AnimState.WALK: base_model,
-		AnimState.ATTACK: attack_model,
-		AnimState.CAST: cast_model,
-		AnimState.DEATH: death_model,
-	}
+	# Fat Nate has his own per-state models with baked animations
+	if char_data["id"] == "fat_nate":
+		var base = load(char_data["model_path"])
+		var attack = load(char_data["attack_model"]) if char_data["attack_model"] != "" else base
+		var death = load(char_data["death_model"]) if char_data["death_model"] != "" else base
+		var cast = load(char_data["cast_model"]) if char_data["cast_model"] != "" else base
+		anim_scenes = {
+			AnimState.IDLE: base, AnimState.WALK: base,
+			AnimState.ATTACK: attack, AnimState.CAST: cast, AnimState.DEATH: death,
+		}
+	else:
+		anim_scenes = {
+			AnimState.IDLE: idle_rig if idle_rig else load(char_data["model_path"]),
+			AnimState.WALK: walk_rig if walk_rig else idle_rig,
+			AnimState.ATTACK: combat_rig if combat_rig else idle_rig,
+			AnimState.CAST: special_rig if special_rig else idle_rig,
+			AnimState.DEATH: idle_rig,
+		}
 
-	# Set up the initial model
-	_swap_model(AnimState.IDLE, false)  # Don't play for idle — we pause it
+	_swap_model(AnimState.IDLE, false)
 	original_scale = model.scale
 
 	_base_move_speed = move_speed
@@ -202,17 +213,31 @@ func _swap_model(state: AnimState, play_anim: bool = true) -> void:
 	# Find the AnimationPlayer inside the GLB scene
 	active_anim_player = _find_animation_player(active_model)
 
-	if active_anim_player and play_anim:
-		# Play the first animation found
+	# Preferred animation names per state
+	var preferred_anims := {
+		AnimState.IDLE: "Idle_A",
+		AnimState.WALK: "Walking_A",
+		AnimState.ATTACK: "Melee_1H_Attack_Chop",
+		AnimState.CAST: "Throw",
+		AnimState.DEATH: "Death_A",
+	}
+	if active_anim_player:
 		var anims = active_anim_player.get_animation_list()
-		if anims.size() > 0:
-			active_anim_player.play(anims[0])
-	elif active_anim_player and not play_anim:
-		# For idle: play walk anim at very slow speed for subtle movement
-		var anims = active_anim_player.get_animation_list()
-		if anims.size() > 0:
-			active_anim_player.play(anims[0])
-			active_anim_player.speed_scale = 0.3
+		var preferred: String = preferred_anims.get(state, "")
+		if play_anim:
+			if preferred != "" and anims.has(preferred):
+				active_anim_player.play(preferred)
+			elif anims.size() > 0:
+				active_anim_player.play(anims[0])
+			if state == AnimState.WALK:
+				active_anim_player.speed_scale = 1.2
+		else:
+			# Idle: play at slow speed for subtle movement
+			if anims.has("Idle_A"):
+				active_anim_player.play("Idle_A")
+			elif anims.size() > 0:
+				active_anim_player.play(anims[0])
+			active_anim_player.speed_scale = 0.8
 
 	# Recache mesh instances for color flash
 	_cache_mesh_instances()
@@ -440,32 +465,16 @@ func _perform_melee_attack() -> void:
 	anim_state = AnimState.ATTACK
 	attack_timer_node.start(0.8)
 
-	# Swap to sword_slash animation model
+	# Swap to attack model (plays Melee_1H_Attack_Chop from Rig)
 	_swap_model(AnimState.ATTACK, true)
 	AudioManager.on_hero_attack()
-
-	# Break disguise if active
 	DisguiseSystem.on_hero_attacked()
 
-	# Attack animation: wind-up → lunge forward → impact → recovery
+	# Delay damage to match animation timing, then return to idle
 	var tween = create_tween()
-	# Wind-up: crouch + pull back
-	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.08)
-	tween.parallel().tween_property(model, "rotation:x", -0.15, 0.08)
-	tween.parallel().tween_property(model, "position:z", -0.15, 0.08)
-	# Lunge forward + squash on impact
-	tween.tween_property(model, "scale", original_scale * Vector3(1.25, 0.82, 1.25), 0.07)
-	tween.parallel().tween_property(model, "rotation:x", 0.2, 0.07)
-	tween.parallel().tween_property(model, "position:z", 0.3, 0.07)
-	# Damage on impact
+	tween.tween_interval(0.25)  # Wind-up phase of attack anim
 	tween.tween_callback(_apply_melee_damage)
-	# Follow-through overshoot
-	tween.tween_property(model, "scale", original_scale * Vector3(0.92, 1.08, 0.92), 0.1)
-	tween.parallel().tween_property(model, "rotation:x", 0.05, 0.1)
-	# Settle back
-	tween.tween_property(model, "scale", original_scale, 0.12)
-	tween.parallel().tween_property(model, "rotation:x", 0.0, 0.12)
-	tween.parallel().tween_property(model, "position:z", 0.0, 0.12)
+	tween.tween_interval(0.35)  # Follow-through
 	tween.tween_callback(func(): is_attacking = false)
 
 func _get_melee_damage() -> int:
@@ -533,10 +542,13 @@ func cast_spell(index: int) -> void:
 	if is_dead or is_casting:
 		return
 	if not is_spell_unlocked(index):
+		spell_failed.emit("Spell locked")
 		return
 	if spell_cooldowns[index] > 0:
+		spell_failed.emit("On cooldown (%.1fs)" % spell_cooldowns[index])
 		return
 	if current_mana < spell_mana_costs[index]:
+		spell_failed.emit("Not enough mana (%d needed)" % spell_mana_costs[index])
 		return
 
 	TutorialManager.notify_event("spell_cast")
@@ -552,18 +564,53 @@ func cast_spell(index: int) -> void:
 		_cast_alt_spell(index)
 
 func _cast_strike() -> void:
+	## Power Strike: empowered melee attack on nearest enemy for 2x damage + knockback
 	var range_mult := 1.3 if _trait_id == "eagle_eye" else 1.0
-	var target = GameManager.get_nearest_enemy(global_position, 3.5 * range_mult)
-	if target:
-		set_attack_target(target)
-		spell_cooldowns[0] = spell_max_cooldowns[0]
-		spell_cast.emit(0)
-		AudienceManager.on_spell_cast(0)
-		RunStats.record_spell_cast(0)
-	else:
+	var target = GameManager.get_nearest_enemy(global_position, 4.0 * range_mult)
+	if not target:
 		target = GameManager.get_nearest_enemy(global_position, 15.0 * range_mult)
 		if target:
+			# Too far — just move to target, don't consume resources
 			set_attack_target(target)
+		else:
+			spell_failed.emit("No target in range")
+		return
+
+	_consume_spell(0)
+	is_casting = true
+	is_moving = false
+	current_speed = 0.0
+	velocity = Vector3.ZERO
+	_face_position(target.global_position, 1.0)
+	anim_state = AnimState.ATTACK
+	AudioManager.on_hero_attack()
+
+	var tween = create_tween()
+	# Wind-up: pull back
+	tween.tween_property(model, "scale", original_scale * Vector3(0.85, 1.2, 0.85), 0.15)
+	_set_model_color(Color(1.0, 0.7, 0.2))
+	# Lunge + impact
+	tween.tween_property(model, "scale", original_scale * Vector3(1.35, 0.75, 1.35), 0.08)
+	tween.tween_callback(func():
+		if target and is_instance_valid(target) and target.has_method("take_damage"):
+			var dmg := int(_get_melee_damage() * 2.0 * _get_spell_power())
+			target.take_damage(dmg)
+			RunStats.record_damage_dealt(dmg)
+			GameManager.request_damage_number(target.global_position + Vector3.UP * 2.0, dmg, true)
+			GameManager.request_screen_shake(5.0, 0.2)
+			# Knockback
+			var kb_dir: Vector3 = (target.global_position - global_position).normalized()
+			kb_dir.y = 0
+			if target.has_method("apply_knockback"):
+				target.apply_knockback(kb_dir * 4.0)
+			VFXManager.spawn_spell_impact(target.global_position, Color(1.0, 0.7, 0.2), 2.0)
+	)
+	# Recovery
+	tween.tween_property(model, "scale", original_scale, 0.2)
+	tween.tween_callback(func():
+		is_casting = false
+		_restore_model_materials()
+	)
 
 func _start_fireball_targeting() -> void:
 	GameManager.is_targeting_spell = true
@@ -789,64 +836,30 @@ func _update_animation_state() -> void:
 	else:
 		new_state = AnimState.IDLE
 
-	# Only swap model when state changes (avoid constant re-instancing)
+	# Update state — no model swapping, just state tracking
 	if new_state != prev_anim_state:
 		prev_anim_state = new_state
 		anim_state = new_state
-
-		# Blend transition: brief scale squeeze before state change
 		if new_state == AnimState.WALK and anim_state != AnimState.DEATH:
 			_transition_blend(0.06)
-
-		match new_state:
-			AnimState.IDLE:
-				_swap_model(AnimState.IDLE, false)  # Slow walk as idle
-			AnimState.WALK:
-				_swap_model(AnimState.WALK, true)
-				if active_anim_player:
-					active_anim_player.speed_scale = 1.0
-			AnimState.ATTACK:
-				pass  # Handled in _perform_melee_attack()
-			AnimState.CAST:
-				_swap_model(AnimState.CAST, true)
-			AnimState.DEATH:
-				pass  # Handled in _die()
+		# Only swap model if we have per-state scenes (e.g. goblin-scout)
+		if not anim_scenes.is_empty():
+			match new_state:
+				AnimState.IDLE:
+					_swap_model(AnimState.IDLE, false)
+				AnimState.WALK:
+					_swap_model(AnimState.WALK, true)
+				AnimState.CAST:
+					_swap_model(AnimState.CAST, true)
 	else:
 		anim_state = new_state
 
-	# Procedural walk cycle — two-bounce stride with hip sway & forward lean
+	# Real animations handled by AnimationPlayer in swapped Rig models.
+	# Just keep model transforms neutral.
 	var dt: float = get_physics_process_delta_time()
-	if anim_state == AnimState.WALK and current_speed > 0.5:
-		_walk_bob_time += current_speed * 1.0 * dt
-		var t: float = _walk_bob_time
-		# Double-bounce vertical bob (two steps per cycle)
-		var stride: float = absf(sin(t * 6.0))
-		var bob_y: float = stride * 0.09 + sin(t * 12.0) * 0.015
-		# Hip sway — lateral tilt follows footfalls
-		var sway: float = sin(t * 6.0) * 0.045
-		# Forward lean increases with speed
-		var lean_x: float = -0.06 * clampf(current_speed / move_speed, 0.0, 1.0)
-		# Subtle torso twist (arm swing feel)
-		var twist: float = sin(t * 6.0) * 0.03
-		model.position.y = bob_y
-		model.rotation.z = lerpf(model.rotation.z, sway, 12.0 * dt)
-		model.rotation.x = lerpf(model.rotation.x, lean_x, 10.0 * dt)
-		model.rotation.y = lerpf(model.rotation.y, twist, 8.0 * dt)
-	elif anim_state == AnimState.IDLE:
-		# Idle — gentle breathing with weight shift
-		_walk_bob_time += dt * 0.6
-		var t: float = _walk_bob_time
-		var breath: float = sin(t * 1.8) * 0.018 + sin(t * 3.7) * 0.006
-		var weight_shift: float = sin(t * 0.7) * 0.012
-		model.position.y = breath
-		model.rotation.z = lerpf(model.rotation.z, weight_shift, 4.0 * dt)
-		model.rotation.x = lerpf(model.rotation.x, 0.0, 6.0 * dt)
-		model.rotation.y = lerpf(model.rotation.y, 0.0, 6.0 * dt)
-	else:
-		model.position.y = lerpf(model.position.y, 0.0, 10.0 * dt)
-		model.rotation.z = lerpf(model.rotation.z, 0.0, 10.0 * dt)
-		model.rotation.x = lerpf(model.rotation.x, 0.0, 10.0 * dt)
-		model.rotation.y = lerpf(model.rotation.y, 0.0, 10.0 * dt)
+	model.position.y = lerpf(model.position.y, 0.0, 8.0 * dt)
+	model.rotation.x = lerpf(model.rotation.x, 0.0, 8.0 * dt)
+	model.rotation.z = lerpf(model.rotation.z, 0.0, 8.0 * dt)
 
 func _transition_blend(duration: float) -> void:
 	# Smooth squash-stretch transition with settle

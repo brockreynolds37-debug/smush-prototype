@@ -155,10 +155,9 @@ func update(delta: float) -> void:
 	_danger_wall_z += current_speed * delta
 	_danger_wall.position.z = _danger_wall_z
 
-	# Pulse emission
+	# Steady emission — no pulsing
 	if _wall_mesh and _wall_mesh.material_override:
-		var pulse = 2.0 + sin(_escape_timer * 4.0) * 1.5
-		_wall_mesh.material_override.emission_energy_multiplier = pulse
+		_wall_mesh.material_override.emission_energy_multiplier = 2.0
 
 	# Update HUD distance
 	var hero = GameManager.hero

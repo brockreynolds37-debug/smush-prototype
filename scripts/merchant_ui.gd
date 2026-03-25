@@ -137,9 +137,21 @@ func _build_shop_ui(floor_number: int) -> void:
 	continue_btn.pressed.connect(_on_continue_pressed)
 	vbox.add_child(continue_btn)
 
+	# Close button (X) in top-right corner
+	var close_btn := Button.new()
+	close_btn.text = "✕"
+	close_btn.custom_minimum_size = Vector2(36, 36)
+	close_btn.add_theme_font_size_override("font_size", 22)
+	close_btn.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))
+	close_btn.pressed.connect(_close_shop)
+	close_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	close_btn.offset_left = -44; close_btn.offset_top = 4
+	close_btn.offset_right = -4; close_btn.offset_bottom = 40
+	_panel.add_child(close_btn)
+
 	# Hint
 	var hint := Label.new()
-	hint.text = "Press Space or Enter to continue"
+	hint.text = "ESC to close  •  Space to continue"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55))
@@ -314,14 +326,20 @@ func _update_gold_label() -> void:
 	if _gold_label:
 		_gold_label.text = "Your Gold: %d" % LootManager.gold
 
-func _on_continue_pressed() -> void:
+func _close_shop() -> void:
 	visible = false
 	merchant_closed.emit()
+
+func _on_continue_pressed() -> void:
+	_close_shop()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER:
+		if event.keycode == KEY_ESCAPE:
+			_close_shop()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_SPACE or event.keycode == KEY_ENTER:
 			_on_continue_pressed()
 			get_viewport().set_input_as_handled()

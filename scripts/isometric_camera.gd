@@ -11,6 +11,7 @@ extends Node3D
 @export var camera_angle: float = 55.0  # Degrees from horizontal
 @export var camera_rotation_y: float = -45.0  # Y rotation for isometric feel
 @export var smoothing: float = 8.0
+@export var rotation_speed: float = 60.0  # Degrees per second for arrow key rotation
 
 var target_position: Vector3 = Vector3.ZERO
 var current_zoom: float = 18.0
@@ -44,6 +45,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_handle_keyboard_pan(delta)
+	_handle_arrow_rotation(delta)
 	_handle_edge_scroll(delta)
 	_handle_zoom(delta)
 
@@ -74,6 +76,14 @@ func _handle_keyboard_pan(delta: float) -> void:
 		var forward = Vector3(sin(rad), 0, cos(rad))
 		var right_vec = Vector3(cos(rad), 0, -sin(rad))
 		target_position += (right_vec * input_dir.x + forward * input_dir.y) * pan_speed * delta
+
+func _handle_arrow_rotation(delta: float) -> void:
+	if Input.is_key_pressed(KEY_LEFT):
+		camera_rotation_y -= rotation_speed * delta
+	if Input.is_key_pressed(KEY_RIGHT):
+		camera_rotation_y += rotation_speed * delta
+	# Normalize to -180..180
+	camera_rotation_y = fmod(camera_rotation_y + 180.0, 360.0) - 180.0
 
 func _handle_edge_scroll(delta: float) -> void:
 	var viewport = get_viewport()

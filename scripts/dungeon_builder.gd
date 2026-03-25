@@ -164,22 +164,24 @@ func _ready() -> void:
 	_bake_navigation()
 	_populate_pathfinding_grid()
 	_place_forge_station()
+	_place_shop_building()
 	_place_secret_triggers()
 	_place_easter_egg_pillar()
 	_place_env_interactables()
 
 func _load_assets() -> void:
-	_floor_scene = load("res://assets/models/dungeon/kenney_floor.glb")
-	_wall_scene = load("res://assets/models/dungeon/kenney_wall.glb")
-	_wall_opening_scene = load("res://assets/models/dungeon/kenney_wall-opening.glb")
-	_column_scene = load("res://assets/models/dungeon/kenney_column.glb")
-	_stairs_scene = load("res://assets/models/dungeon/kenney_stairs.glb")
-	_barrel_scene = load("res://assets/models/dungeon/kenney_barrel.glb")
-	_chest_scene = load("res://assets/models/dungeon/kenney_chest.glb")
-	_banner_scene = load("res://assets/models/dungeon/kenney_banner.glb")
-	_candle_scene = load("res://assets/models/dungeon/candle_lit.gltf")
-	_rocks_scene = load("res://assets/models/dungeon/kenney_rocks.glb")
-	_gate_scene = load("res://assets/models/dungeon/kenney_gate.glb")
+	# KayKit Dungeon Remastered models
+	_floor_scene = load("res://assets/models/kaykit/dungeon/floor_tile_large.gltf")
+	_wall_scene = load("res://assets/models/kaykit/dungeon/wall.gltf")
+	_wall_opening_scene = load("res://assets/models/kaykit/dungeon/wall_doorway.gltf")
+	_column_scene = load("res://assets/models/kaykit/dungeon/column.gltf")
+	_stairs_scene = load("res://assets/models/kaykit/dungeon/stairs.gltf")
+	_barrel_scene = load("res://assets/models/kaykit/dungeon/barrel_large.gltf")
+	_chest_scene = load("res://assets/models/kaykit/dungeon/chest.gltf")
+	_banner_scene = load("res://assets/models/kaykit/dungeon/banner_red.gltf")
+	_candle_scene = load("res://assets/models/kaykit/dungeon/candle_lit.gltf")
+	_rocks_scene = load("res://assets/models/kaykit/dungeon/floor_tile_large_rocks.gltf")
+	_gate_scene = load("res://assets/models/kaykit/dungeon/wall_gated.gltf")
 
 func _define_floor1_layout() -> void:
 	# Floor 1: "The Sift" — 5 rooms connected by corridors (scaled 1.5x)
@@ -892,7 +894,7 @@ func _place_floor_tile(cell: Vector2i) -> void:
 	var instance := _floor_scene.instantiate()
 	instance.position = _cell_to_world(cell)
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
-	_apply_material_recursive(instance, _make_floor_material())
+	# Keep KayKit's original hand-painted textures — no material override
 	_floor_container.add_child(instance)
 
 func _is_floor(cell: Vector2i) -> bool:
@@ -948,7 +950,7 @@ func _place_wall_segment(cell: Vector2i, rotation_deg: float) -> void:
 	var wall_root := Node3D.new()
 	var instance := scene.instantiate()
 	instance.scale = Vector3(TILE_SIZE, TILE_SIZE, TILE_SIZE)
-	_apply_material_recursive(instance, _make_wall_material())
+	# Keep KayKit's original hand-painted textures — no material override
 	wall_root.add_child(instance)
 
 	# Add collision
@@ -1133,29 +1135,13 @@ func _apply_theme_lighting() -> void:
 
 	# Fog volume via WorldEnvironment
 	var env := Environment.new()
-	env.fog_enabled = true
-	env.fog_light_color = _theme["fog_color"]
-	env.fog_density = _theme["fog_density"]
-	env.fog_light_energy = 0.5
+	env.fog_enabled = false
 	env.ambient_light_color = _theme["ambient_color"]
 	env.ambient_light_energy = _theme["ambient_energy"]
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 
-	# Tier-specific post-processing
-	match floor_number:
-		2:
-			# The Spectacle: warm glow
-			env.glow_enabled = true
-			env.glow_intensity = 0.6
-			env.glow_bloom = 0.3
-			env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-		3:
-			# The Crush: eerie purple glow + stronger bloom
-			env.glow_enabled = true
-			env.glow_intensity = 0.8
-			env.glow_bloom = 0.5
-			env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-			env.glow_hdr_threshold = 0.8
+	# Glow disabled — keep lighting stable during gameplay
+	env.glow_enabled = false
 
 	var world_env := WorldEnvironment.new()
 	world_env.name = "ThemeEnvironment"
@@ -1208,6 +1194,9 @@ func _bake_navigation() -> void:
 	await get_tree().process_frame
 	_nav_region.bake_navigation_mesh()
 
+func _populate_pathfinding_grid() -> void:
+	PathfindingGrid.initialize_from_dungeon(grid, grid_min, grid_max)
+
 # ---------- PUBLIC API ----------
 
 func get_spawn_position() -> Vector3:
@@ -1247,6 +1236,41 @@ func _place_forge_station() -> void:
 	var spawn_pos = get_spawn_position()
 	forge.position = spawn_pos + Vector3(4.0, 0.0, 2.0)
 	add_child(forge)
+
+func _place_shop_building() -> void:
+	## Place the KayKit market building in the center of the dungeon.
+	## Clickable — opens merchant UI when left-clicked within range.
+	if floor_number <= 0:
+		return  # No shop on tutorial floor
+
+	# Find center of all rooms
+	var center := Vector2.ZERO
+	var count := 0
+	for cell in grid.keys():
+		center += Vector2(cell.x, cell.y)
+		count += 1
+	if count > 0:
+		center /= count
+
+	var shop_script = preload("res://scripts/shop_building.gd")
+	var shop := Node3D.new()
+	shop.set_script(shop_script)
+	shop.name = "ShopBuilding"
+	shop.position = Vector3(center.x * TILE_SIZE, 0, center.y * TILE_SIZE)
+	add_child(shop)
+
+	# Wire shop click to merchant UI (found in parent scene)
+	shop.shop_clicked.connect(_on_shop_clicked)
+
+func _on_shop_clicked() -> void:
+	var merchant = get_node_or_null("../MerchantUI")
+	if merchant == null:
+		# Search parent for MerchantUI
+		var parent = get_parent()
+		if parent:
+			merchant = parent.get_node_or_null("MerchantUI")
+	if merchant and merchant.has_method("show_shop"):
+		merchant.show_shop(floor_number)
 
 # ---------- SECRET ROOMS ----------
 

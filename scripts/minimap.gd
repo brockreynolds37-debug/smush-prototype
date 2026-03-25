@@ -5,9 +5,10 @@ extends Control
 ## shows hero (green), enemies (red), and exit (yellow).
 ## v2: room names on hover, legend, soft fog edges, hero-centered panning.
 
-const EXPLORE_RADIUS := 6
-const ENEMY_VISIBLE_RADIUS := 8
-const FOG_FADE_RADIUS := 2  # Extra cells around explored edge that fade in
+const EXPLORE_RADIUS := 6  # Unused — fog disabled
+const ENEMY_VISIBLE_RADIUS := 999  # All enemies always visible
+const FOG_FADE_RADIUS := 0
+const FOG_DISABLED := true  # Set false to re-enable fog of war
 
 # Colors
 const COLOR_UNEXPLORED := Color(0.06, 0.06, 0.08, 1.0)
@@ -165,13 +166,19 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _update_explored() -> void:
+	if FOG_DISABLED:
+		# Reveal entire map instantly
+		for cell in grid.keys():
+			explored[cell] = true
+			fog_alpha[cell] = 1.0
+		return
+
 	var hero = GameManager.hero
 	if hero == null or not is_instance_valid(hero):
 		return
 
 	var hero_cell := _world_to_cell(hero.global_position)
 
-	# Reveal cells within explore radius (fully explored)
 	var full_radius := EXPLORE_RADIUS + FOG_FADE_RADIUS
 	for dx in range(-full_radius, full_radius + 1):
 		for dy in range(-full_radius, full_radius + 1):
@@ -183,16 +190,13 @@ func _update_explored() -> void:
 				continue
 
 			if dist_sq <= EXPLORE_RADIUS * EXPLORE_RADIUS:
-				# Fully explored
 				explored[cell] = true
 				fog_alpha[cell] = 1.0
 			elif not explored.has(cell):
-				# Fade zone — partially revealed
 				var dist := sqrt(float(dist_sq))
 				var fade_start := float(EXPLORE_RADIUS)
 				var fade_end := float(full_radius)
 				var alpha := 1.0 - clampf((dist - fade_start) / (fade_end - fade_start), 0.0, 1.0)
-				# Only increase alpha (don't dim previously explored cells)
 				if not fog_alpha.has(cell) or fog_alpha[cell] < alpha:
 					fog_alpha[cell] = alpha
 

@@ -36,7 +36,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# (WASD attack removed — click-to-move only)
 
 func _handle_right_click() -> void:
-	## Right click: move, attack, spell targeting (action button)
+	## Right click: move and attack (no spell targeting)
 	if camera_rig == null:
 		return
 	var hero = GameManager.hero
@@ -48,14 +48,8 @@ func _handle_right_click() -> void:
 	var from = camera.project_ray_origin(mouse_pos)
 	var dir = camera.project_ray_normal(mouse_pos)
 
-	# Spell targeting mode — place spell on right click
+	# Cancel spell targeting with right click
 	if GameManager.is_targeting_spell:
-		var ground_pos = _get_ground_position(from, dir)
-		match GameManager.targeting_spell_id:
-			1:
-				hero.cast_fireball_at(ground_pos)
-			100:
-				hero.cast_alt_targeted_at(ground_pos)
 		GameManager.is_targeting_spell = false
 		GameManager.targeting_spell_id = -1
 		return
@@ -88,22 +82,28 @@ func _handle_right_click() -> void:
 		_spawn_click_indicator(ground_pos)
 
 func _handle_left_click() -> void:
-	## Left click: select units to inspect, or cancel spell targeting
+	## Left click: cast targeted spells, or select units to inspect
 	if camera_rig == null:
 		return
-
-	# Cancel spell targeting with left click
-	if GameManager.is_targeting_spell:
-		GameManager.is_targeting_spell = false
-		GameManager.targeting_spell_id = -1
-		return
+	var hero = GameManager.hero
 
 	var camera = camera_rig.get_node("CameraArm/Camera3D")
 	var mouse_pos = get_viewport().get_mouse_position()
 	var from = camera.project_ray_origin(mouse_pos)
 	var dir = camera.project_ray_normal(mouse_pos)
 
-	var hero = GameManager.hero
+	# Spell targeting mode — place spell on left click
+	if GameManager.is_targeting_spell and hero and not hero.is_dead:
+		var ground_pos = _get_ground_position(from, dir)
+		match GameManager.targeting_spell_id:
+			1:
+				hero.cast_fireball_at(ground_pos)
+			100:
+				hero.cast_alt_targeted_at(ground_pos)
+		GameManager.is_targeting_spell = false
+		GameManager.targeting_spell_id = -1
+		return
+
 	if hero == null:
 		return
 	var space_state = hero.get_world_3d().direct_space_state
@@ -116,6 +116,19 @@ func _handle_left_click() -> void:
 	if result and result.collider:
 		_select_unit(result.collider)
 		return
+
+	# Check for shop building click (layer 8)
+	var shop_query = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
+	shop_query.collision_mask = 8  # Layer 4 = Shop building
+	var shop_result = space_state.intersect_ray(shop_query)
+
+	if shop_result and shop_result.collider:
+		var body = shop_result.collider
+		if body.has_meta("shop_building"):
+			var shop_node = body.get_parent()
+			if shop_node and shop_node.has_method("try_interact") and hero:
+				shop_node.try_interact(hero.global_position)
+			return
 
 	# Check for interactable click (chests, barrels — left click also interacts)
 	var query2 = PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)

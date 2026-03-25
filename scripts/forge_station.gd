@@ -48,10 +48,7 @@ func _build_forge_mesh() -> void:
 	fire.position = Vector3(0, 1.5, 0)
 	add_child(fire)
 
-	# Pulse the glow
-	var tween := create_tween().set_loops()
-	tween.tween_property(fire, "scale", Vector3(1.1, 1.3, 1.1), 0.6)
-	tween.tween_property(fire, "scale", Vector3(0.9, 0.8, 0.9), 0.4)
+	# Steady fire — no pulsing
 
 func _build_interact_zone() -> void:
 	_interact_zone = Area3D.new()

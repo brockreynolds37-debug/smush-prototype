@@ -60,13 +60,13 @@ func _ready() -> void:
 	FloorManager.transition_fade_midpoint.connect(_on_floor_transition_midpoint)
 	FloorManager.floor_changed.connect(_on_floor_changed)
 
-	# Merchant UI between floors
+	# Merchant UI — only opens when player clicks the 3D shop building
 	var merchant_script = preload("res://scripts/merchant_ui.gd")
 	_merchant_ui = CanvasLayer.new()
 	_merchant_ui.set_script(merchant_script)
 	_merchant_ui.name = "MerchantUI"
 	add_child(_merchant_ui)
-	FloorManager.show_merchant.connect(_on_show_merchant)
+	# Don't auto-open on floor transition anymore — shop building triggers it
 	_merchant_ui.merchant_closed.connect(_on_merchant_closed_show_sponsor)
 
 	# Sponsor system between floors (after merchant)

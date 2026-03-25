@@ -3,7 +3,7 @@ extends Node3D
 ## Character selection screen — 3D character preview with UI overlay.
 ## Rotate through available characters, see stats, then enter the dungeon.
 
-var current_index: int = 0
+var current_index: int = 1  # Start on Knight (index 1), not Fat Nate
 var character_model: Node3D = null
 var platform: MeshInstance3D = null
 var platform_rotation: float = 0.0
@@ -526,7 +526,10 @@ func _on_start() -> void:
 	var tween = create_tween()
 	tween.tween_property(overlay, "color:a", 1.0, 0.8)
 	tween.tween_callback(func():
-		get_tree().change_scene_to_file("res://scenes/dungeon_floor1.tscn")
+		if GameManager.game_mode == GameManager.GameMode.SURVIVAL:
+			get_tree().change_scene_to_file("res://scenes/survival_arena.tscn")
+		else:
+			get_tree().change_scene_to_file("res://scenes/dungeon_floor1.tscn")
 	)
 
 func _on_spell_set_toggle() -> void:

@@ -46,12 +46,7 @@ func _apply_lighting() -> void:
 			# Day or has torch — use theme defaults (already applied by builder)
 			pass
 
-	# Adjust directional lights
-	var lights = _find_nodes_of_type(get_tree().root, "DirectionalLight3D")
-	for light in lights:
-		if is_night and not _has_torch:
-			light.light_energy = 0.35
-		# Day lighting is set by dungeon builder, no override needed
+	# Directional lights are set once by dungeon builder — no runtime changes
 
 func _spawn_shadow_wolves() -> void:
 	if _shadow_wolves_spawned:

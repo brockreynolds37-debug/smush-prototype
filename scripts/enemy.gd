@@ -95,24 +95,12 @@ func _ready() -> void:
 
 	health_changed.emit(current_health, max_health)
 
-func _load_enemy_model() -> void:
-	# Map enemy_type to model path
-	var model_paths := {
-		"rat": "res://assets/models/enemies/rat.glb",
-		"slime": "res://assets/models/enemies/slime.glb",
-		"spider": "res://assets/models/enemies/spider.glb",
-		"wolf": "res://assets/models/enemies/wolf.glb",
-		"goblin_warrior": "res://assets/models/enemies/goblin_warrior.glb",
-		"goblin_archer": "res://assets/models/enemies/goblin_archer.glb",
-		"skeleton": "res://assets/models/enemies/skeleton.glb",
-		"goblin_shaman": "res://assets/models/enemies/goblin_shaman.glb",
-		"animated_armor": "res://assets/models/enemies/animated_armor.glb",
-		"mimic": "res://assets/models/enemies/mimic.glb",
-		"orc": "res://assets/models/skeleton_warrior.glb",
-	}
+## Desired animation name per state — looked up in the AnimationPlayer after model swap
+var _anim_name_for_state: Dictionary = {}
 
+func _load_enemy_model() -> void:
 	if enemy_type == "goblin":
-		# Animated goblin-scout with per-state models
+		# Animated goblin-scout with per-state models (legacy)
 		anim_scenes = {
 			AnimState.IDLE: preload("res://assets/models/goblin-scout/idle_anim.glb"),
 			AnimState.WALK: preload("res://assets/models/goblin-scout/walk.glb"),
@@ -129,21 +117,25 @@ func _load_enemy_model() -> void:
 			AnimState.DEATH: preload("res://assets/models/enemies/dreadlord/dreadlord.glb"),
 		}
 		_swap_model(AnimState.IDLE)
-	elif model_paths.has(enemy_type):
-		# Static GLB model with tween-based animations
-		anim_scenes = {}
-		var scene := load(model_paths[enemy_type]) as PackedScene
-		if scene:
-			active_model = scene.instantiate()
-			model.add_child(active_model)
-			_cache_mesh_instances()
 	else:
-		# Unknown type fallback — use orc model
-		anim_scenes = {}
-		var static_scene = preload("res://assets/models/skeleton_warrior.glb")
-		active_model = static_scene.instantiate()
-		model.add_child(active_model)
-		_cache_mesh_instances()
+		# KayKit Skeleton — use Rig files which have real skeletal animations
+		var special = load("res://assets/models/kaykit/skeletons/Rig_Medium_Special.glb")
+		var movement = load("res://assets/models/kaykit/skeletons/Rig_Medium_MovementBasic.glb")
+		var general = load("res://assets/models/kaykit/skeletons/Rig_Medium_General.glb")
+		var combat = load("res://assets/models/kaykit/animations/Rig_Medium_CombatMelee.glb")
+		anim_scenes = {
+			AnimState.IDLE: special if special else general,
+			AnimState.WALK: movement if movement else special,
+			AnimState.ATTACK: combat if combat else special,
+			AnimState.DEATH: general if general else special,
+		}
+		_anim_name_for_state = {
+			AnimState.IDLE: "Skeletons_Idle",
+			AnimState.WALK: "Skeletons_Walking",
+			AnimState.ATTACK: "Melee_1H_Attack_Chop",
+			AnimState.DEATH: "Death_A",
+		}
+		_swap_model(AnimState.IDLE)
 
 func _swap_model(state: AnimState) -> void:
 	if anim_scenes.is_empty():
@@ -166,11 +158,18 @@ func _swap_model(state: AnimState) -> void:
 
 	active_anim_player = _find_animation_player(active_model)
 	if active_anim_player:
+		var preferred: String = _anim_name_for_state.get(state, "")
 		var anims = active_anim_player.get_animation_list()
-		if anims.size() > 0:
+		if preferred != "" and anims.has(preferred):
+			active_anim_player.play(preferred)
+		elif anims.size() > 0:
 			active_anim_player.play(anims[0])
-			if state == AnimState.IDLE:
-				active_anim_player.speed_scale = 0.5
+		if state == AnimState.IDLE:
+			active_anim_player.speed_scale = 0.8
+		elif state == AnimState.WALK:
+			active_anim_player.speed_scale = 1.2
+		elif state == AnimState.DEATH:
+			active_anim_player.speed_scale = 1.0
 
 	_cache_mesh_instances()
 
@@ -297,32 +296,11 @@ func _physics_process(delta: float) -> void:
 		anim_state = new_state
 		_swap_model(new_state)
 
-	# Procedural walk cycle — bouncy stride with sway
-	if anim_state == AnimState.WALK and current_speed > 0.3:
-		_walk_bob_time += current_speed * 1.1 * delta
-		var t: float = _walk_bob_time
-		# Asymmetric double-bounce stride
-		var stride: float = absf(sin(t * 6.0))
-		model.position.y = stride * 0.07 + sin(t * 12.0) * 0.01
-		# Hip sway
-		model.rotation.z = lerpf(model.rotation.z, sin(t * 6.0) * 0.04, 10.0 * delta)
-		# Forward lean — more aggressive for enemies
-		model.rotation.x = lerpf(model.rotation.x, -0.08, 8.0 * delta)
-		# Torso twist for arm swing feel
-		model.rotation.y = lerpf(model.rotation.y, sin(t * 6.0) * 0.025, 8.0 * delta)
-	elif anim_state == AnimState.IDLE:
-		_walk_bob_time += delta * 0.5
-		var t: float = _walk_bob_time
-		# Breathing with secondary sway
-		model.position.y = sin(t * 1.6) * 0.015 + sin(t * 3.3) * 0.005
-		model.rotation.z = lerpf(model.rotation.z, sin(t * 0.8) * 0.01, 4.0 * delta)
-		model.rotation.x = lerpf(model.rotation.x, 0.0, 5.0 * delta)
-		model.rotation.y = lerpf(model.rotation.y, 0.0, 5.0 * delta)
-	else:
-		model.position.y = lerpf(model.position.y, 0.0, 8.0 * delta)
-		model.rotation.z = lerpf(model.rotation.z, 0.0, 8.0 * delta)
-		model.rotation.x = lerpf(model.rotation.x, 0.0, 8.0 * delta)
-		model.rotation.y = lerpf(model.rotation.y, 0.0, 8.0 * delta)
+	# Real animations handled by AnimationPlayer in swapped Rig models.
+	# Just reset model transforms to neutral (animations drive the skeleton).
+	model.position.y = lerpf(model.position.y, 0.0, 8.0 * delta)
+	model.rotation.x = lerpf(model.rotation.x, 0.0, 8.0 * delta)
+	model.rotation.z = lerpf(model.rotation.z, 0.0, 8.0 * delta)
 
 	move_and_slide()
 
@@ -391,19 +369,15 @@ func _try_attack(target: Node3D) -> void:
 		return
 	attack_timer.start(attack_cooldown)
 
+	# Swap to attack animation model (plays Melee_1H_Attack_Chop or Skeletons_Taunt)
+	_swap_model(AnimState.ATTACK)
+
+	# Delay damage to sync with attack animation, then apply effects
 	var tween = create_tween()
-	# Wind-up: rear back
-	tween.tween_property(model, "scale", original_scale * Vector3(0.88, 1.12, 0.88), 0.08)
-	tween.parallel().tween_property(model, "rotation:x", -0.18, 0.08)
-	tween.parallel().tween_property(model, "position:z", -0.12, 0.08)
-	# Lunge + squash impact
-	tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.82, 1.2), 0.06)
-	tween.parallel().tween_property(model, "rotation:x", 0.22, 0.06)
-	tween.parallel().tween_property(model, "position:z", 0.25, 0.06)
+	tween.tween_interval(0.2)
 	tween.tween_callback(func():
 		if is_instance_valid(target) and target.has_method("take_damage"):
 			target.take_damage(attack_damage)
-			# Enemy-type status effects on melee hit
 			match enemy_type:
 				"spider":
 					StatusEffectManager.apply_poison(target, 4.0, 6, 1.0)
@@ -413,27 +387,18 @@ func _try_attack(target: Node3D) -> void:
 					if randf() < 0.25:
 						StatusEffectManager.apply_slow(target, 2.0, 0.3)
 				"dreadlord":
-					# Vampiric Aura — heals 20% of damage dealt
 					var heal_amt := int(attack_damage * 0.2)
 					current_health = mini(current_health + heal_amt, max_health)
 					health_changed.emit(current_health, max_health)
 					StatusEffectManager.apply_slow(target, 1.5, 0.2)
-			# Elite: Venomous applies poison on any hit
 			if has_meta("venomous_dot") and get_meta("venomous_dot"):
 				StatusEffectManager.apply_poison(target, 5.0, 8, 1.0)
-			# Elite: Vampiric heals on damage dealt
 			if has_meta("vampiric_leech"):
 				var leech_pct: float = get_meta("vampiric_leech")
 				var heal_amount := int(attack_damage * leech_pct)
 				current_health = mini(current_health + heal_amount, max_health)
 				health_changed.emit(current_health, max_health)
 	)
-	# Follow-through + settle
-	tween.tween_property(model, "scale", original_scale * Vector3(0.92, 1.08, 0.92), 0.08)
-	tween.parallel().tween_property(model, "rotation:x", 0.04, 0.08)
-	tween.tween_property(model, "scale", original_scale, 0.1)
-	tween.parallel().tween_property(model, "rotation:x", 0.0, 0.1)
-	tween.parallel().tween_property(model, "position:z", 0.0, 0.1)
 
 func take_damage(amount: int) -> void:
 	if is_dead:

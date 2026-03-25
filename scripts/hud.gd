@@ -33,6 +33,10 @@ var hero_stats_label: Label
 var _sel_panel: PanelContainer
 var _sel_name: Label
 var _sel_stats: Label
+# Cooldown timer labels
+var _cooldown_labels: Array[Label] = []
+# Spell alert label
+var _spell_alert: Label = null
 
 var _active_boss: Node3D = null
 var _edge_pulse_tween: Tween = null
@@ -95,6 +99,7 @@ func _build_hud() -> void:
 	_build_top_bar()
 	_build_bottom_bar()
 	_build_boss_bar()
+	_build_spell_alert()
 	_build_smusher_edge()
 	_build_game_over_overlay()
 	_build_summon_label()
@@ -359,6 +364,23 @@ func _build_ability_section(parent: HBoxContainer) -> void:
 		cell.add_child(cd)
 		cooldown_overlays.append(cd)
 
+		# Cooldown timer label (centered on button)
+		var cd_label = Label.new()
+		cd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cd_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cd_label.position = Vector2.ZERO
+		cd_label.size = Vector2(65, 65)
+		cd_label.add_theme_font_size_override("font_size", 16)
+		cd_label.add_theme_color_override("font_color", Color.WHITE)
+		cd_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+		cd_label.add_theme_constant_override("shadow_offset_x", 1)
+		cd_label.add_theme_constant_override("shadow_offset_y", 1)
+		cd_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cd_label.visible = false
+		cd_label.text = ""
+		cell.add_child(cd_label)
+		_cooldown_labels.append(cd_label)
+
 		# Lock overlay (for spell slots 2 and 3)
 		var lock = ColorRect.new()
 		lock.position = Vector2.ZERO
@@ -506,6 +528,31 @@ func _build_summon_label() -> void:
 	_summon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_summon_label)
 
+func _build_spell_alert() -> void:
+	_spell_alert = _make_label("", 18, Color(1.0, 0.3, 0.3))
+	_spell_alert.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_spell_alert.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_spell_alert.offset_left = -200; _spell_alert.offset_right = 200
+	_spell_alert.offset_top = -(BAR_HEIGHT + 40); _spell_alert.offset_bottom = -(BAR_HEIGHT + 16)
+	_spell_alert.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	_spell_alert.add_theme_constant_override("shadow_offset_x", 1)
+	_spell_alert.add_theme_constant_override("shadow_offset_y", 1)
+	_spell_alert.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spell_alert.visible = false
+	add_child(_spell_alert)
+
+func _on_spell_failed(reason: String) -> void:
+	if _spell_alert == null:
+		return
+	_spell_alert.text = reason
+	_spell_alert.visible = true
+	_spell_alert.modulate = Color(1, 1, 1, 1)
+	# Fade out after 1.5s
+	var tween = create_tween()
+	tween.tween_interval(1.2)
+	tween.tween_property(_spell_alert, "modulate:a", 0.0, 0.4)
+	tween.tween_callback(func(): _spell_alert.visible = false)
+
 # ── HELPERS ──
 
 func _make_label(text: String, size: int, color: Color) -> Label:
@@ -533,6 +580,8 @@ func _connect_hero() -> void:
 		hero.mana_changed.connect(_on_mana_changed)
 		hero.spell_cooldown_updated.connect(_on_cooldown_updated)
 		hero.spell_unlocked.connect(_on_spell_unlocked)
+		if hero.has_signal("spell_failed"):
+			hero.spell_failed.connect(_on_spell_failed)
 		_refresh_spell_locks()
 		_refresh_ability_labels()
 		_update_hero_info()
@@ -591,6 +640,15 @@ func _on_cooldown_updated(spell_index: int, remaining: float, total: float) -> v
 			cd_rect.size.y = 65 * ratio
 		else:
 			cd_rect.visible = false
+	# Update timer label
+	if spell_index < _cooldown_labels.size():
+		var cd_lbl = _cooldown_labels[spell_index]
+		if remaining > 0:
+			cd_lbl.visible = true
+			cd_lbl.text = "%.1f" % remaining if remaining < 10.0 else "%d" % ceili(remaining)
+		else:
+			cd_lbl.visible = false
+			cd_lbl.text = ""
 
 func _refresh_spell_locks() -> void:
 	var hero = GameManager.hero
@@ -763,25 +821,13 @@ func _on_smusher_overtime() -> void:
 func _on_room_collapsed(_room_index: int, room_name: String) -> void:
 	_show_center_message("💀 %s COLLAPSED" % room_name.to_upper())
 
-func _start_edge_pulse(max_alpha: float, period: float) -> void:
-	if smusher_edge == null:
-		return
-	smusher_edge.visible = true
-	smusher_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if _edge_pulse_tween and _edge_pulse_tween.is_valid():
-		_edge_pulse_tween.kill()
-	_edge_pulse_tween = create_tween().set_loops()
-	_edge_pulse_tween.tween_property(smusher_edge, "color:a", max_alpha, period * 0.5)
-	_edge_pulse_tween.tween_property(smusher_edge, "color:a", 0.0, period * 0.5)
+func _start_edge_pulse(_max_alpha: float, _period: float) -> void:
+	# Disabled — no screen pulsing during gameplay
+	pass
 
 func _start_timer_flash() -> void:
-	if smusher_label == null:
-		return
-	if _timer_flash_tween and _timer_flash_tween.is_valid():
-		_timer_flash_tween.kill()
-	_timer_flash_tween = create_tween().set_loops()
-	_timer_flash_tween.tween_property(smusher_label, "modulate:a", 0.3, 0.4)
-	_timer_flash_tween.tween_property(smusher_label, "modulate:a", 1.0, 0.4)
+	# Disabled — no pulsing during gameplay
+	pass
 
 func _show_center_message(text: String) -> void:
 	_show_center_message_colored(text, Color(1.0, 0.2, 0.2))

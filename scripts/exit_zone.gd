@@ -27,10 +27,7 @@ func _ready() -> void:
 	indicator.position.y = 0.1
 	add_child(indicator)
 
-	# Gentle pulse animation
-	var tween := create_tween().set_loops()
-	tween.tween_property(indicator, "scale", Vector3(1.15, 1.0, 1.15), 1.0).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(indicator, "scale", Vector3(0.9, 1.0, 0.9), 1.0).set_trans(Tween.TRANS_SINE)
+	# Steady exit indicator — no pulsing
 
 func _on_body_entered(body: Node3D) -> void:
 	if body == GameManager.hero and not FloorManager.is_transitioning:

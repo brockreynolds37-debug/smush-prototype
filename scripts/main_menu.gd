@@ -200,6 +200,11 @@ func _build_ui() -> void:
 	diff_right.pressed.connect(_cycle_difficulty.bind(1))
 	diff_row.add_child(diff_right)
 
+	# Survival Mode button
+	var survival_btn = _make_button("SURVIVAL MODE")
+	survival_btn.pressed.connect(_on_survival)
+	btn_box.add_child(survival_btn)
+
 	# Multiplayer button
 	var mp_btn = _make_button("MULTIPLAYER", true)
 	mp_btn.pressed.connect(_on_multiplayer)
@@ -383,6 +388,14 @@ func _fade_to_scene(scene_path: String) -> void:
 	tween.tween_callback(func():
 		get_tree().change_scene_to_file(scene_path)
 	)
+
+func _on_survival() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
+	GameManager.reset_game_state()
+	GameManager.game_mode = GameManager.GameMode.SURVIVAL
+	_fade_to_scene("res://scenes/character_select.tscn")
 
 func _on_multiplayer() -> void:
 	if is_transitioning:

@@ -194,34 +194,9 @@ func _on_smusher_overtime() -> void:
 	_spawn_dust_burst()
 	ScreenEffects.screen_flash(Color(1.0, 0.0, 0.0), 0.3)
 
-func _start_smusher_pulse(color: Color, speed: float) -> void:
-	if _smusher_pulse_active:
-		return
-	_smusher_pulse_active = true
-
-	# Red pulse overlay on CanvasLayer
-	var canvas := CanvasLayer.new()
-	canvas.layer = 97
-	canvas.name = "SmusherPulse"
-	add_child(canvas)
-
-	var pulse := ColorRect.new()
-	pulse.color = color
-	pulse.set_anchors_preset(Control.PRESET_FULL_RECT)
-	pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	canvas.add_child(pulse)
-
-	# Pulsing animation
-	var tween := create_tween().set_loops()
-	tween.tween_property(pulse, "color:a", color.a * 2.0, speed * 0.5).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(pulse, "color:a", color.a * 0.3, speed * 0.5).set_trans(Tween.TRANS_SINE)
-
-	# Stop on floor change
-	FloorManager.floor_changed.connect(func(_f: int):
-		_smusher_pulse_active = false
-		tween.kill()
-		canvas.queue_free()
-	, CONNECT_ONE_SHOT)
+func _start_smusher_pulse(_color: Color, _speed: float) -> void:
+	# Disabled — no screen pulsing during gameplay
+	pass
 
 func _spawn_dust_burst() -> void:
 	# Dust/debris particles at hero's position
