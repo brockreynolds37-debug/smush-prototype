@@ -22,11 +22,12 @@ const HERO_INT_SPELL_POWER_PER_POINT: float = 0.08
 # Equipment spell power bonus per point (+N%)
 const HERO_EQUIP_SPELL_POWER_PER_POINT: float = 0.01
 
-# Movement
-const HERO_BASE_MOVE_SPEED: float = 8.0
+# Movement (WC3-style: slower, weightier units with visible turning)
+const HERO_BASE_MOVE_SPEED: float = 5.0
 const HERO_ACCELERATION: float = 25.0
 const HERO_DECELERATION: float = 35.0
 const HERO_ROTATION_SPEED: float = 10.0
+const HERO_TURN_RATE: float = 180.0  # Degrees per second
 
 # ---------- DEFAULT SPELL VALUES (Elementalist / Set 0) ----------
 
@@ -43,7 +44,7 @@ const SPELL_GROUND_SLAM_STUN_DURATION: float = 1.0
 # Melee enemies (goblin_warrior, skeleton, orc, etc.)
 const ENEMY_MELEE_HP: int = 150
 const ENEMY_MELEE_DAMAGE: int = 15
-const ENEMY_MELEE_SPEED: float = 5.0
+const ENEMY_MELEE_SPEED: float = 3.25
 const ENEMY_MELEE_AGGRO_RANGE: float = 10.0
 const ENEMY_MELEE_ATTACK_RANGE: float = 2.5
 const ENEMY_MELEE_ATTACK_COOLDOWN: float = 1.5
@@ -51,7 +52,7 @@ const ENEMY_MELEE_ATTACK_COOLDOWN: float = 1.5
 # Ranged enemies (goblin_archer)
 const ENEMY_RANGED_HP: int = 100
 const ENEMY_RANGED_DAMAGE: int = 12
-const ENEMY_RANGED_SPEED: float = 4.5
+const ENEMY_RANGED_SPEED: float = 2.9
 const ENEMY_RANGED_AGGRO_RANGE: float = 14.0
 const ENEMY_RANGED_ATTACK_RANGE: float = 10.0
 const ENEMY_RANGED_ATTACK_COOLDOWN: float = 2.0
@@ -60,7 +61,7 @@ const ENEMY_RANGED_KITE_DISTANCE: float = 6.0
 # Mage enemies
 const ENEMY_MAGE_HP: int = 120
 const ENEMY_MAGE_DAMAGE: int = 25
-const ENEMY_MAGE_SPEED: float = 3.5
+const ENEMY_MAGE_SPEED: float = 2.3
 const ENEMY_MAGE_AGGRO_RANGE: float = 12.0
 const ENEMY_MAGE_ATTACK_RANGE: float = 9.0
 const ENEMY_MAGE_ATTACK_COOLDOWN: float = 3.0
@@ -71,7 +72,7 @@ const ENEMY_MAGE_TELEGRAPH_DURATION: float = 1.2
 
 const BOSS_BASE_HP: int = 800
 const BOSS_BASE_DAMAGE: int = 30
-const BOSS_MOVE_SPEED: float = 4.0
+const BOSS_MOVE_SPEED: float = 2.6
 const BOSS_AGGRO_RANGE: float = 18.0
 const BOSS_ATTACK_RANGE: float = 3.0
 const BOSS_ATTACK_COOLDOWN: float = 2.0

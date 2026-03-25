@@ -10,7 +10,8 @@ signal minion_died(minion: Node3D)
 const FOLLOW_DISTANCE: float = 3.0
 const ATTACK_RANGE: float = 8.0
 const ATTACK_MELEE_RANGE: float = 2.0
-const MOVE_SPEED: float = 7.0
+const MOVE_SPEED: float = 4.5
+const TURN_RATE: float = 180.0  # Degrees per second (WC3-style pivot)
 const ATTACK_COOLDOWN: float = 1.2
 const LIFESPAN: float = 30.0  # Summons last 30 seconds
 
@@ -153,7 +154,10 @@ func _face_position(target: Vector3, delta: float) -> void:
 	if look_dir.length_squared() < 0.001:
 		return
 	var target_rot = atan2(look_dir.x, look_dir.z)
-	rotation.y = lerp_angle(rotation.y, target_rot, 10.0 * delta)
+	# Turn-rate capped rotation (WC3-style pivot)
+	var max_turn := deg_to_rad(TURN_RATE) * delta
+	var diff := angle_difference(rotation.y, target_rot)
+	rotation.y += clampf(diff, -max_turn, max_turn)
 
 func _try_attack() -> void:
 	if _attack_timer > 0.0:

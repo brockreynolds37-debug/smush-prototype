@@ -5,8 +5,8 @@ extends Node3D
 const GRUNT_CONFIG := {
 	"name": "Orc Grunt",
 	"hp": 100,
-	"speed": 7.0,
-	"turn_rate": 3.0,
+	"speed": 4.5,
+	"turn_rate": PI,  # 180 deg/sec
 	"attack_damage": 12,
 	"attack_range": 2.0,
 	"attack_cooldown": 1.5,
@@ -20,8 +20,8 @@ const GRUNT_CONFIG := {
 const PEON_CONFIG := {
 	"name": "Orc Peon",
 	"hp": 50,
-	"speed": 5.0,
-	"turn_rate": 4.0,
+	"speed": 3.25,
+	"turn_rate": PI * 1.2,  # ~216 deg/sec (peons are nimbler)
 	"attack_damage": 5,
 	"attack_range": 2.0,
 	"attack_cooldown": 2.0,
@@ -35,8 +35,8 @@ const PEON_CONFIG := {
 const SHAMAN_CONFIG := {
 	"name": "Orc Shaman",
 	"hp": 80,
-	"speed": 6.0,
-	"turn_rate": 3.5,
+	"speed": 3.9,
+	"turn_rate": PI * 1.1,  # ~198 deg/sec
 	"attack_damage": 20,
 	"attack_range": 10.0,
 	"attack_cooldown": 2.5,

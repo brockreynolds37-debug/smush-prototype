@@ -10,11 +10,11 @@ signal spell_cooldown_updated(spell_index: int, remaining: float, total: float)
 signal spell_unlocked(spell_index: int)
 signal hero_died()
 
-@export var move_speed: float = 8.0
+@export var move_speed: float = 5.0
 @export var acceleration: float = 25.0
 @export var deceleration: float = 35.0
 @export var rotation_speed: float = 10.0
-@export var turn_rate: float = 360.0         # Degrees per second (WC3-style capped rotation)
+@export var turn_rate: float = 180.0         # Degrees per second (WC3 footman-style pivot)
 @export var approach_distance: float = 2.0  # Start slowing within this range of target
 @export var max_health: int = 500
 @export var max_mana: int = 200
@@ -77,7 +77,7 @@ var _char_primary_color: Color = Color(0.15, 0.25, 0.5)
 var _char_secondary_color: Color = Color(0.87, 0.72, 0.58)
 
 # Status effects
-var _base_move_speed: float = 8.0
+var _base_move_speed: float = 5.0
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0  # 0.0 = no slow, 0.5 = 50% slow
 
@@ -378,20 +378,26 @@ func _process_movement(delta: float) -> void:
 	var direction: Vector3 = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 	direction.y = 0
 
+	# Face next waypoint direction (WC3-style pivot before moving)
+	_face_position(global_position + direction, delta)
+
+	# Slow down while turning — units pivot then accelerate (WC3 weight feel)
+	var facing_dir := Vector3(sin(rotation.y), 0, cos(rotation.y))
+	var facing_dot := direction.dot(facing_dir) if direction.length_squared() > 0.001 else 1.0
+	var turn_speed_mult := clampf(facing_dot, 0.25, 1.0)
+
 	# Approach slowdown — ease into final destination
-	var target_speed := move_speed
+	var target_speed := move_speed * turn_speed_mult
 	var dist_to_target := global_position.distance_to(target_position)
 	if dist_to_target < approach_distance and attack_target == null:
 		var approach_ratio := clampf(dist_to_target / approach_distance, 0.15, 1.0)
-		target_speed = move_speed * approach_ratio
+		target_speed = target_speed * approach_ratio
 
 	# Ease-in acceleration (snappy start, smooth ramp)
 	var speed_ratio := current_speed / move_speed if move_speed > 0 else 0.0
 	var accel_factor := 1.5 + (1.0 - speed_ratio) * 2.0
 	current_speed = move_toward(current_speed, target_speed, acceleration * accel_factor * delta)
 	velocity = direction * current_speed
-
-	_face_position(global_position + direction, delta)
 
 	move_and_slide()
 

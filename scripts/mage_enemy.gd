@@ -6,7 +6,8 @@ extends CharacterBody3D
 signal health_changed(current: int, maximum: int)
 
 @export var max_health: int = 55
-@export var move_speed: float = 3.8
+@export var move_speed: float = 2.5
+@export var turn_rate: float = 180.0  # Degrees per second (WC3-style pivot)
 @export var aggro_range: float = 18.0
 @export var preferred_range: float = 12.0   # Sweet spot for casting
 @export var min_range: float = 6.0          # Too close — retreat
@@ -28,7 +29,7 @@ var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
 # Status effects
-var _base_move_speed: float = 3.8
+var _base_move_speed: float = 2.5
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0
 
@@ -234,7 +235,10 @@ func _face_position(target: Vector3, delta: float) -> void:
 	if look_dir.length_squared() < 0.001:
 		return
 	var target_rot = atan2(look_dir.x, look_dir.z)
-	rotation.y = lerp_angle(rotation.y, target_rot, 10.0 * delta)
+	# Turn-rate capped rotation (WC3-style pivot)
+	var max_turn := deg_to_rad(turn_rate) * delta
+	var diff := angle_difference(rotation.y, target_rot)
+	rotation.y += clampf(diff, -max_turn, max_turn)
 
 func _try_cast_aoe(hero: Node3D) -> void:
 	if not attack_timer.is_stopped():

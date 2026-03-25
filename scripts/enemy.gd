@@ -6,12 +6,12 @@ extends CharacterBody3D
 signal health_changed(current: int, maximum: int)
 
 @export var max_health: int = 150
-@export var move_speed: float = 5.0
+@export var move_speed: float = 3.25
 @export var aggro_range: float = 10.0
 @export var attack_range: float = 2.5
 @export var attack_damage: int = 15
 @export var attack_cooldown: float = 1.5
-@export var turn_rate: float = 360.0  # Degrees per second (WC3-style capped rotation)
+@export var turn_rate: float = 180.0  # Degrees per second (WC3 footman-style pivot)
 
 # Which model set to use — "goblin" or "orc"
 @export var enemy_type: String = "goblin"
@@ -35,7 +35,7 @@ var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
 # Status effects
-var _base_move_speed: float = 5.0
+var _base_move_speed: float = 3.25
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0
 var _walk_bob_time: float = 0.0
@@ -277,9 +277,14 @@ func _physics_process(delta: float) -> void:
 				diff.y = 0
 				direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 			direction.y = 0
-			current_speed = move_toward(current_speed, move_speed, 15.0 * delta)
+			# Face next waypoint, not the hero — WC3-style pivot before moving
+			_face_position(global_position + direction, delta)
+			# Slow down while turning (units pivot then accelerate)
+			var facing_dir := Vector3(sin(rotation.y), 0, cos(rotation.y))
+			var facing_dot := direction.dot(facing_dir) if direction.length_squared() > 0.001 else 1.0
+			var speed_mult := clampf(facing_dot, 0.25, 1.0)
+			current_speed = move_toward(current_speed, move_speed * speed_mult, 15.0 * delta)
 			velocity = direction * current_speed
-			_face_position(target_unit.global_position, delta)
 			new_state = AnimState.WALK
 	else:
 		current_speed = 0.0
@@ -350,9 +355,13 @@ func _return_to_spawn(delta: float) -> void:
 			diff.y = 0
 			direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 		direction.y = 0
-		current_speed = move_toward(current_speed, move_speed * 0.5, 10.0 * delta)
+		# Face next waypoint (WC3-style pivot)
+		_face_position(global_position + direction, delta)
+		var facing_dir := Vector3(sin(rotation.y), 0, cos(rotation.y))
+		var facing_dot := direction.dot(facing_dir) if direction.length_squared() > 0.001 else 1.0
+		var speed_mult := clampf(facing_dot, 0.25, 1.0)
+		current_speed = move_toward(current_speed, move_speed * 0.5 * speed_mult, 10.0 * delta)
 		velocity = direction * current_speed
-		_face_position(spawn_position, delta)
 
 		if anim_state != AnimState.WALK:
 			anim_state = AnimState.WALK

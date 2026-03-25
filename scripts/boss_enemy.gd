@@ -12,7 +12,8 @@ signal health_changed(current: int, maximum: int)
 signal boss_defeated(boss_type: String)
 
 @export var max_health: int = 800
-@export var move_speed: float = 4.0
+@export var move_speed: float = 2.6
+@export var turn_rate: float = 180.0  # Degrees per second (WC3-style pivot)
 @export var aggro_range: float = 18.0
 @export var attack_range: float = 3.0
 @export var attack_damage: int = 30
@@ -32,7 +33,7 @@ var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
 # Status effects
-var _base_move_speed: float = 4.0
+var _base_move_speed: float = 2.6
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0
 
@@ -222,7 +223,10 @@ func _face_position(target: Vector3, delta: float) -> void:
 	if look_dir.length_squared() < 0.001:
 		return
 	var target_rot = atan2(look_dir.x, look_dir.z)
-	rotation.y = lerp_angle(rotation.y, target_rot, 10.0 * delta)
+	# Turn-rate capped rotation (WC3-style pivot)
+	var max_turn := deg_to_rad(turn_rate) * delta
+	var diff := angle_difference(rotation.y, target_rot)
+	rotation.y += clampf(diff, -max_turn, max_turn)
 
 func _try_attack(hero: Node3D) -> void:
 	if not attack_timer.is_stopped():
@@ -392,7 +396,7 @@ func _spawn_split_slimes() -> void:
 		# Mini slimes: half stats, smaller
 		mini.max_health = 60
 		mini.attack_damage = 8
-		mini.move_speed = 6.0
+		mini.move_speed = 3.9
 		mini.aggro_range = 15.0
 		var offset: Vector3 = Vector3(cos(angle), 0, sin(angle)) * 2.5
 		mini.global_position = global_position + offset

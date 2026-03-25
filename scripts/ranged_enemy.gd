@@ -6,7 +6,8 @@ extends CharacterBody3D
 signal health_changed(current: int, maximum: int)
 
 @export var max_health: int = 70
-@export var move_speed: float = 4.5
+@export var move_speed: float = 2.9
+@export var turn_rate: float = 180.0  # Degrees per second (WC3-style pivot)
 @export var aggro_range: float = 16.0
 @export var attack_range: float = 12.0     # Preferred shooting distance
 @export var min_range: float = 5.0         # Too close — kite away
@@ -27,7 +28,7 @@ var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
 
 # Status effects
-var _base_move_speed: float = 4.5
+var _base_move_speed: float = 2.9
 var _is_stunned: bool = false
 var _slow_amount: float = 0.0
 
@@ -234,7 +235,10 @@ func _face_position(target: Vector3, delta: float) -> void:
 	if look_dir.length_squared() < 0.001:
 		return
 	var target_rot = atan2(look_dir.x, look_dir.z)
-	rotation.y = lerp_angle(rotation.y, target_rot, 10.0 * delta)
+	# Turn-rate capped rotation (WC3-style pivot)
+	var max_turn := deg_to_rad(turn_rate) * delta
+	var diff := angle_difference(rotation.y, target_rot)
+	rotation.y += clampf(diff, -max_turn, max_turn)
 
 func _try_ranged_attack(hero: Node3D) -> void:
 	if not attack_timer.is_stopped():

@@ -17,8 +17,8 @@ enum OrderType { MOVE, ATTACK_MOVE, ATTACK_TARGET, STOP, HOLD }
 
 @export_group("Stats")
 @export var max_hp: int = 100
-@export var move_speed: float = 7.0
-@export var turn_rate: float = 3.0
+@export var move_speed: float = 4.5
+@export var turn_rate: float = PI  # ~180 deg/sec (WC3 footman-style pivot)
 @export var attack_damage: int = 12
 @export var attack_range: float = 2.0
 @export var attack_cooldown: float = 1.5
