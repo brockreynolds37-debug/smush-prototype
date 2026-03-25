@@ -107,7 +107,7 @@ func _process(delta: float) -> void:
 			_box.position.y = sin(_time * 3.0) * 0.08 + 0.3
 
 		if _glow:
-			_glow.light_energy = 1.0 + sin(_time * 4.0) * 0.5
+			_glow.light_energy = 1.5
 
 		# Auto-pickup when hero gets close
 		if GameManager.hero and not GameManager.hero.is_dead:

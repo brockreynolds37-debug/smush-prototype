@@ -59,6 +59,7 @@ AchievementManager="*res://scripts/achievement_manager.gd"
 NewGamePlus="*res://scripts/new_game_plus.gd"
 PerformanceMonitor="*res://scripts/performance_monitor.gd"
 KeybindingManager="*res://scripts/keybinding_manager.gd"
+PathfindingGrid="*res://scripts/pathfinding_grid.gd"
 
 [display]
 

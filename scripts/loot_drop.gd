@@ -113,9 +113,9 @@ func _process(delta: float) -> void:
 		_model_node.rotation.y += delta * 2.0
 		_model_node.position.y = sin(_time * 3.0) * 0.1 + 0.3
 
-	# Pulse glow
+	# Steady glow
 	if _glow_light:
-		_glow_light.light_energy = 0.6 + sin(_time * 4.0) * 0.3
+		_glow_light.light_energy = 0.8
 
 	# Despawn timer
 	_despawn_timer -= delta

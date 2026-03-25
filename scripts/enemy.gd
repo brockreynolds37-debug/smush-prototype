@@ -11,6 +11,7 @@ signal health_changed(current: int, maximum: int)
 @export var attack_range: float = 2.5
 @export var attack_damage: int = 15
 @export var attack_cooldown: float = 1.5
+@export var turn_rate: float = 360.0  # Degrees per second (WC3-style capped rotation)
 
 # Which model set to use — "goblin" or "orc"
 @export var enemy_type: String = "goblin"
@@ -21,6 +22,14 @@ var is_aggroed: bool = false
 var current_speed: float = 0.0
 var spawn_position: Vector3 = Vector3.ZERO
 var leash_range: float = 20.0
+
+# AStarGrid2D pathfinding
+var _nav_path: PackedVector3Array = []
+var _nav_path_index: int = 0
+var _path_recompute_timer: float = 0.0
+
+# Area3D attack range tracking
+var _attack_target_in_range: bool = false
 
 var original_scale := Vector3.ONE
 var _cached_mesh_instances: Array[MeshInstance3D] = []
@@ -82,6 +91,8 @@ func _ready() -> void:
 	nav_agent.target_desired_distance = 0.5
 	nav_agent.max_speed = move_speed
 
+	_setup_detection_areas()
+
 	health_changed.emit(current_health, max_health)
 
 func _load_enemy_model() -> void:
@@ -107,6 +118,15 @@ func _load_enemy_model() -> void:
 			AnimState.WALK: preload("res://assets/models/goblin-scout/walk.glb"),
 			AnimState.ATTACK: preload("res://assets/models/goblin-scout/attack.glb"),
 			AnimState.DEATH: preload("res://assets/models/goblin-scout/attack.glb"),
+		}
+		_swap_model(AnimState.IDLE)
+	elif enemy_type == "dreadlord":
+		# Animated dreadlord with per-state models (Meshy rigged)
+		anim_scenes = {
+			AnimState.IDLE: preload("res://assets/models/enemies/dreadlord/dreadlord.glb"),
+			AnimState.WALK: preload("res://assets/models/enemies/dreadlord/walking.glb"),
+			AnimState.ATTACK: preload("res://assets/models/enemies/dreadlord/running.glb"),
+			AnimState.DEATH: preload("res://assets/models/enemies/dreadlord/dreadlord.glb"),
 		}
 		_swap_model(AnimState.IDLE)
 	elif model_paths.has(enemy_type):
@@ -177,6 +197,13 @@ func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
 
+	# Hitlag: freeze for N frames on hit (juicy combat feel)
+	if _hitlag_frames > 0:
+		_hitlag_frames -= 1
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
+
 	if _is_stunned:
 		velocity = Vector3.ZERO
 		current_speed = 0.0
@@ -215,17 +242,40 @@ func _physics_process(delta: float) -> void:
 	var new_state := AnimState.IDLE
 
 	if is_aggroed:
-		if dist_to_target <= attack_range:
+		if _attack_target_in_range or dist_to_target <= attack_range:
 			current_speed = 0.0
 			velocity = Vector3.ZERO
 			_face_position(target_unit.global_position, delta)
 			_try_attack(target_unit)
 			new_state = AnimState.ATTACK
 		else:
-			nav_agent.target_position = target_unit.global_position
-			var next_pos = nav_agent.get_next_path_position()
-			var diff = next_pos - global_position
-			var direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
+			# Recompute path every 0.5s via AStarGrid2D
+			_path_recompute_timer -= delta
+			if _path_recompute_timer <= 0.0:
+				_nav_path = PathfindingGrid.find_path(global_position, target_unit.global_position)
+				_nav_path_index = 1
+				_path_recompute_timer = 0.5
+
+			# Advance past waypoints already reached
+			while _nav_path_index < _nav_path.size():
+				var wp := _nav_path[_nav_path_index]
+				wp.y = global_position.y
+				if global_position.distance_to(wp) < 0.5:
+					_nav_path_index += 1
+				else:
+					break
+
+			# Get direction toward next waypoint (fall back to direct line)
+			var direction := Vector3.ZERO
+			if _nav_path_index < _nav_path.size():
+				var next_pos := _nav_path[_nav_path_index]
+				next_pos.y = global_position.y
+				var diff := next_pos - global_position
+				direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
+			else:
+				var diff := target_unit.global_position - global_position
+				diff.y = 0
+				direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 			direction.y = 0
 			current_speed = move_toward(current_speed, move_speed, 15.0 * delta)
 			velocity = direction * current_speed
@@ -242,27 +292,63 @@ func _physics_process(delta: float) -> void:
 		anim_state = new_state
 		_swap_model(new_state)
 
-	# Procedural walk bob
+	# Procedural walk cycle — bouncy stride with sway
 	if anim_state == AnimState.WALK and current_speed > 0.3:
-		_walk_bob_time += current_speed * 0.9 * delta
-		model.position.y = sin(_walk_bob_time * 8.0) * 0.04
-		model.rotation.z = sin(_walk_bob_time * 4.0) * 0.02
+		_walk_bob_time += current_speed * 1.1 * delta
+		var t: float = _walk_bob_time
+		# Asymmetric double-bounce stride
+		var stride: float = absf(sin(t * 6.0))
+		model.position.y = stride * 0.07 + sin(t * 12.0) * 0.01
+		# Hip sway
+		model.rotation.z = lerpf(model.rotation.z, sin(t * 6.0) * 0.04, 10.0 * delta)
+		# Forward lean — more aggressive for enemies
+		model.rotation.x = lerpf(model.rotation.x, -0.08, 8.0 * delta)
+		# Torso twist for arm swing feel
+		model.rotation.y = lerpf(model.rotation.y, sin(t * 6.0) * 0.025, 8.0 * delta)
 	elif anim_state == AnimState.IDLE:
-		_walk_bob_time += delta * 0.4
-		model.position.y = sin(_walk_bob_time * 2.0) * 0.015
-		model.rotation.z = lerp(model.rotation.z, 0.0, 6.0 * delta)
+		_walk_bob_time += delta * 0.5
+		var t: float = _walk_bob_time
+		# Breathing with secondary sway
+		model.position.y = sin(t * 1.6) * 0.015 + sin(t * 3.3) * 0.005
+		model.rotation.z = lerpf(model.rotation.z, sin(t * 0.8) * 0.01, 4.0 * delta)
+		model.rotation.x = lerpf(model.rotation.x, 0.0, 5.0 * delta)
+		model.rotation.y = lerpf(model.rotation.y, 0.0, 5.0 * delta)
 	else:
-		model.position.y = lerp(model.position.y, 0.0, 8.0 * delta)
-		model.rotation.z = lerp(model.rotation.z, 0.0, 8.0 * delta)
+		model.position.y = lerpf(model.position.y, 0.0, 8.0 * delta)
+		model.rotation.z = lerpf(model.rotation.z, 0.0, 8.0 * delta)
+		model.rotation.x = lerpf(model.rotation.x, 0.0, 8.0 * delta)
+		model.rotation.y = lerpf(model.rotation.y, 0.0, 8.0 * delta)
 
 	move_and_slide()
 
 func _return_to_spawn(delta: float) -> void:
 	if global_position.distance_to(spawn_position) > 1.0:
-		nav_agent.target_position = spawn_position
-		var next_pos = nav_agent.get_next_path_position()
-		var diff = next_pos - global_position
-		var direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
+		# Recompute path to spawn if needed
+		_path_recompute_timer -= delta
+		if _path_recompute_timer <= 0.0 or _nav_path.is_empty():
+			_nav_path = PathfindingGrid.find_path(global_position, spawn_position)
+			_nav_path_index = 1
+			_path_recompute_timer = 0.5
+
+		# Advance past reached waypoints
+		while _nav_path_index < _nav_path.size():
+			var wp := _nav_path[_nav_path_index]
+			wp.y = global_position.y
+			if global_position.distance_to(wp) < 0.5:
+				_nav_path_index += 1
+			else:
+				break
+
+		var direction := Vector3.ZERO
+		if _nav_path_index < _nav_path.size():
+			var next_pos := _nav_path[_nav_path_index]
+			next_pos.y = global_position.y
+			var diff := next_pos - global_position
+			direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
+		else:
+			var diff := spawn_position - global_position
+			diff.y = 0
+			direction = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 		direction.y = 0
 		current_speed = move_toward(current_speed, move_speed * 0.5, 10.0 * delta)
 		velocity = direction * current_speed
@@ -286,8 +372,10 @@ func _face_position(target: Vector3, delta: float) -> void:
 	look_dir.y = 0
 	if look_dir.length_squared() < 0.001:
 		return
-	var target_rot = atan2(look_dir.x, look_dir.z)
-	rotation.y = lerp_angle(rotation.y, target_rot, 10.0 * delta)
+	var target_rot := atan2(look_dir.x, look_dir.z)
+	var max_turn := deg_to_rad(turn_rate) * delta
+	var diff := angle_difference(rotation.y, target_rot)
+	rotation.y += clampf(diff, -max_turn, max_turn)
 
 func _try_attack(target: Node3D) -> void:
 	if not attack_timer.is_stopped():
@@ -295,7 +383,14 @@ func _try_attack(target: Node3D) -> void:
 	attack_timer.start(attack_cooldown)
 
 	var tween = create_tween()
-	tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.85, 1.2), 0.1)
+	# Wind-up: rear back
+	tween.tween_property(model, "scale", original_scale * Vector3(0.88, 1.12, 0.88), 0.08)
+	tween.parallel().tween_property(model, "rotation:x", -0.18, 0.08)
+	tween.parallel().tween_property(model, "position:z", -0.12, 0.08)
+	# Lunge + squash impact
+	tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.82, 1.2), 0.06)
+	tween.parallel().tween_property(model, "rotation:x", 0.22, 0.06)
+	tween.parallel().tween_property(model, "position:z", 0.25, 0.06)
 	tween.tween_callback(func():
 		if is_instance_valid(target) and target.has_method("take_damage"):
 			target.take_damage(attack_damage)
@@ -308,6 +403,12 @@ func _try_attack(target: Node3D) -> void:
 				"wolf":
 					if randf() < 0.25:
 						StatusEffectManager.apply_slow(target, 2.0, 0.3)
+				"dreadlord":
+					# Vampiric Aura — heals 20% of damage dealt
+					var heal_amt := int(attack_damage * 0.2)
+					current_health = mini(current_health + heal_amt, max_health)
+					health_changed.emit(current_health, max_health)
+					StatusEffectManager.apply_slow(target, 1.5, 0.2)
 			# Elite: Venomous applies poison on any hit
 			if has_meta("venomous_dot") and get_meta("venomous_dot"):
 				StatusEffectManager.apply_poison(target, 5.0, 8, 1.0)
@@ -318,8 +419,12 @@ func _try_attack(target: Node3D) -> void:
 				current_health = mini(current_health + heal_amount, max_health)
 				health_changed.emit(current_health, max_health)
 	)
-	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.1, 0.9), 0.1)
+	# Follow-through + settle
+	tween.tween_property(model, "scale", original_scale * Vector3(0.92, 1.08, 0.92), 0.08)
+	tween.parallel().tween_property(model, "rotation:x", 0.04, 0.08)
 	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.parallel().tween_property(model, "rotation:x", 0.0, 0.1)
+	tween.parallel().tween_property(model, "position:z", 0.0, 0.1)
 
 func take_damage(amount: int) -> void:
 	if is_dead:
@@ -334,12 +439,35 @@ func take_damage(amount: int) -> void:
 
 	_flash_color(Color.WHITE, 0.08)
 
+	# Hitlag: freeze this enemy for 2 physics frames (~0.033s)
+	_apply_hitlag(2)
+
+	# Knockback: push enemy away from hero
+	var hero = GameManager.hero
+	if hero and is_instance_valid(hero):
+		var kb_dir = (global_position - hero.global_position)
+		kb_dir.y = 0
+		kb_dir = kb_dir.normalized() if kb_dir.length_squared() > 0.001 else Vector3.ZERO
+		global_position += kb_dir * 1.5
+		VFXManager.spawn_impact_sparks(global_position + Vector3.UP, Color(1.0, 0.8, 0.3), 6)
+
+	# Hit stagger: flinch back + squish + bounce recovery
 	var hit_tween = create_tween()
-	hit_tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.8, 1.2), 0.05)
-	hit_tween.tween_property(model, "scale", original_scale, 0.1)
+	hit_tween.tween_property(model, "scale", original_scale * Vector3(1.2, 0.8, 1.2), 0.04)
+	hit_tween.parallel().tween_property(model, "rotation:x", -0.15, 0.04)
+	hit_tween.parallel().tween_property(model, "position:y", -0.05, 0.04)
+	hit_tween.tween_property(model, "scale", original_scale * Vector3(0.93, 1.06, 0.93), 0.06)
+	hit_tween.parallel().tween_property(model, "rotation:x", 0.0, 0.08)
+	hit_tween.parallel().tween_property(model, "position:y", 0.0, 0.08)
+	hit_tween.tween_property(model, "scale", original_scale, 0.06)
 
 	if current_health <= 0:
 		_die()
+
+var _hitlag_frames: int = 0
+
+func _apply_hitlag(frames: int) -> void:
+	_hitlag_frames = frames
 
 func _die() -> void:
 	is_dead = true
@@ -351,13 +479,20 @@ func _die() -> void:
 	_swap_model(AnimState.DEATH)
 
 	var tween = create_tween()
-	# Let the death animation play briefly before collapsing
-	tween.tween_interval(0.6)
-	tween.tween_property(model, "scale", Vector3(1.5, 0.1, 1.5), 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.parallel().tween_property(model, "position:y", 0.05, 0.3)
+	# Stumble: reel back from final blow
+	tween.tween_property(model, "rotation:x", -0.3, 0.15)
+	tween.parallel().tween_property(model, "scale", original_scale * Vector3(1.1, 0.9, 1.1), 0.15)
+	# Pause — dramatic beat
+	tween.tween_interval(0.3)
+	# Collapse: tip forward and pancake into ground
+	tween.tween_property(model, "rotation:x", 1.2, 0.25).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(model, "scale", Vector3(1.4, 0.1, 1.4), 0.25)
+	tween.parallel().tween_property(model, "position:y", 0.05, 0.25)
 	tween.parallel().tween_property(selection_circle, "scale", Vector3.ZERO, 0.2)
-	tween.tween_interval(0.5)
-	tween.tween_property(model, "scale", Vector3(0.01, 0.01, 0.01), 0.3)
+	# Sink into ground and vanish
+	tween.tween_interval(0.4)
+	tween.tween_property(model, "scale", Vector3(0.01, 0.01, 0.01), 0.25)
+	tween.parallel().tween_property(model, "position:y", -0.3, 0.25)
 	tween.tween_callback(func():
 		GameManager.unregister_enemy(self)
 		queue_free()
@@ -421,6 +556,7 @@ func _apply_status_slow(slow_pct: float) -> void:
 	_slow_amount = slow_pct
 	move_speed = _base_move_speed * (1.0 - _slow_amount)
 	nav_agent.max_speed = move_speed
+	_path_recompute_timer = 0.0  # Force path recompute with new speed
 
 func _remove_status_slow() -> void:
 	_slow_amount = 0.0
@@ -429,6 +565,50 @@ func _remove_status_slow() -> void:
 
 func _apply_status_stun(stunned: bool) -> void:
 	_is_stunned = stunned
+
+# ---------- AREA3D DETECTION ----------
+
+func _setup_detection_areas() -> void:
+	# AggroArea — fires when a hero body enters/exits aggro radius
+	var aggro_area := Area3D.new()
+	aggro_area.name = "AggroArea"
+	var aggro_col := CollisionShape3D.new()
+	var aggro_sphere := SphereShape3D.new()
+	aggro_sphere.radius = aggro_range
+	aggro_col.shape = aggro_sphere
+	aggro_area.add_child(aggro_col)
+	add_child(aggro_area)
+	aggro_area.body_entered.connect(_on_aggro_body_entered)
+
+	# AttackArea — fires when a hero body enters/exits melee reach
+	var attack_area := Area3D.new()
+	attack_area.name = "AttackArea"
+	var attack_col := CollisionShape3D.new()
+	var attack_sphere := SphereShape3D.new()
+	attack_sphere.radius = attack_range
+	attack_col.shape = attack_sphere
+	attack_area.add_child(attack_col)
+	add_child(attack_area)
+	attack_area.body_entered.connect(_on_attack_body_entered)
+	attack_area.body_exited.connect(_on_attack_body_exited)
+
+func _on_aggro_body_entered(body: Node3D) -> void:
+	if is_dead or is_aggroed:
+		return
+	if body == GameManager.hero or body.is_in_group("heroes"):
+		is_aggroed = true
+		var tween = create_tween()
+		tween.tween_property(model, "scale", original_scale * 1.2, 0.1)
+		tween.tween_property(model, "scale", original_scale, 0.1)
+		_flash_color(Color(1.0, 0.2, 0.1), 0.15)
+
+func _on_attack_body_entered(body: Node3D) -> void:
+	if body == GameManager.hero or body.is_in_group("heroes"):
+		_attack_target_in_range = true
+
+func _on_attack_body_exited(body: Node3D) -> void:
+	if body == GameManager.hero or body.is_in_group("heroes"):
+		_attack_target_in_range = false
 
 # ---------- ELITE SYSTEM ----------
 

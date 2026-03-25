@@ -551,11 +551,11 @@ func _update_hero_info() -> void:
 		var armor_val: int = hero.armor if "armor" in hero else 0
 		txt += "Armor: %d\n" % armor_val
 		var eq_str: int = hero.equipment_str_bonus if "equipment_str_bonus" in hero else 0
-		var eq_agi: int = hero.equipment_agi_bonus if "equipment_agi_bonus" in hero else 0
+		var eq_dex: int = hero.equipment_dex_bonus if "equipment_dex_bonus" in hero else 0
 		var eq_int: int = hero.equipment_int_bonus if "equipment_int_bonus" in hero else 0
-		txt += "STR: %d  AGI: %d\nINT: %d" % [
+		txt += "STR: %d  DEX: %d\nINT: %d" % [
 			XpManager.bonus_str + eq_str,
-			XpManager.bonus_agi + eq_agi,
+			XpManager.bonus_dex + eq_dex,
 			XpManager.bonus_int + eq_int,
 		]
 		hero_stats_label.text = txt

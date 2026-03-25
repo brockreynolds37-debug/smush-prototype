@@ -173,9 +173,8 @@ func _update_visual(_target: Node3D, etype: int, data: Dictionary) -> void:
 	var key = "%d_%d" % [_target.get_instance_id(), etype]
 	if _tint_lights.has(key) and is_instance_valid(_tint_lights[key]):
 		var light: OmniLight3D = _tint_lights[key]
-		# Pulse between 1.5 and 3.0 energy
-		var pulse = 2.25 + sin(data["duration"] * 6.0) * 0.75
-		light.light_energy = pulse
+		# Steady status effect glow
+		light.light_energy = 2.5
 
 func _cleanup_tint(inst_id: int) -> void:
 	# Remove all tint lights for this instance

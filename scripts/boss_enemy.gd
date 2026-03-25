@@ -352,6 +352,10 @@ func _die() -> void:
 
 	boss_defeated.emit(boss_type)
 
+	# Slime Lord: split into smaller slimes on death
+	if boss_type == "slime_lord":
+		_spawn_split_slimes()
+
 	# Epic death — longer, more dramatic
 	GameManager.request_screen_shake(10.0, 0.8)
 
@@ -378,6 +382,34 @@ func _die() -> void:
 		GameManager.unregister_enemy(self)
 		queue_free()
 	)
+
+func _spawn_split_slimes() -> void:
+	# Spawn 3 mini slimes around the boss death location
+	var slime_scene = preload("res://scenes/enemy_slime.tscn")
+	var angles := [0.0, TAU / 3.0, TAU * 2.0 / 3.0]
+	for angle in angles:
+		var mini = slime_scene.instantiate()
+		# Mini slimes: half stats, smaller
+		mini.max_health = 60
+		mini.attack_damage = 8
+		mini.move_speed = 6.0
+		mini.aggro_range = 15.0
+		var offset: Vector3 = Vector3(cos(angle), 0, sin(angle)) * 2.5
+		mini.global_position = global_position + offset
+		# Pop out with a burst
+		get_tree().current_scene.get_node_or_null("Units").add_child(mini)
+		# Juice: launch them outward with a tween
+		var target_pos: Vector3 = Vector3(mini.global_position) + offset * 0.5
+		var pop_tw = mini.create_tween()
+		pop_tw.tween_property(mini, "global_position", target_pos, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		# Scale pop entrance
+		if mini.get_node_or_null("EnemyModel"):
+			var m = mini.get_node("EnemyModel")
+			m.scale = Vector3(0.01, 0.01, 0.01)
+			var scale_tw = m.create_tween()
+			scale_tw.tween_property(m, "scale", Vector3(0.6, 0.6, 0.6), 0.25).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	VFXManager.spawn_spell_impact(global_position, Color(0.3, 0.8, 0.2), 4.0)
+	AudioManager.play_sfx("fireball_explode", 0.8)
 
 func _set_model_color(color: Color) -> void:
 	for mi in _cached_mesh_instances:

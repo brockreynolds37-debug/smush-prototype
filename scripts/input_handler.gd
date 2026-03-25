@@ -33,6 +33,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				TutorialManager.notify_event("spell_cast")
 				break
 
+		# (WASD attack removed — click-to-move only)
+
 func _handle_right_click() -> void:
 	## Right click: move, attack, spell targeting (action button)
 	if camera_rig == null:

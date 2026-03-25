@@ -121,8 +121,8 @@ var grid_min := Vector2i.ZERO
 var grid_max := Vector2i.ZERO
 
 # Spawn/exit cell positions (set by layout)
-var spawn_cell := Vector2i(4, 4)
-var exit_cell := Vector2i(19, 29)
+var spawn_cell := Vector2i(6, 6)
+var exit_cell := Vector2i(28, 44)
 
 # Exit zone node — exposed so scene script can connect signals
 var exit_zone: Area3D = null
@@ -162,6 +162,7 @@ func _ready() -> void:
 	_generate_geometry()
 	_apply_theme_lighting()
 	_bake_navigation()
+	_populate_pathfinding_grid()
 	_place_forge_station()
 	_place_secret_triggers()
 	_place_easter_egg_pillar()
@@ -181,449 +182,449 @@ func _load_assets() -> void:
 	_gate_scene = load("res://assets/models/dungeon/kenney_gate.glb")
 
 func _define_floor1_layout() -> void:
-	# Floor 1: "The Sift" — 5 rooms connected by corridors
+	# Floor 1: "The Sift" — 5 rooms connected by corridors (scaled 1.5x)
 	#
-	#  [Spawn 8x8] --corridor-- [Arena 12x12] --corridor-- [Loot 6x6]
-	#                                 |
-	#                             corridor
-	#                                 |
-	#                          [Guard Room 8x6]
-	#                                 |
-	#                             corridor
-	#                                 |
-	#                         [Boss Room 14x10]
+	#  [Spawn 12x12] --corridor-- [Arena 18x18] --corridor-- [Loot 10x10]
+	#                                   |
+	#                               corridor
+	#                                   |
+	#                          [Guard Room 12x10]
+	#                                   |
+	#                               corridor
+	#                                   |
+	#                          [Boss Room 20x16]
 	#
 	rooms = [
 		# Room 0: Spawn room (top-left area)
-		{"pos": Vector2i(0, 0), "size": Vector2i(8, 8), "name": "spawn",
+		{"pos": Vector2i(0, 0), "size": Vector2i(12, 12), "name": "spawn",
 		 "props": [
-			{"type": "barrel", "offset": Vector2i(1, 1)},
-			{"type": "barrel", "offset": Vector2i(2, 1)},
-			{"type": "candle", "offset": Vector2i(6, 1)},
-			{"type": "candle", "offset": Vector2i(6, 6)},
+			{"type": "barrel", "offset": Vector2i(2, 2)},
+			{"type": "barrel", "offset": Vector2i(3, 2)},
+			{"type": "candle", "offset": Vector2i(9, 2)},
+			{"type": "candle", "offset": Vector2i(9, 9)},
 		]},
 
 		# Corridor: Spawn → Arena (horizontal)
-		{"pos": Vector2i(8, 3), "size": Vector2i(4, 2), "name": "corridor_1"},
+		{"pos": Vector2i(12, 4), "size": Vector2i(6, 4), "name": "corridor_1"},
 
 		# Room 1: Main Arena (center)
-		{"pos": Vector2i(12, -2), "size": Vector2i(12, 12), "name": "arena",
+		{"pos": Vector2i(18, -3), "size": Vector2i(18, 18), "name": "arena",
+		 "props": [
+			{"type": "column", "offset": Vector2i(4, 4)},
+			{"type": "column", "offset": Vector2i(12, 4)},
+			{"type": "column", "offset": Vector2i(4, 12)},
+			{"type": "column", "offset": Vector2i(12, 12)},
+			{"type": "rocks", "offset": Vector2i(2, 2)},
+			{"type": "barrel", "offset": Vector2i(15, 2)},
+			{"type": "barrel", "offset": Vector2i(15, 3)},
+			{"type": "candle", "offset": Vector2i(4, 0)},
+			{"type": "candle", "offset": Vector2i(12, 0)},
+			{"type": "trap_spike", "offset": Vector2i(8, 8)},
+			{"type": "trap_spike", "offset": Vector2i(9, 9)},
+		]},
+
+		# Corridor: Arena → Loot (horizontal)
+		{"pos": Vector2i(36, 3), "size": Vector2i(6, 4), "name": "corridor_2"},
+
+		# Room 2: Loot room (right side)
+		{"pos": Vector2i(42, 0), "size": Vector2i(10, 10), "name": "loot",
+		 "props": [
+			{"type": "chest", "offset": Vector2i(3, 3)},
+			{"type": "chest", "offset": Vector2i(4, 3)},
+			{"type": "candle", "offset": Vector2i(2, 0)},
+			{"type": "candle", "offset": Vector2i(6, 0)},
+			{"type": "barrel", "offset": Vector2i(0, 6)},
+			{"type": "banner", "offset": Vector2i(3, 0)},
+		]},
+
+		# Corridor: Arena → Guard Room (vertical, going south)
+		{"pos": Vector2i(26, 15), "size": Vector2i(4, 6), "name": "corridor_3"},
+
+		# Room 3: Guard room
+		{"pos": Vector2i(21, 21), "size": Vector2i(12, 10), "name": "guard",
+		 "props": [
+			{"type": "barrel", "offset": Vector2i(2, 2)},
+			{"type": "barrel", "offset": Vector2i(9, 2)},
+			{"type": "rocks", "offset": Vector2i(4, 6)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(11, 0)},
+			{"type": "trap_poison", "offset": Vector2i(6, 4)},
+		]},
+
+		# Corridor: Guard Room → Boss Room (vertical) — trapped!
+		{"pos": Vector2i(26, 31), "size": Vector2i(4, 6), "name": "corridor_4",
+		 "props": [
+			{"type": "trap_fire", "offset": Vector2i(0, 2)},
+			{"type": "trap_fire", "offset": Vector2i(2, 3)},
+		]},
+
+		# Room 4: Boss room (bottom)
+		{"pos": Vector2i(18, 37), "size": Vector2i(20, 16), "name": "boss",
+		 "props": [
+			{"type": "column", "offset": Vector2i(4, 3)},
+			{"type": "column", "offset": Vector2i(15, 3)},
+			{"type": "column", "offset": Vector2i(4, 10)},
+			{"type": "column", "offset": Vector2i(15, 10)},
+			{"type": "gate", "offset": Vector2i(9, 0)},
+			{"type": "gate", "offset": Vector2i(10, 0)},
+			{"type": "banner", "offset": Vector2i(9, 12)},
+			{"type": "banner", "offset": Vector2i(10, 12)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(19, 0)},
+			{"type": "candle", "offset": Vector2i(0, 15)},
+			{"type": "candle", "offset": Vector2i(19, 15)},
+		]},
+	]
+
+func _define_floor2_layout() -> void:
+	# Floor 2: "The Crucible" — tighter, more dangerous layout (scaled 1.5x)
+	#
+	#           [Spawn 10x10]
+	#               |
+	#           corridor
+	#               |
+	#  [Side Room 10x10] --corridor-- [Central Hall 16x16] --corridor-- [Armory 10x10]
+	#                                       |
+	#                                   corridor
+	#                                       |
+	#                                [Boss Pit 18x18]
+	#
+	spawn_cell = Vector2i(4, 4)
+	exit_cell = Vector2i(4, 50)
+
+	rooms = [
+		# Room 0: Spawn
+		{"pos": Vector2i(0, 0), "size": Vector2i(10, 10), "name": "spawn",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(9, 0)},
+			{"type": "barrel", "offset": Vector2i(2, 6)},
+		]},
+
+		# Corridor: Spawn → Central Hall
+		{"pos": Vector2i(3, 10), "size": Vector2i(4, 6), "name": "corridor_1"},
+
+		# Room 1: Central Hall
+		{"pos": Vector2i(-3, 16), "size": Vector2i(16, 16), "name": "arena",
+		 "props": [
+			{"type": "column", "offset": Vector2i(3, 3)},
+			{"type": "column", "offset": Vector2i(10, 3)},
+			{"type": "column", "offset": Vector2i(3, 10)},
+			{"type": "column", "offset": Vector2i(10, 10)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(15, 0)},
+			{"type": "rocks", "offset": Vector2i(6, 8)},
+			{"type": "trap_spike", "offset": Vector2i(6, 6)},
+			{"type": "trap_spike", "offset": Vector2i(8, 8)},
+			{"type": "trap_poison", "offset": Vector2i(8, 12)},
+		]},
+
+		# Corridor: Central → Side Room (west)
+		{"pos": Vector2i(-9, 21), "size": Vector2i(6, 4), "name": "corridor_2"},
+
+		# Room 2: Side Room
+		{"pos": Vector2i(-18, 18), "size": Vector2i(10, 10), "name": "guard",
+		 "props": [
+			{"type": "barrel", "offset": Vector2i(2, 2)},
+			{"type": "barrel", "offset": Vector2i(6, 2)},
+			{"type": "chest", "offset": Vector2i(3, 4)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(9, 9)},
+		]},
+
+		# Corridor: Central → Armory (east)
+		{"pos": Vector2i(13, 21), "size": Vector2i(6, 4), "name": "corridor_3"},
+
+		# Room 3: Armory
+		{"pos": Vector2i(19, 18), "size": Vector2i(10, 10), "name": "loot",
+		 "props": [
+			{"type": "chest", "offset": Vector2i(2, 3)},
+			{"type": "chest", "offset": Vector2i(6, 3)},
+			{"type": "banner", "offset": Vector2i(3, 0)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(9, 0)},
+		]},
+
+		# Corridor: Central → Boss Pit — fire gauntlet
+		{"pos": Vector2i(3, 32), "size": Vector2i(4, 6), "name": "corridor_4",
+		 "props": [
+			{"type": "trap_fire", "offset": Vector2i(0, 2)},
+			{"type": "trap_fire", "offset": Vector2i(2, 3)},
+		]},
+
+		# Room 4: Boss Pit
+		{"pos": Vector2i(-4, 38), "size": Vector2i(18, 18), "name": "boss",
+		 "props": [
+			{"type": "column", "offset": Vector2i(3, 3)},
+			{"type": "column", "offset": Vector2i(14, 3)},
+			{"type": "column", "offset": Vector2i(3, 14)},
+			{"type": "column", "offset": Vector2i(14, 14)},
+			{"type": "gate", "offset": Vector2i(8, 0)},
+			{"type": "gate", "offset": Vector2i(9, 0)},
+			{"type": "banner", "offset": Vector2i(8, 15)},
+			{"type": "banner", "offset": Vector2i(9, 15)},
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(17, 0)},
+			{"type": "candle", "offset": Vector2i(0, 17)},
+			{"type": "candle", "offset": Vector2i(17, 17)},
+		]},
+	]
+
+func _define_floor3_layout() -> void:
+	# Floor 3: "The Deep" — sprawling, dangerous, multiple paths to boss (scaled 1.5x)
+	#
+	#                      [Spawn 10x10]
+	#                           |
+	#                       corridor
+	#                           |
+	#  [Tomb 12x10] --corridor-- [Crossroads 12x12] --corridor-- [Shrine 12x10]
+	#                           |
+	#                       corridor
+	#                           |
+	#                  [Gauntlet 24x10]
+	#                           |
+	#                       corridor
+	#                           |
+	#                  [Boss Lair 24x22]
+	#
+	spawn_cell = Vector2i(4, 4)
+	exit_cell = Vector2i(6, 66)
+
+	rooms = [
+		# Room 0: Spawn
+		{"pos": Vector2i(0, 0), "size": Vector2i(10, 10), "name": "spawn",
+		 "props": [
+			{"type": "candle", "offset": Vector2i(0, 0)},
+			{"type": "candle", "offset": Vector2i(9, 0)},
+			{"type": "barrel", "offset": Vector2i(2, 6)},
+			{"type": "barrel", "offset": Vector2i(6, 6)},
+		]},
+
+		# Corridor: Spawn → Crossroads
+		{"pos": Vector2i(3, 10), "size": Vector2i(4, 4), "name": "corridor_1"},
+
+		# Room 1: Crossroads (center hub)
+		{"pos": Vector2i(-2, 14), "size": Vector2i(12, 12), "name": "arena",
 		 "props": [
 			{"type": "column", "offset": Vector2i(3, 3)},
 			{"type": "column", "offset": Vector2i(8, 3)},
 			{"type": "column", "offset": Vector2i(3, 8)},
 			{"type": "column", "offset": Vector2i(8, 8)},
-			{"type": "rocks", "offset": Vector2i(1, 1)},
-			{"type": "barrel", "offset": Vector2i(10, 1)},
-			{"type": "barrel", "offset": Vector2i(10, 2)},
-			{"type": "candle", "offset": Vector2i(3, 0)},
-			{"type": "candle", "offset": Vector2i(8, 0)},
-			{"type": "trap_spike", "offset": Vector2i(5, 5)},
-			{"type": "trap_spike", "offset": Vector2i(6, 6)},
-		]},
-
-		# Corridor: Arena → Loot (horizontal)
-		{"pos": Vector2i(24, 2), "size": Vector2i(4, 2), "name": "corridor_2"},
-
-		# Room 2: Loot room (right side)
-		{"pos": Vector2i(28, 0), "size": Vector2i(6, 6), "name": "loot",
-		 "props": [
-			{"type": "chest", "offset": Vector2i(2, 2)},
-			{"type": "chest", "offset": Vector2i(3, 2)},
-			{"type": "candle", "offset": Vector2i(1, 0)},
-			{"type": "candle", "offset": Vector2i(4, 0)},
-			{"type": "barrel", "offset": Vector2i(0, 4)},
-			{"type": "banner", "offset": Vector2i(2, 0)},
-		]},
-
-		# Corridor: Arena → Guard Room (vertical, going south)
-		{"pos": Vector2i(17, 10), "size": Vector2i(2, 4), "name": "corridor_3"},
-
-		# Room 3: Guard room
-		{"pos": Vector2i(14, 14), "size": Vector2i(8, 6), "name": "guard",
-		 "props": [
-			{"type": "barrel", "offset": Vector2i(1, 1)},
-			{"type": "barrel", "offset": Vector2i(6, 1)},
-			{"type": "rocks", "offset": Vector2i(3, 4)},
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(7, 0)},
-			{"type": "trap_poison", "offset": Vector2i(4, 3)},
-		]},
-
-		# Corridor: Guard Room → Boss Room (vertical) — trapped!
-		{"pos": Vector2i(17, 20), "size": Vector2i(2, 4), "name": "corridor_4",
-		 "props": [
-			{"type": "trap_fire", "offset": Vector2i(0, 1)},
-			{"type": "trap_fire", "offset": Vector2i(1, 2)},
-		]},
-
-		# Room 4: Boss room (bottom)
-		{"pos": Vector2i(12, 24), "size": Vector2i(14, 10), "name": "boss",
-		 "props": [
-			{"type": "column", "offset": Vector2i(3, 2)},
-			{"type": "column", "offset": Vector2i(10, 2)},
-			{"type": "column", "offset": Vector2i(3, 7)},
-			{"type": "column", "offset": Vector2i(10, 7)},
-			{"type": "gate", "offset": Vector2i(6, 0)},
-			{"type": "gate", "offset": Vector2i(7, 0)},
-			{"type": "banner", "offset": Vector2i(6, 8)},
-			{"type": "banner", "offset": Vector2i(7, 8)},
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(13, 0)},
-			{"type": "candle", "offset": Vector2i(0, 9)},
-			{"type": "candle", "offset": Vector2i(13, 9)},
-		]},
-	]
-
-func _define_floor2_layout() -> void:
-	# Floor 2: "The Crucible" — tighter, more dangerous layout
-	#
-	#           [Spawn 6x6]
-	#               |
-	#           corridor
-	#               |
-	#  [Side Room 6x6] --corridor-- [Central Hall 10x10] --corridor-- [Armory 6x6]
-	#                                     |
-	#                                 corridor
-	#                                     |
-	#                              [Boss Pit 12x12]
-	#
-	spawn_cell = Vector2i(3, 3)
-	exit_cell = Vector2i(3, 33)  # Inside boss pit (room at -3,24 size 12x12)
-
-	rooms = [
-		# Room 0: Spawn
-		{"pos": Vector2i(0, 0), "size": Vector2i(6, 6), "name": "spawn",
-		 "props": [
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(5, 0)},
-			{"type": "barrel", "offset": Vector2i(1, 4)},
-		]},
-
-		# Corridor: Spawn → Central Hall
-		{"pos": Vector2i(2, 6), "size": Vector2i(2, 4), "name": "corridor_1"},
-
-		# Room 1: Central Hall
-		{"pos": Vector2i(-2, 10), "size": Vector2i(10, 10), "name": "arena",
-		 "props": [
-			{"type": "column", "offset": Vector2i(2, 2)},
-			{"type": "column", "offset": Vector2i(7, 2)},
-			{"type": "column", "offset": Vector2i(2, 7)},
-			{"type": "column", "offset": Vector2i(7, 7)},
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(9, 0)},
-			{"type": "rocks", "offset": Vector2i(4, 5)},
-			{"type": "trap_spike", "offset": Vector2i(4, 4)},
-			{"type": "trap_spike", "offset": Vector2i(5, 5)},
-			{"type": "trap_poison", "offset": Vector2i(5, 8)},
-		]},
-
-		# Corridor: Central → Side Room (west)
-		{"pos": Vector2i(-6, 14), "size": Vector2i(4, 2), "name": "corridor_2"},
-
-		# Room 2: Side Room
-		{"pos": Vector2i(-12, 12), "size": Vector2i(6, 6), "name": "guard",
-		 "props": [
-			{"type": "barrel", "offset": Vector2i(1, 1)},
-			{"type": "barrel", "offset": Vector2i(4, 1)},
-			{"type": "chest", "offset": Vector2i(2, 3)},
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(5, 5)},
-		]},
-
-		# Corridor: Central → Armory (east)
-		{"pos": Vector2i(8, 14), "size": Vector2i(4, 2), "name": "corridor_3"},
-
-		# Room 3: Armory
-		{"pos": Vector2i(12, 12), "size": Vector2i(6, 6), "name": "loot",
-		 "props": [
-			{"type": "chest", "offset": Vector2i(1, 2)},
-			{"type": "chest", "offset": Vector2i(4, 2)},
-			{"type": "banner", "offset": Vector2i(2, 0)},
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(5, 0)},
-		]},
-
-		# Corridor: Central → Boss Pit — fire gauntlet
-		{"pos": Vector2i(2, 20), "size": Vector2i(2, 4), "name": "corridor_4",
-		 "props": [
-			{"type": "trap_fire", "offset": Vector2i(0, 1)},
-			{"type": "trap_fire", "offset": Vector2i(1, 2)},
-		]},
-
-		# Room 4: Boss Pit
-		{"pos": Vector2i(-3, 24), "size": Vector2i(12, 12), "name": "boss",
-		 "props": [
-			{"type": "column", "offset": Vector2i(2, 2)},
-			{"type": "column", "offset": Vector2i(9, 2)},
-			{"type": "column", "offset": Vector2i(2, 9)},
-			{"type": "column", "offset": Vector2i(9, 9)},
-			{"type": "gate", "offset": Vector2i(5, 0)},
-			{"type": "gate", "offset": Vector2i(6, 0)},
-			{"type": "banner", "offset": Vector2i(5, 10)},
-			{"type": "banner", "offset": Vector2i(6, 10)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
 			{"type": "candle", "offset": Vector2i(11, 0)},
 			{"type": "candle", "offset": Vector2i(0, 11)},
 			{"type": "candle", "offset": Vector2i(11, 11)},
-		]},
-	]
-
-func _define_floor3_layout() -> void:
-	# Floor 3: "The Deep" — sprawling, dangerous, multiple paths to boss
-	#
-	#                    [Spawn 6x6]
-	#                        |
-	#                    corridor
-	#                        |
-	#  [Tomb 8x6] --corridor-- [Crossroads 8x8] --corridor-- [Shrine 8x6]
-	#                        |
-	#                    corridor
-	#                        |
-	#              [Gauntlet 16x6]
-	#                        |
-	#                    corridor
-	#                        |
-	#              [Boss Lair 16x14]
-	#
-	spawn_cell = Vector2i(3, 3)
-	exit_cell = Vector2i(4, 44)
-
-	rooms = [
-		# Room 0: Spawn
-		{"pos": Vector2i(0, 0), "size": Vector2i(6, 6), "name": "spawn",
-		 "props": [
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(5, 0)},
-			{"type": "barrel", "offset": Vector2i(1, 4)},
-			{"type": "barrel", "offset": Vector2i(4, 4)},
-		]},
-
-		# Corridor: Spawn → Crossroads
-		{"pos": Vector2i(2, 6), "size": Vector2i(2, 3), "name": "corridor_1"},
-
-		# Room 1: Crossroads (center hub)
-		{"pos": Vector2i(-1, 9), "size": Vector2i(8, 8), "name": "arena",
-		 "props": [
-			{"type": "column", "offset": Vector2i(2, 2)},
-			{"type": "column", "offset": Vector2i(5, 2)},
-			{"type": "column", "offset": Vector2i(2, 5)},
-			{"type": "column", "offset": Vector2i(5, 5)},
-			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(7, 0)},
-			{"type": "candle", "offset": Vector2i(0, 7)},
-			{"type": "candle", "offset": Vector2i(7, 7)},
-			{"type": "trap_spike", "offset": Vector2i(3, 3)},
 			{"type": "trap_spike", "offset": Vector2i(4, 4)},
-			{"type": "trap_poison", "offset": Vector2i(3, 6)},
+			{"type": "trap_spike", "offset": Vector2i(6, 6)},
+			{"type": "trap_poison", "offset": Vector2i(4, 9)},
 		]},
 
 		# Corridor: Crossroads → Tomb (west)
-		{"pos": Vector2i(-5, 12), "size": Vector2i(4, 2), "name": "corridor_2"},
+		{"pos": Vector2i(-8, 18), "size": Vector2i(6, 4), "name": "corridor_2"},
 
 		# Room 2: Tomb (west wing)
-		{"pos": Vector2i(-13, 10), "size": Vector2i(8, 6), "name": "guard",
+		{"pos": Vector2i(-20, 15), "size": Vector2i(12, 10), "name": "guard",
 		 "props": [
-			{"type": "chest", "offset": Vector2i(3, 2)},
-			{"type": "chest", "offset": Vector2i(4, 2)},
-			{"type": "rocks", "offset": Vector2i(1, 4)},
-			{"type": "banner", "offset": Vector2i(3, 0)},
+			{"type": "chest", "offset": Vector2i(4, 3)},
+			{"type": "chest", "offset": Vector2i(6, 3)},
+			{"type": "rocks", "offset": Vector2i(2, 6)},
 			{"type": "banner", "offset": Vector2i(4, 0)},
+			{"type": "banner", "offset": Vector2i(6, 0)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(7, 0)},
+			{"type": "candle", "offset": Vector2i(11, 0)},
 		]},
 
 		# Corridor: Crossroads → Shrine (east)
-		{"pos": Vector2i(7, 12), "size": Vector2i(4, 2), "name": "corridor_3"},
+		{"pos": Vector2i(10, 18), "size": Vector2i(6, 4), "name": "corridor_3"},
 
 		# Room 3: Shrine (east wing)
-		{"pos": Vector2i(11, 10), "size": Vector2i(8, 6), "name": "loot",
+		{"pos": Vector2i(16, 15), "size": Vector2i(12, 10), "name": "loot",
 		 "props": [
-			{"type": "chest", "offset": Vector2i(3, 3)},
-			{"type": "column", "offset": Vector2i(1, 1)},
-			{"type": "column", "offset": Vector2i(6, 1)},
+			{"type": "chest", "offset": Vector2i(4, 4)},
+			{"type": "column", "offset": Vector2i(2, 2)},
+			{"type": "column", "offset": Vector2i(9, 2)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(7, 0)},
-			{"type": "banner", "offset": Vector2i(3, 0)},
+			{"type": "candle", "offset": Vector2i(11, 0)},
+			{"type": "banner", "offset": Vector2i(4, 0)},
 		]},
 
 		# Corridor: Crossroads → Gauntlet (south)
-		{"pos": Vector2i(2, 17), "size": Vector2i(2, 4), "name": "corridor_4"},
+		{"pos": Vector2i(3, 26), "size": Vector2i(4, 6), "name": "corridor_4"},
 
 		# Room 4: Gauntlet (long narrow hallway with enemies + traps)
-		{"pos": Vector2i(-5, 21), "size": Vector2i(16, 6), "name": "gauntlet",
+		{"pos": Vector2i(-8, 32), "size": Vector2i(24, 10), "name": "gauntlet",
 		 "props": [
-			{"type": "column", "offset": Vector2i(3, 1)},
-			{"type": "column", "offset": Vector2i(3, 4)},
-			{"type": "column", "offset": Vector2i(7, 1)},
-			{"type": "column", "offset": Vector2i(7, 4)},
-			{"type": "column", "offset": Vector2i(11, 1)},
-			{"type": "column", "offset": Vector2i(11, 4)},
+			{"type": "column", "offset": Vector2i(4, 2)},
+			{"type": "column", "offset": Vector2i(4, 6)},
+			{"type": "column", "offset": Vector2i(10, 2)},
+			{"type": "column", "offset": Vector2i(10, 6)},
+			{"type": "column", "offset": Vector2i(16, 2)},
+			{"type": "column", "offset": Vector2i(16, 6)},
 			{"type": "barrel", "offset": Vector2i(0, 0)},
-			{"type": "barrel", "offset": Vector2i(15, 0)},
-			{"type": "candle", "offset": Vector2i(0, 5)},
-			{"type": "candle", "offset": Vector2i(15, 5)},
-			{"type": "trap_fire", "offset": Vector2i(5, 2)},
-			{"type": "trap_fire", "offset": Vector2i(5, 3)},
-			{"type": "trap_spike", "offset": Vector2i(9, 2)},
-			{"type": "trap_spike", "offset": Vector2i(9, 3)},
-			{"type": "trap_poison", "offset": Vector2i(13, 2)},
-			{"type": "trap_poison", "offset": Vector2i(13, 3)},
+			{"type": "barrel", "offset": Vector2i(23, 0)},
+			{"type": "candle", "offset": Vector2i(0, 9)},
+			{"type": "candle", "offset": Vector2i(23, 9)},
+			{"type": "trap_fire", "offset": Vector2i(8, 3)},
+			{"type": "trap_fire", "offset": Vector2i(8, 4)},
+			{"type": "trap_spike", "offset": Vector2i(14, 3)},
+			{"type": "trap_spike", "offset": Vector2i(14, 4)},
+			{"type": "trap_poison", "offset": Vector2i(20, 3)},
+			{"type": "trap_poison", "offset": Vector2i(20, 4)},
 		]},
 
 		# Corridor: Gauntlet → Boss Lair
-		{"pos": Vector2i(2, 27), "size": Vector2i(2, 4), "name": "corridor_5"},
+		{"pos": Vector2i(3, 42), "size": Vector2i(4, 6), "name": "corridor_5"},
 
 		# Room 5: Boss Lair (massive)
-		{"pos": Vector2i(-5, 31), "size": Vector2i(16, 14), "name": "boss",
+		{"pos": Vector2i(-8, 48), "size": Vector2i(24, 22), "name": "boss",
 		 "props": [
-			{"type": "column", "offset": Vector2i(3, 3)},
-			{"type": "column", "offset": Vector2i(12, 3)},
-			{"type": "column", "offset": Vector2i(3, 10)},
-			{"type": "column", "offset": Vector2i(12, 10)},
-			{"type": "gate", "offset": Vector2i(7, 0)},
-			{"type": "gate", "offset": Vector2i(8, 0)},
-			{"type": "banner", "offset": Vector2i(7, 12)},
-			{"type": "banner", "offset": Vector2i(8, 12)},
+			{"type": "column", "offset": Vector2i(4, 4)},
+			{"type": "column", "offset": Vector2i(18, 4)},
+			{"type": "column", "offset": Vector2i(4, 15)},
+			{"type": "column", "offset": Vector2i(18, 15)},
+			{"type": "gate", "offset": Vector2i(10, 0)},
+			{"type": "gate", "offset": Vector2i(12, 0)},
+			{"type": "banner", "offset": Vector2i(10, 18)},
+			{"type": "banner", "offset": Vector2i(12, 18)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(15, 0)},
-			{"type": "candle", "offset": Vector2i(0, 13)},
-			{"type": "candle", "offset": Vector2i(15, 13)},
-			{"type": "rocks", "offset": Vector2i(6, 6)},
-			{"type": "rocks", "offset": Vector2i(9, 6)},
+			{"type": "candle", "offset": Vector2i(23, 0)},
+			{"type": "candle", "offset": Vector2i(0, 21)},
+			{"type": "candle", "offset": Vector2i(23, 21)},
+			{"type": "rocks", "offset": Vector2i(9, 9)},
+			{"type": "rocks", "offset": Vector2i(14, 9)},
 		]},
 	]
 
 func _define_tutorial_layout() -> void:
-	# Tutorial Floor (Floor 0): single safe room with training area
+	# Tutorial Floor (Floor 0): single safe room with training area (scaled 1.5x)
 	#
-	#  [Spawn + Training 12x10] --corridor-- [Exit Room 6x6]
+	#  [Spawn + Training 18x16] --corridor-- [Exit Room 10x10]
 	#
 	# Simple layout: spawn area with a training dummy, a chest, one trap,
 	# and an exit portal at the far end.
-	spawn_cell = Vector2i(2, 5)
-	exit_cell = Vector2i(19, 3)
+	spawn_cell = Vector2i(3, 8)
+	exit_cell = Vector2i(28, 4)
 
 	rooms = [
 		# Main training room
-		{"pos": Vector2i(0, 0), "size": Vector2i(12, 10), "name": "spawn",
+		{"pos": Vector2i(0, 0), "size": Vector2i(18, 16), "name": "spawn",
 		 "props": [
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(11, 0)},
-			{"type": "candle", "offset": Vector2i(0, 9)},
-			{"type": "candle", "offset": Vector2i(11, 9)},
-			{"type": "barrel", "offset": Vector2i(1, 1)},
-			{"type": "barrel", "offset": Vector2i(2, 1)},
-			{"type": "chest", "offset": Vector2i(8, 5)},
-			{"type": "trap_spike", "offset": Vector2i(6, 7)},
-			{"type": "column", "offset": Vector2i(5, 2)},
-			{"type": "column", "offset": Vector2i(5, 7)},
+			{"type": "candle", "offset": Vector2i(17, 0)},
+			{"type": "candle", "offset": Vector2i(0, 15)},
+			{"type": "candle", "offset": Vector2i(17, 15)},
+			{"type": "barrel", "offset": Vector2i(2, 2)},
+			{"type": "barrel", "offset": Vector2i(3, 2)},
+			{"type": "chest", "offset": Vector2i(12, 8)},
+			{"type": "trap_spike", "offset": Vector2i(9, 10)},
+			{"type": "column", "offset": Vector2i(8, 3)},
+			{"type": "column", "offset": Vector2i(8, 10)},
 		]},
 
 		# Corridor to exit
-		{"pos": Vector2i(12, 3), "size": Vector2i(4, 2), "name": "corridor_1"},
+		{"pos": Vector2i(18, 4), "size": Vector2i(6, 4), "name": "corridor_1"},
 
 		# Exit room with portal
-		{"pos": Vector2i(16, 1), "size": Vector2i(6, 6), "name": "arena",
+		{"pos": Vector2i(24, 2), "size": Vector2i(10, 10), "name": "arena",
 		 "props": [
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(5, 0)},
-			{"type": "candle", "offset": Vector2i(0, 5)},
-			{"type": "candle", "offset": Vector2i(5, 5)},
-			{"type": "banner", "offset": Vector2i(2, 0)},
+			{"type": "candle", "offset": Vector2i(9, 0)},
+			{"type": "candle", "offset": Vector2i(0, 9)},
+			{"type": "candle", "offset": Vector2i(9, 9)},
 			{"type": "banner", "offset": Vector2i(3, 0)},
+			{"type": "banner", "offset": Vector2i(4, 0)},
 		]},
 	]
 
 func _define_floor4_layout() -> void:
-	# Floor 4: "The Deep" — disorienting, claustrophobic, glitch horror
+	# Floor 4: "The Deep" — disorienting, claustrophobic, glitch horror (scaled 1.5x)
 	#
-	#  [Spawn 6x6] --corridor-- [Void Hall 10x10] --corridor-- [Glitch Room 8x6]
-	#                                  |
-	#                              corridor
-	#                                  |
-	#                        [Shadow Den 10x8]
-	#                                  |
-	#                              corridor
-	#                                  |
-	#                       [Abyss (Boss) 14x12]
+	#  [Spawn 10x10] --corridor-- [Void Hall 16x16] --corridor-- [Glitch Room 12x10]
+	#                                    |
+	#                                corridor
+	#                                    |
+	#                          [Shadow Den 16x12]
+	#                                    |
+	#                                corridor
+	#                                    |
+	#                         [Abyss (Boss) 20x18]
 	#
-	spawn_cell = Vector2i(3, 3)
-	exit_cell = Vector2i(6, 42)
+	spawn_cell = Vector2i(4, 4)
+	exit_cell = Vector2i(9, 63)
 
 	rooms = [
-		{"pos": Vector2i(0, 0), "size": Vector2i(6, 6), "name": "spawn",
+		{"pos": Vector2i(0, 0), "size": Vector2i(10, 10), "name": "spawn",
 		 "props": [
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(5, 0)},
+			{"type": "candle", "offset": Vector2i(9, 0)},
 		]},
 
-		{"pos": Vector2i(6, 2), "size": Vector2i(4, 2), "name": "corridor_1"},
+		{"pos": Vector2i(10, 3), "size": Vector2i(6, 4), "name": "corridor_1"},
 
-		{"pos": Vector2i(10, -2), "size": Vector2i(10, 10), "name": "arena",
+		{"pos": Vector2i(16, -3), "size": Vector2i(16, 16), "name": "arena",
 		 "props": [
-			{"type": "column", "offset": Vector2i(2, 2)},
-			{"type": "column", "offset": Vector2i(7, 2)},
-			{"type": "column", "offset": Vector2i(2, 7)},
-			{"type": "column", "offset": Vector2i(7, 7)},
-			{"type": "trap_spike", "offset": Vector2i(4, 4)},
-			{"type": "trap_spike", "offset": Vector2i(5, 5)},
-			{"type": "trap_poison", "offset": Vector2i(4, 6)},
-			{"type": "trap_fire", "offset": Vector2i(6, 3)},
+			{"type": "column", "offset": Vector2i(3, 3)},
+			{"type": "column", "offset": Vector2i(10, 3)},
+			{"type": "column", "offset": Vector2i(3, 10)},
+			{"type": "column", "offset": Vector2i(10, 10)},
+			{"type": "trap_spike", "offset": Vector2i(6, 6)},
+			{"type": "trap_spike", "offset": Vector2i(8, 8)},
+			{"type": "trap_poison", "offset": Vector2i(6, 9)},
+			{"type": "trap_fire", "offset": Vector2i(9, 4)},
 		]},
 
-		{"pos": Vector2i(20, 2), "size": Vector2i(4, 2), "name": "corridor_2"},
+		{"pos": Vector2i(32, 3), "size": Vector2i(6, 4), "name": "corridor_2"},
 
-		{"pos": Vector2i(24, 0), "size": Vector2i(8, 6), "name": "loot",
+		{"pos": Vector2i(38, 0), "size": Vector2i(12, 10), "name": "loot",
 		 "props": [
-			{"type": "chest", "offset": Vector2i(3, 3)},
-			{"type": "chest", "offset": Vector2i(4, 3)},
+			{"type": "chest", "offset": Vector2i(4, 4)},
+			{"type": "chest", "offset": Vector2i(6, 4)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(7, 0)},
-			{"type": "rocks", "offset": Vector2i(1, 4)},
-			{"type": "rocks", "offset": Vector2i(6, 4)},
+			{"type": "candle", "offset": Vector2i(11, 0)},
+			{"type": "rocks", "offset": Vector2i(2, 6)},
+			{"type": "rocks", "offset": Vector2i(9, 6)},
 		]},
 
-		{"pos": Vector2i(14, 8), "size": Vector2i(2, 5), "name": "corridor_3"},
+		{"pos": Vector2i(21, 13), "size": Vector2i(4, 8), "name": "corridor_3"},
 
-		{"pos": Vector2i(10, 13), "size": Vector2i(10, 8), "name": "guard",
+		{"pos": Vector2i(15, 21), "size": Vector2i(16, 12), "name": "guard",
 		 "props": [
-			{"type": "column", "offset": Vector2i(2, 2)},
-			{"type": "column", "offset": Vector2i(7, 2)},
-			{"type": "column", "offset": Vector2i(2, 5)},
-			{"type": "column", "offset": Vector2i(7, 5)},
-			{"type": "trap_fire", "offset": Vector2i(4, 3)},
-			{"type": "trap_fire", "offset": Vector2i(5, 4)},
-			{"type": "trap_spike", "offset": Vector2i(3, 6)},
+			{"type": "column", "offset": Vector2i(3, 3)},
+			{"type": "column", "offset": Vector2i(10, 3)},
+			{"type": "column", "offset": Vector2i(3, 8)},
+			{"type": "column", "offset": Vector2i(10, 8)},
+			{"type": "trap_fire", "offset": Vector2i(6, 4)},
+			{"type": "trap_fire", "offset": Vector2i(8, 6)},
+			{"type": "trap_spike", "offset": Vector2i(4, 9)},
 			{"type": "barrel", "offset": Vector2i(0, 0)},
-			{"type": "barrel", "offset": Vector2i(9, 0)},
+			{"type": "barrel", "offset": Vector2i(14, 0)},
 		]},
 
-		{"pos": Vector2i(14, 21), "size": Vector2i(2, 5), "name": "corridor_4",
+		{"pos": Vector2i(21, 33), "size": Vector2i(4, 8), "name": "corridor_4",
 		 "props": [
-			{"type": "trap_poison", "offset": Vector2i(0, 1)},
-			{"type": "trap_poison", "offset": Vector2i(1, 3)},
+			{"type": "trap_poison", "offset": Vector2i(0, 2)},
+			{"type": "trap_poison", "offset": Vector2i(2, 4)},
 		]},
 
-		{"pos": Vector2i(0, 26), "size": Vector2i(14, 12), "name": "boss",
+		{"pos": Vector2i(0, 41), "size": Vector2i(20, 18), "name": "boss",
 		 "props": [
-			{"type": "column", "offset": Vector2i(3, 2)},
-			{"type": "column", "offset": Vector2i(10, 2)},
-			{"type": "column", "offset": Vector2i(3, 9)},
-			{"type": "column", "offset": Vector2i(10, 9)},
-			{"type": "gate", "offset": Vector2i(6, 0)},
-			{"type": "gate", "offset": Vector2i(7, 0)},
-			{"type": "banner", "offset": Vector2i(6, 10)},
-			{"type": "banner", "offset": Vector2i(7, 10)},
+			{"type": "column", "offset": Vector2i(4, 3)},
+			{"type": "column", "offset": Vector2i(15, 3)},
+			{"type": "column", "offset": Vector2i(4, 14)},
+			{"type": "column", "offset": Vector2i(15, 14)},
+			{"type": "gate", "offset": Vector2i(9, 0)},
+			{"type": "gate", "offset": Vector2i(10, 0)},
+			{"type": "banner", "offset": Vector2i(9, 15)},
+			{"type": "banner", "offset": Vector2i(10, 15)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
-			{"type": "candle", "offset": Vector2i(13, 0)},
-			{"type": "candle", "offset": Vector2i(0, 11)},
-			{"type": "candle", "offset": Vector2i(13, 11)},
+			{"type": "candle", "offset": Vector2i(19, 0)},
+			{"type": "candle", "offset": Vector2i(0, 17)},
+			{"type": "candle", "offset": Vector2i(19, 17)},
 		]},
 	]
 
 func _generate_procedural_layout() -> void:
-	# Procedural floor generation v2: random room shapes + connections.
+	# Procedural floor generation v2: random room shapes + connections (scaled 1.5x).
 	# Room templates: small, medium, large, L-shape, narrow corridor, arena.
 	# Uses weighted random selection. Secret rooms behind breakable walls.
 
@@ -634,22 +635,22 @@ func _generate_procedural_layout() -> void:
 	var corridor_index := 0
 
 	# Always start with spawn room
-	var spawn_size := Vector2i(8, 8)
+	var spawn_size := Vector2i(12, 12)
 	rooms.append({"pos": Vector2i(0, 0), "size": spawn_size, "name": "spawn",
 		"props": [
 			{"type": "candle", "offset": Vector2i(0, 0)},
 			{"type": "candle", "offset": Vector2i(spawn_size.x - 1, 0)},
-			{"type": "barrel", "offset": Vector2i(1, 1)},
+			{"type": "barrel", "offset": Vector2i(2, 2)},
 		]})
-	spawn_cell = Vector2i(4, 4)
+	spawn_cell = Vector2i(6, 6)
 
 	# Room templates with weights
 	var templates := [
-		{"weight": 3, "size": Vector2i(8, 6), "name": "guard"},     # Medium room
-		{"weight": 3, "size": Vector2i(6, 6), "name": "loot"},      # Small square
-		{"weight": 2, "size": Vector2i(12, 10), "name": "arena"},   # Large arena
-		{"weight": 2, "size": Vector2i(4, 10), "name": "guard"},    # Narrow corridor room
-		{"weight": 1, "size": Vector2i(10, 4), "name": "guard"},    # Wide corridor room
+		{"weight": 3, "size": Vector2i(12, 10), "name": "guard"},    # Medium room
+		{"weight": 3, "size": Vector2i(10, 10), "name": "loot"},     # Small square
+		{"weight": 2, "size": Vector2i(18, 16), "name": "arena"},    # Large arena
+		{"weight": 2, "size": Vector2i(6, 16), "name": "guard"},     # Narrow corridor room
+		{"weight": 1, "size": Vector2i(16, 6), "name": "guard"},     # Wide corridor room
 	]
 	var total_weight: int = 0
 	for t in templates:
@@ -680,15 +681,15 @@ func _generate_procedural_layout() -> void:
 		var room_pos: Vector2i
 
 		if direction == 0:
-			# Go south: vertical corridor
-			corridor_pos = Vector2i(last_room_pos.x + last_room_size.x / 2 - 1, last_room_pos.y + last_room_size.y)
-			corridor_size = Vector2i(2, 4)
-			room_pos = Vector2i(corridor_pos.x - room_size.x / 2 + 1, corridor_pos.y + corridor_size.y)
+			# Go south: vertical corridor (4 wide, 6 long)
+			corridor_pos = Vector2i(last_room_pos.x + last_room_size.x / 2 - 2, last_room_pos.y + last_room_size.y)
+			corridor_size = Vector2i(4, 6)
+			room_pos = Vector2i(corridor_pos.x - room_size.x / 2 + 2, corridor_pos.y + corridor_size.y)
 		else:
-			# Go east: horizontal corridor
-			corridor_pos = Vector2i(last_room_pos.x + last_room_size.x, last_room_pos.y + last_room_size.y / 2 - 1)
-			corridor_size = Vector2i(4, 2)
-			room_pos = Vector2i(corridor_pos.x + corridor_size.x, corridor_pos.y - room_size.y / 2 + 1)
+			# Go east: horizontal corridor (6 long, 4 wide)
+			corridor_pos = Vector2i(last_room_pos.x + last_room_size.x, last_room_pos.y + last_room_size.y / 2 - 2)
+			corridor_size = Vector2i(6, 4)
+			room_pos = Vector2i(corridor_pos.x + corridor_size.x, corridor_pos.y - room_size.y / 2 + 2)
 
 		corridor_index += 1
 		rooms.append({"pos": corridor_pos, "size": corridor_size, "name": "corridor_%d" % corridor_index})
@@ -698,20 +699,20 @@ func _generate_procedural_layout() -> void:
 		props.append({"type": "candle", "offset": Vector2i(0, 0)})
 		props.append({"type": "candle", "offset": Vector2i(room_size.x - 1, 0)})
 		# Random columns
-		if room_size.x >= 8 and room_size.y >= 6:
-			props.append({"type": "column", "offset": Vector2i(2, 2)})
-			props.append({"type": "column", "offset": Vector2i(room_size.x - 3, 2)})
+		if room_size.x >= 12 and room_size.y >= 10:
+			props.append({"type": "column", "offset": Vector2i(3, 3)})
+			props.append({"type": "column", "offset": Vector2i(room_size.x - 4, 3)})
 		# Random traps
 		if rng.randf() < 0.4:
 			var trap_types := ["trap_spike", "trap_poison", "trap_fire"]
 			var trap_type = trap_types[rng.randi() % trap_types.size()]
-			props.append({"type": trap_type, "offset": Vector2i(rng.randi_range(2, room_size.x - 3), rng.randi_range(2, room_size.y - 3))})
+			props.append({"type": trap_type, "offset": Vector2i(rng.randi_range(3, room_size.x - 4), rng.randi_range(3, room_size.y - 4))})
 		# Random chests in loot rooms
 		if template["name"] == "loot":
 			props.append({"type": "chest", "offset": Vector2i(room_size.x / 2, room_size.y / 2)})
 		# Random barrels
 		if rng.randf() < 0.5:
-			props.append({"type": "barrel", "offset": Vector2i(rng.randi_range(0, 2), rng.randi_range(0, 2))})
+			props.append({"type": "barrel", "offset": Vector2i(rng.randi_range(0, 3), rng.randi_range(0, 3))})
 
 		var room_name: String = template["name"]
 		# Ensure at least one arena for combat
@@ -725,19 +726,19 @@ func _generate_procedural_layout() -> void:
 		direction = 1 - direction  # Alternate south/east
 
 	# Add boss room at the end
-	var boss_size := Vector2i(14, 10)
+	var boss_size := Vector2i(20, 16)
 	corridor_index += 1
-	var boss_corridor_pos := Vector2i(last_room_pos.x + last_room_size.x / 2 - 1, last_room_pos.y + last_room_size.y)
-	var boss_corridor_size := Vector2i(2, 4)
+	var boss_corridor_pos := Vector2i(last_room_pos.x + last_room_size.x / 2 - 2, last_room_pos.y + last_room_size.y)
+	var boss_corridor_size := Vector2i(4, 6)
 	rooms.append({"pos": boss_corridor_pos, "size": boss_corridor_size, "name": "corridor_%d" % corridor_index})
 
-	var boss_pos := Vector2i(boss_corridor_pos.x - boss_size.x / 2 + 1, boss_corridor_pos.y + boss_corridor_size.y)
+	var boss_pos := Vector2i(boss_corridor_pos.x - boss_size.x / 2 + 2, boss_corridor_pos.y + boss_corridor_size.y)
 	rooms.append({"pos": boss_pos, "size": boss_size, "name": "boss",
 		"props": [
-			{"type": "column", "offset": Vector2i(3, 2)},
-			{"type": "column", "offset": Vector2i(boss_size.x - 4, 2)},
-			{"type": "column", "offset": Vector2i(3, boss_size.y - 3)},
-			{"type": "column", "offset": Vector2i(boss_size.x - 4, boss_size.y - 3)},
+			{"type": "column", "offset": Vector2i(4, 3)},
+			{"type": "column", "offset": Vector2i(boss_size.x - 5, 3)},
+			{"type": "column", "offset": Vector2i(4, boss_size.y - 4)},
+			{"type": "column", "offset": Vector2i(boss_size.x - 5, boss_size.y - 4)},
 			{"type": "gate", "offset": Vector2i(boss_size.x / 2, 0)},
 			{"type": "banner", "offset": Vector2i(boss_size.x / 2, boss_size.y - 2)},
 			{"type": "candle", "offset": Vector2i(0, 0)},
@@ -751,16 +752,16 @@ func _generate_procedural_layout() -> void:
 	# Secret room (25% chance) — small room off to the side with extra loot
 	if rng.randf() < 0.25 and rooms.size() > 3:
 		var parent_room: Dictionary = rooms[2]  # First real room after spawn
-		var secret_size := Vector2i(4, 4)
-		var secret_pos := Vector2i(parent_room["pos"].x + parent_room["size"].x + 2, parent_room["pos"].y)
+		var secret_size := Vector2i(6, 6)
+		var secret_pos := Vector2i(parent_room["pos"].x + parent_room["size"].x + 4, parent_room["pos"].y)
 		corridor_index += 1
-		rooms.append({"pos": Vector2i(parent_room["pos"].x + parent_room["size"].x, parent_room["pos"].y + parent_room["size"].y / 2 - 1), "size": Vector2i(2, 2), "name": "corridor_%d" % corridor_index})
+		rooms.append({"pos": Vector2i(parent_room["pos"].x + parent_room["size"].x, parent_room["pos"].y + parent_room["size"].y / 2 - 2), "size": Vector2i(4, 4), "name": "corridor_%d" % corridor_index})
 		rooms.append({"pos": secret_pos, "size": secret_size, "name": "loot",
 			"props": [
-				{"type": "chest", "offset": Vector2i(1, 1)},
-				{"type": "chest", "offset": Vector2i(2, 1)},
+				{"type": "chest", "offset": Vector2i(2, 2)},
+				{"type": "chest", "offset": Vector2i(3, 2)},
 				{"type": "candle", "offset": Vector2i(0, 0)},
-				{"type": "candle", "offset": Vector2i(3, 0)},
+				{"type": "candle", "offset": Vector2i(5, 0)},
 			]})
 
 func _build_grid_from_rooms() -> void:

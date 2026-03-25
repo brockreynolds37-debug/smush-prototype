@@ -88,14 +88,13 @@ func _on_hero_died() -> void:
 signal all_enemies_cleared  # Emitted when floor is cleared (enemies dead)
 
 func on_boss_defeated(_boss_type: String) -> void:
-	# If the final floor boss is killed, trigger victory
-	if FloorManager.current_floor >= MAX_FLOOR:
-		if game_state == GameState.PLAYING:
-			game_state = GameState.WON
-			SaveManager.delete_save()
-			ReplayManager.save_replay()
-			game_over.emit(true)
-			return
+	# Boss killed = floor victory. Triggers win on any floor with a boss.
+	if game_state != GameState.PLAYING:
+		return
+	game_state = GameState.WON
+	SaveManager.delete_save()
+	ReplayManager.save_replay()
+	game_over.emit(true)
 
 func _check_win_condition() -> void:
 	if game_state != GameState.PLAYING:

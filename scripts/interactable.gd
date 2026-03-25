@@ -49,7 +49,7 @@ func _add_chest_glow() -> void:
 
 func _process(_delta: float) -> void:
 	if _glow_light and not is_open and not is_destroyed:
-		_glow_light.light_energy = 0.3 + sin(Time.get_ticks_msec() * 0.003) * 0.15
+		_glow_light.light_energy = 0.4
 
 ## Called when hero clicks on this and is in range (chests)
 func interact() -> void:

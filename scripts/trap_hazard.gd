@@ -218,9 +218,9 @@ func _retract_spikes() -> void:
 		tween.tween_callback(func(): _mesh.visible = false)
 
 func _process_poison(delta: float) -> void:
-	# Subtle pulsing glow
+	# Steady poison glow
 	if _light:
-		_light.light_energy = 1.2 + sin(Time.get_ticks_msec() * 0.003) * 0.4
+		_light.light_energy = 1.2
 
 	if _hero_inside:
 		_poison_tick_timer += delta
@@ -236,9 +236,9 @@ func _process_fire(delta: float) -> void:
 
 	if _fire_is_bursting:
 		_fire_burst_timer += delta
-		# Intense light during burst
+		# Steady intense light during burst
 		if _light:
-			_light.light_energy = 6.0 + sin(_fire_burst_timer * 20.0) * 2.0
+			_light.light_energy = 6.0
 		if _fire_burst_timer >= fire_burst_duration:
 			_fire_is_bursting = false
 			_fire_burst_timer = 0.0

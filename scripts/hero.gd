@@ -14,6 +14,7 @@ signal hero_died()
 @export var acceleration: float = 25.0
 @export var deceleration: float = 35.0
 @export var rotation_speed: float = 10.0
+@export var turn_rate: float = 360.0         # Degrees per second (WC3-style capped rotation)
 @export var approach_distance: float = 2.0  # Start slowing within this range of target
 @export var max_health: int = 500
 @export var max_mana: int = 200
@@ -28,6 +29,7 @@ var is_moving: bool = false
 var current_speed: float = 0.0
 var nav_path: PackedVector3Array = []
 var nav_path_index: int = 0
+var _wasd_direction: Vector3 = Vector3.ZERO  # Direct WASD input vector
 
 # Combat
 var attack_target: Node3D = null
@@ -98,6 +100,7 @@ var equipment_speed_bonus: int = 0
 var _base_max_health: int = 500
 var _last_hit_was_crit: bool = false
 var _walk_bob_time: float = 0.0
+var _hitlag_frames: int = 0
 
 func _ready() -> void:
 	GameManager.register_hero(self)
@@ -283,6 +286,13 @@ func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
 
+	# Hitlag: freeze hero briefly on hit for combat impact feel
+	if _hitlag_frames > 0:
+		_hitlag_frames -= 1
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
+
 	# Stunned: can't do anything, just stand there
 	if _is_stunned:
 		velocity = Vector3.ZERO
@@ -293,10 +303,22 @@ func _physics_process(delta: float) -> void:
 	_process_cooldowns(delta)
 	_process_casting(delta)
 
+	# Click-to-move only — no WASD character movement
+	_wasd_direction = Vector3.ZERO
+
 	if not is_casting and not is_attacking:
 		_process_movement(delta)
 
 	_update_animation_state()
+
+func _process_wasd_movement(delta: float) -> void:
+	# Direct WASD movement — snappy, responsive, no nav agent
+	var target_speed := move_speed
+	var accel_factor := 1.5 + (1.0 - current_speed / move_speed if move_speed > 0 else 0.0) * 2.0
+	current_speed = move_toward(current_speed, target_speed, acceleration * accel_factor * delta)
+	velocity = _wasd_direction * current_speed
+	_face_position(global_position + _wasd_direction, delta)
+	move_and_slide()
 
 func _process_movement(delta: float) -> void:
 	if not is_moving and attack_target == null:
@@ -312,7 +334,6 @@ func _process_movement(delta: float) -> void:
 		return
 
 	if attack_target != null and is_instance_valid(attack_target):
-		nav_agent.target_position = attack_target.global_position
 		if global_position.distance_to(attack_target.global_position) < 2.5:
 			is_moving = false
 			current_speed = 0.0
@@ -321,8 +342,12 @@ func _process_movement(delta: float) -> void:
 			_perform_melee_attack()
 			move_and_slide()
 			return
+		# Refresh path to moving target each frame
+		nav_path = PathfindingGrid.find_path(global_position, attack_target.global_position)
+		nav_path_index = 1
 
-	if nav_agent.is_navigation_finished():
+	# Follow nav_path waypoints (AStarGrid2D)
+	if nav_path.is_empty() or nav_path_index >= nav_path.size():
 		is_moving = false
 		var decel_factor := 1.0 + (current_speed / move_speed) * 2.0
 		current_speed = move_toward(current_speed, 0.0, deceleration * decel_factor * delta)
@@ -333,21 +358,36 @@ func _process_movement(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var next_pos = nav_agent.get_next_path_position()
+	# Advance past waypoints we've already reached
+	while nav_path_index < nav_path.size():
+		var wp := nav_path[nav_path_index]
+		wp.y = global_position.y
+		if global_position.distance_to(wp) < 0.5:
+			nav_path_index += 1
+		else:
+			break
+
+	if nav_path_index >= nav_path.size():
+		is_moving = false
+		move_and_slide()
+		return
+
+	var next_pos := nav_path[nav_path_index]
+	next_pos.y = global_position.y
 	var diff: Vector3 = next_pos - global_position
 	var direction: Vector3 = diff.normalized() if diff.length_squared() > 0.001 else Vector3.ZERO
 	direction.y = 0
 
-	# Approach slowdown — ease into target position
+	# Approach slowdown — ease into final destination
 	var target_speed := move_speed
-	var dist_to_target := global_position.distance_to(nav_agent.target_position)
+	var dist_to_target := global_position.distance_to(target_position)
 	if dist_to_target < approach_distance and attack_target == null:
 		var approach_ratio := clampf(dist_to_target / approach_distance, 0.15, 1.0)
 		target_speed = move_speed * approach_ratio
 
 	# Ease-in acceleration (snappy start, smooth ramp)
 	var speed_ratio := current_speed / move_speed if move_speed > 0 else 0.0
-	var accel_factor := 1.5 + (1.0 - speed_ratio) * 2.0  # Faster accel at low speed
+	var accel_factor := 1.5 + (1.0 - speed_ratio) * 2.0
 	current_speed = move_toward(current_speed, target_speed, acceleration * accel_factor * delta)
 	velocity = direction * current_speed
 
@@ -360,17 +400,19 @@ func _face_position(target: Vector3, delta: float) -> void:
 	look_dir.y = 0
 	if look_dir.length_squared() < 0.001:
 		return
-	var target_rot = atan2(look_dir.x, look_dir.z)
-	# Speed-dependent rotation: turn faster when slow, more momentum when fast
-	var speed_ratio := clampf(current_speed / move_speed, 0.0, 1.0) if move_speed > 0 else 0.0
-	var rot_factor := lerpf(1.4, 0.7, speed_ratio)  # 1.4x at standstill, 0.7x at full speed
-	rotation.y = lerp_angle(rotation.y, target_rot, rotation_speed * rot_factor * delta)
+	var target_rot := atan2(look_dir.x, look_dir.z)
+	# Turn-rate capped rotation: max turn_rate degrees per second (WC3 feel)
+	var max_turn := deg_to_rad(turn_rate) * delta
+	var diff := angle_difference(rotation.y, target_rot)
+	rotation.y += clampf(diff, -max_turn, max_turn)
 
 func move_to(world_pos: Vector3) -> void:
 	if is_dead or is_casting:
 		return
 	target_position = world_pos
-	nav_agent.target_position = world_pos
+	nav_path = PathfindingGrid.find_path(global_position, world_pos)
+	nav_path_index = 1  # Index 0 is current position
+	nav_agent.target_position = world_pos  # Keep nav_agent in sync for compatibility
 	is_moving = true
 	is_attacking = false
 	attack_target = null
@@ -399,12 +441,25 @@ func _perform_melee_attack() -> void:
 	# Break disguise if active
 	DisguiseSystem.on_hero_attacked()
 
-	# Squash/stretch juice on top of the animation
+	# Attack animation: wind-up → lunge forward → impact → recovery
 	var tween = create_tween()
-	tween.tween_property(model, "scale", original_scale * Vector3(1.3, 0.8, 1.3), 0.15)
+	# Wind-up: crouch + pull back
+	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.08)
+	tween.parallel().tween_property(model, "rotation:x", -0.15, 0.08)
+	tween.parallel().tween_property(model, "position:z", -0.15, 0.08)
+	# Lunge forward + squash on impact
+	tween.tween_property(model, "scale", original_scale * Vector3(1.25, 0.82, 1.25), 0.07)
+	tween.parallel().tween_property(model, "rotation:x", 0.2, 0.07)
+	tween.parallel().tween_property(model, "position:z", 0.3, 0.07)
+	# Damage on impact
 	tween.tween_callback(_apply_melee_damage)
-	tween.tween_property(model, "scale", original_scale * Vector3(0.9, 1.15, 0.9), 0.1)
-	tween.tween_property(model, "scale", original_scale, 0.1)
+	# Follow-through overshoot
+	tween.tween_property(model, "scale", original_scale * Vector3(0.92, 1.08, 0.92), 0.1)
+	tween.parallel().tween_property(model, "rotation:x", 0.05, 0.1)
+	# Settle back
+	tween.tween_property(model, "scale", original_scale, 0.12)
+	tween.parallel().tween_property(model, "rotation:x", 0.0, 0.12)
+	tween.parallel().tween_property(model, "position:z", 0.0, 0.12)
 	tween.tween_callback(func(): is_attacking = false)
 
 func _get_melee_damage() -> int:
@@ -443,10 +498,14 @@ func _apply_melee_damage() -> void:
 		TutorialManager.notify_event("enemy_hit")
 		if TutorialOverlay:
 			TutorialOverlay.on_enemy_visible()
+		# Hitlag: freeze hero for 2 frames on every melee hit
+		_hitlag_frames = 2
 		if _last_hit_was_crit:
+			_hitlag_frames = 4  # Extra freeze on crit for big impact
 			GameManager.request_screen_shake(6.0, 0.25)
-			GameManager.request_hitstop(0.08)
-			var dir = (attack_target.global_position - global_position).normalized()
+			var dir = (attack_target.global_position - global_position)
+			dir.y = 0
+			dir = dir.normalized() if dir.length_squared() > 0.001 else Vector3.ZERO
 			GameManager.request_camera_punch(dir, 5.0)
 			ScreenEffects.screen_flash(Color(1.0, 0.9, 0.7, 0.3), 0.12)
 		else:
@@ -681,9 +740,15 @@ func take_damage(amount: int) -> void:
 
 	_flash_color(Color.WHITE, 0.08)
 
+	# Hit stagger: flinch back + scale squish + quick recovery
 	var tween = create_tween()
-	tween.tween_property(model, "scale", original_scale * Vector3(1.15, 0.85, 1.15), 0.05)
-	tween.tween_property(model, "scale", original_scale, 0.1)
+	tween.tween_property(model, "scale", original_scale * Vector3(1.15, 0.85, 1.15), 0.04)
+	tween.parallel().tween_property(model, "rotation:x", -0.12, 0.04)
+	tween.parallel().tween_property(model, "position:y", -0.06, 0.04)
+	tween.tween_property(model, "scale", original_scale * Vector3(0.95, 1.05, 0.95), 0.06)
+	tween.parallel().tween_property(model, "rotation:x", 0.0, 0.08)
+	tween.parallel().tween_property(model, "position:y", 0.0, 0.08)
+	tween.tween_property(model, "scale", original_scale, 0.08)
 
 	if current_health <= 0:
 		_die()
@@ -743,27 +808,46 @@ func _update_animation_state() -> void:
 	else:
 		anim_state = new_state
 
-	# Procedural walk bob (subtle Y oscillation while moving)
+	# Procedural walk cycle — two-bounce stride with hip sway & forward lean
+	var dt: float = get_physics_process_delta_time()
 	if anim_state == AnimState.WALK and current_speed > 0.5:
-		_walk_bob_time += current_speed * 0.8 * get_physics_process_delta_time()
-		var bob_y := sin(_walk_bob_time * 8.0) * 0.06
-		var lean := sin(_walk_bob_time * 4.0) * 0.03
+		_walk_bob_time += current_speed * 1.0 * dt
+		var t: float = _walk_bob_time
+		# Double-bounce vertical bob (two steps per cycle)
+		var stride: float = absf(sin(t * 6.0))
+		var bob_y: float = stride * 0.09 + sin(t * 12.0) * 0.015
+		# Hip sway — lateral tilt follows footfalls
+		var sway: float = sin(t * 6.0) * 0.045
+		# Forward lean increases with speed
+		var lean_x: float = -0.06 * clampf(current_speed / move_speed, 0.0, 1.0)
+		# Subtle torso twist (arm swing feel)
+		var twist: float = sin(t * 6.0) * 0.03
 		model.position.y = bob_y
-		model.rotation.z = lean
+		model.rotation.z = lerpf(model.rotation.z, sway, 12.0 * dt)
+		model.rotation.x = lerpf(model.rotation.x, lean_x, 10.0 * dt)
+		model.rotation.y = lerpf(model.rotation.y, twist, 8.0 * dt)
 	elif anim_state == AnimState.IDLE:
-		# Gentle idle breathing
-		_walk_bob_time += get_physics_process_delta_time() * 0.5
-		model.position.y = sin(_walk_bob_time * 2.0) * 0.02
-		model.rotation.z = lerp(model.rotation.z, 0.0, 8.0 * get_physics_process_delta_time())
+		# Idle — gentle breathing with weight shift
+		_walk_bob_time += dt * 0.6
+		var t: float = _walk_bob_time
+		var breath: float = sin(t * 1.8) * 0.018 + sin(t * 3.7) * 0.006
+		var weight_shift: float = sin(t * 0.7) * 0.012
+		model.position.y = breath
+		model.rotation.z = lerpf(model.rotation.z, weight_shift, 4.0 * dt)
+		model.rotation.x = lerpf(model.rotation.x, 0.0, 6.0 * dt)
+		model.rotation.y = lerpf(model.rotation.y, 0.0, 6.0 * dt)
 	else:
-		model.position.y = lerp(model.position.y, 0.0, 10.0 * get_physics_process_delta_time())
-		model.rotation.z = lerp(model.rotation.z, 0.0, 10.0 * get_physics_process_delta_time())
+		model.position.y = lerpf(model.position.y, 0.0, 10.0 * dt)
+		model.rotation.z = lerpf(model.rotation.z, 0.0, 10.0 * dt)
+		model.rotation.x = lerpf(model.rotation.x, 0.0, 10.0 * dt)
+		model.rotation.y = lerpf(model.rotation.y, 0.0, 10.0 * dt)
 
 func _transition_blend(duration: float) -> void:
-	# Quick squash-stretch transition between animation states
+	# Smooth squash-stretch transition with settle
 	var tw = create_tween()
-	tw.tween_property(model, "scale", original_scale * Vector3(1.05, 0.92, 1.05), duration * 0.5)
-	tw.tween_property(model, "scale", original_scale, duration * 0.5)
+	tw.tween_property(model, "scale", original_scale * Vector3(1.06, 0.9, 1.06), duration * 0.4).set_ease(Tween.EASE_OUT)
+	tw.tween_property(model, "scale", original_scale * Vector3(0.97, 1.03, 0.97), duration * 0.3)
+	tw.tween_property(model, "scale", original_scale, duration * 0.3).set_ease(Tween.EASE_IN_OUT)
 
 # ---------- UTILITIES ----------
 

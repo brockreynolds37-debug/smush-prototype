@@ -242,8 +242,8 @@ func _spawn_dust_burst() -> void:
 		dust.set_surface_override_material(0, mat)
 
 		var start: Vector3 = hero.global_position + Vector3(randf_range(-3.0, 3.0), 0.0, randf_range(-3.0, 3.0))
-		dust.global_position = start
 		get_tree().root.add_child(dust)
+		dust.global_position = start
 		PerformanceMonitor.register_temp_vfx(dust)
 
 		var target: Vector3 = start + Vector3(randf_range(-1.0, 1.0), randf_range(1.0, 3.0), randf_range(-1.0, 1.0))

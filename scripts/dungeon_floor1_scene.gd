@@ -89,7 +89,9 @@ func _ready() -> void:
 	SmusherTimer.dungeon_builder = $DungeonBuilder
 	# Skip smusher on tutorial floor
 	if FloorManager.current_floor != 0:
-		SmusherTimer.start_timer()
+		# Floor 1: 5-minute timer for fast-paced gameplay
+		var timer_duration := 300.0 if FloorManager.current_floor == 1 else SmusherTimer.DEFAULT_DURATION
+		SmusherTimer.start_timer(timer_duration)
 
 	# Pause menu (ESC to toggle)
 	var pause_menu_script = preload("res://scripts/pause_menu.gd")
@@ -222,6 +224,10 @@ func _ready() -> void:
 		_setup_tutorial_skip_button()
 		TutorialManager.tutorial_completed.connect(_on_tutorial_completed)
 		TutorialManager.start_tutorial()
+
+	# Room transitions: announce room names + boss gate
+	if FloorManager.current_floor >= 1:
+		_setup_room_transitions()
 
 	# Forge station — spawn on every 3rd floor (floors 3, 6, 9...) in a side room
 	if FloorManager.current_floor > 0 and FloorManager.current_floor % 3 == 0:
@@ -375,10 +381,14 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 	var skeleton_scene = preload("res://scenes/enemy_skeleton.tscn")
 	var archer_scene = preload("res://scenes/enemy_goblin_archer.tscn")
 	var mage_scene = preload("res://scenes/enemy_mage.tscn")
+	var rat_scene = preload("res://scenes/enemy_rat.tscn")
+	var slime_scene = preload("res://scenes/enemy_slime.tscn")
+	var goblin_warrior_scene = preload("res://scenes/enemy_goblin_warrior.tscn")
+	var dreadlord_scene = preload("res://scenes/enemy_dreadlord.tscn")
 
 	# Boss scenes per floor
 	var boss_scenes := {
-		1: preload("res://scenes/boss_goblin_king.tscn"),
+		1: preload("res://scenes/boss_slime_lord.tscn"),
 		2: preload("res://scenes/boss_spider_queen.tscn"),
 		3: preload("res://scenes/boss_slime_lord.tscn"),
 	}
@@ -394,44 +404,56 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 			units_node.add_child(dummy)
 		return
 
-	# Scale difficulty with floor number
-	var enemy_count = 3 + floor_number * 2
-	var rooms_with_mobs = ["arena", "guard"]
-	# Floor 3+ has extra rooms with enemies
-	if floor_number >= 3:
-		rooms_with_mobs.append("gauntlet")
+	# Floor 1 "The Sift" — themed enemy mix: rats, slimes, goblins, skeletons
+	if floor_number == 1:
+		var floor1_scenes: Array = [rat_scene, slime_scene, goblin_warrior_scene, skeleton_scene]
+		var rooms_with_mobs: Array[String] = ["arena", "guard"]
+		for room_name in rooms_with_mobs:
+			var count = randi_range(3, 5)
+			for i in range(count):
+				var pos = builder.get_room_random_floor(room_name)
+				if pos == Vector3.ZERO:
+					continue
+				var enemy = floor1_scenes[i % floor1_scenes.size()].instantiate()
+				enemy.global_position = pos
+				units_node.add_child(enemy)
+	else:
+		# Floor 2+ — original scaling system
+		var enemy_count = 3 + floor_number * 2
+		var rooms_with_mobs = ["arena", "guard"]
+		if floor_number >= 3:
+			rooms_with_mobs.append("gauntlet")
 
-	for i in range(enemy_count):
-		var room_name = rooms_with_mobs[i % rooms_with_mobs.size()]
-		var pos = builder.get_room_random_floor(room_name)
-		if pos == Vector3.ZERO:
-			continue
+		for i in range(enemy_count):
+			var room_name = rooms_with_mobs[i % rooms_with_mobs.size()]
+			var pos = builder.get_room_random_floor(room_name)
+			if pos == Vector3.ZERO:
+				continue
 
-		# Mix of melee, ranged, and mage enemies
-		var enemy: Node3D
-		if floor_number >= 2 and i % 4 == 3:
-			# Mage every 4th enemy on floor 2+
-			enemy = mage_scene.instantiate()
-		elif i % 3 == 2:
-			enemy = archer_scene.instantiate()
-		elif i % 2 == 0:
-			enemy = orc_scene.instantiate()
-		else:
-			enemy = skeleton_scene.instantiate()
+			var enemy: Node3D
+			# Spawn one Dreadlord per floor as a mini-boss
+			if i == 0:
+				enemy = dreadlord_scene.instantiate()
+			elif floor_number >= 2 and i % 4 == 3:
+				enemy = mage_scene.instantiate()
+			elif i % 3 == 2:
+				enemy = archer_scene.instantiate()
+			elif i % 2 == 0:
+				enemy = orc_scene.instantiate()
+			else:
+				enemy = skeleton_scene.instantiate()
 
-		# Floor 4+ "The Deep" shadow variants — boosted stats, dark tint
-		if floor_number >= 4:
-			enemy.max_health = int(enemy.max_health * 1.5)
-			enemy.current_health = enemy.max_health
-			enemy.attack_damage = int(enemy.attack_damage * 1.3)
-			enemy.move_speed *= 1.2
-			enemy.aggro_range *= 1.5
+			# Floor 4+ "The Deep" shadow variants — boosted stats, dark tint
+			if floor_number >= 4:
+				enemy.max_health = int(enemy.max_health * 1.5)
+				enemy.current_health = enemy.max_health
+				enemy.attack_damage = int(enemy.attack_damage * 1.3)
+				enemy.move_speed *= 1.2
+				enemy.aggro_range *= 1.5
 
-		# Roll for elite/champion promotion (~15% base, scales with floor)
-		EliteModifier.try_promote(enemy, floor_number)
-
-		enemy.global_position = pos
-		units_node.add_child(enemy)
+			EliteModifier.try_promote(enemy, floor_number)
+			enemy.global_position = pos
+			units_node.add_child(enemy)
 
 	# Spawn boss in boss room
 	if boss_scenes.has(floor_number):
@@ -440,10 +462,14 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 		var boss_pos = builder.get_room_center("boss")
 		if boss_pos != Vector3.ZERO:
 			boss.global_position = boss_pos
+			# Floor 1 Slime Lord: 3x health for boss feel
+			if floor_number == 1:
+				boss.max_health = int(boss.max_health * 3)
+				boss.current_health = boss.max_health
+				boss.boss_display_name = "The Slime Lord"
 			units_node.add_child(boss)
 			_connect_boss_hud(boss)
 	elif floor_number >= 4:
-		# Floor 4+ uses slime lord boss with boosted stats as "Void Horror"
 		var deep_boss = preload("res://scenes/boss_slime_lord.tscn").instantiate()
 		var boss_pos = builder.get_room_center("boss")
 		if boss_pos != Vector3.ZERO:
@@ -451,7 +477,6 @@ func _spawn_floor_enemies(floor_number: int) -> void:
 			if deep_boss.has_method("set_deep_variant"):
 				deep_boss.set_deep_variant()
 			else:
-				# Boost stats manually for deep variant
 				deep_boss.max_health = int(deep_boss.max_health * 2.0)
 				deep_boss.current_health = deep_boss.max_health
 			units_node.add_child(deep_boss)
@@ -538,12 +563,20 @@ func _on_tutorial_completed() -> void:
 
 # ---------- ARCHETYPE SYSTEM ----------
 
+var _room_check_timer: float = 0.0
+
 func _process(delta: float) -> void:
 	# Update active floor archetype each frame
 	if FloorManager.current_archetype and FloorManager.current_archetype._is_active:
 		FloorManager.current_archetype.update(delta)
 		if _archetype_adapter and _archetype_adapter.has_method("update_mp"):
 			_archetype_adapter.update_mp(FloorManager.current_archetype, delta)
+
+	# Check hero room for room transition announcements (every 0.3s)
+	_room_check_timer += delta
+	if _room_check_timer >= 0.3:
+		_room_check_timer = 0.0
+		_check_hero_room()
 
 func _setup_archetype(floor_num: int) -> void:
 	# Tear down previous archetype
@@ -602,3 +635,125 @@ func _on_archetype_completed() -> void:
 		# Make exit portal visible/active
 		builder.exit_zone.monitoring = true
 		builder.exit_zone.visible = true
+
+# ── ROOM TRANSITIONS ──
+
+var _current_room_name: String = ""
+var _boss_gate: MeshInstance3D = null
+var _boss_gate_body: StaticBody3D = null
+var _room_announce_label: Label = null
+var _room_announce_canvas: CanvasLayer = null
+
+func _setup_room_transitions() -> void:
+	var builder = $DungeonBuilder
+
+	# Create room announce UI
+	_room_announce_canvas = CanvasLayer.new()
+	_room_announce_canvas.layer = 40
+	add_child(_room_announce_canvas)
+	_room_announce_label = Label.new()
+	_room_announce_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_room_announce_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_room_announce_label.add_theme_font_size_override("font_size", 28)
+	_room_announce_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
+	_room_announce_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_room_announce_label.offset_top = 60
+	_room_announce_label.offset_bottom = 100
+	_room_announce_label.offset_left = -200
+	_room_announce_label.offset_right = 200
+	_room_announce_label.modulate.a = 0.0
+	_room_announce_canvas.add_child(_room_announce_label)
+
+	# Create boss room gate (blocking barrier between guard and boss rooms)
+	var boss_pos = builder.get_room_center("boss")
+	var guard_pos = builder.get_room_center("guard")
+	if boss_pos != Vector3.ZERO and guard_pos != Vector3.ZERO:
+		# Place gate at the midpoint between guard and boss rooms
+		var gate_pos = (boss_pos + guard_pos) * 0.5
+		gate_pos.y = 1.5
+
+		_boss_gate = MeshInstance3D.new()
+		var box = BoxMesh.new()
+		box.size = Vector3(4.0, 3.0, 0.5)
+		_boss_gate.mesh = box
+		_boss_gate.position = gate_pos
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(0.4, 0.15, 0.1, 0.85)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.emission_enabled = true
+		mat.emission = Color(0.6, 0.2, 0.1)
+		mat.emission_energy_multiplier = 1.0
+		_boss_gate.set_surface_override_material(0, mat)
+		add_child(_boss_gate)
+
+		# Collision body to block passage
+		_boss_gate_body = StaticBody3D.new()
+		_boss_gate_body.position = gate_pos
+		var col_shape = CollisionShape3D.new()
+		var shape = BoxShape3D.new()
+		shape.size = Vector3(4.0, 3.0, 0.5)
+		col_shape.shape = shape
+		_boss_gate_body.add_child(col_shape)
+		add_child(_boss_gate_body)
+
+	# Connect enemy death to check if gate should open
+	GameManager.all_enemies_cleared.connect(_on_all_enemies_cleared_open_gate)
+
+func _on_all_enemies_cleared_open_gate() -> void:
+	_open_boss_gate()
+
+func _open_boss_gate() -> void:
+	if _boss_gate == null:
+		return
+	# Dramatic gate opening
+	_announce_room("BOSS ROOM UNLOCKED")
+	AudioManager.play_sfx("chest_open", 1.0)
+	GameManager.request_screen_shake(3.0, 0.2)
+	var mat: Material = _boss_gate.get_surface_override_material(0)
+	var tw = create_tween()
+	if mat is StandardMaterial3D:
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.6)
+	tw.parallel().tween_property(_boss_gate, "scale:y", 0.01, 0.6)
+	tw.tween_callback(func():
+		_boss_gate.queue_free()
+		_boss_gate = null
+		if _boss_gate_body:
+			_boss_gate_body.queue_free()
+			_boss_gate_body = null
+	)
+
+func _announce_room(room_display_name: String) -> void:
+	if _room_announce_label == null:
+		return
+	_room_announce_label.text = room_display_name
+	var tw = create_tween()
+	tw.tween_property(_room_announce_label, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(1.5)
+	tw.tween_property(_room_announce_label, "modulate:a", 0.0, 0.5)
+
+const ROOM_DISPLAY_NAMES := {
+	"spawn": "SPAWN CHAMBER",
+	"arena": "THE ARENA",
+	"loot": "LOOT ROOM",
+	"guard": "GUARD ROOM",
+	"boss": "BOSS LAIR",
+}
+
+func _check_hero_room() -> void:
+	var hero = GameManager.hero
+	if hero == null or hero.is_dead:
+		return
+	var builder = $DungeonBuilder
+	for room in builder.rooms:
+		var rpos: Vector2i = room["pos"]
+		var rsize: Vector2i = room["size"]
+		var world_min := Vector3(rpos.x * 2.0, -1.0, rpos.y * 2.0)
+		var world_max := Vector3((rpos.x + rsize.x) * 2.0, 5.0, (rpos.y + rsize.y) * 2.0)
+		var hp = hero.global_position
+		if hp.x >= world_min.x and hp.x <= world_max.x and hp.z >= world_min.z and hp.z <= world_max.z:
+			var rname: String = room["name"]
+			if rname != _current_room_name:
+				_current_room_name = rname
+				var display = ROOM_DISPLAY_NAMES.get(rname, rname.to_upper())
+				_announce_room(display)
+			return
